@@ -1,30 +1,299 @@
-const defaultBase = import.meta.env.DEV ? 'http://localhost:3000' : '';
-const API_BASE = (import.meta.env.VITE_API_URL || defaultBase || '').replace(/\/$/, '');
+import axios from 'axios';
 
-async function request(path, data) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || 'Request failed');
-  }
-
-  return response.json();
-}
-
-export const aiApi = {
-  async generateCaptions(idea, tone) {
-    const data = await request('/api/alchemy/captions', { idea, tone });
-    return data.captions || [];
+// Create axios instance with defaults
+const api = axios.create({
+  baseURL: API_BASE,
+  headers: {
+    'Content-Type': 'application/json',
   },
-  async generateIdeas(niche, examples) {
-    const data = await request('/api/alchemy/ideas', { niche, examples });
-    return data.ideas || [];
+  withCredentials: true,
+});
+
+// Request interceptor for auth token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Response interceptor for error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Only redirect to login if we had a token that expired
+    // Don't redirect if user is in demo mode (no token)
+    if (error.response?.status === 401 && localStorage.getItem('token')) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Auth API
+export const authApi = {
+  async login(email, password) {
+    const { data } = await api.post('/api/auth/login', { email, password });
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+    }
+    return data;
+  },
+
+  async register(email, password, name) {
+    const { data } = await api.post('/api/auth/register', { email, password, name });
+    return data;
+  },
+
+  async logout() {
+    localStorage.removeItem('token');
+    await api.post('/api/auth/logout');
+  },
+
+  async getMe() {
+    const { data } = await api.get('/api/auth/me');
+    return data;
+  },
+
+  async getGoogleAuthUrl() {
+    const { data } = await api.get('/api/auth/google');
+    return data.url;
   },
 };
+
+// Content API
+export const contentApi = {
+  async getAll(params = {}) {
+    const { data } = await api.get('/api/content', { params });
+    return data;
+  },
+
+  async getById(id) {
+    const { data } = await api.get(`/api/content/${id}`);
+    return data;
+  },
+
+  async upload(file, metadata = {}) {
+    const formData = new FormData();
+    formData.append('media', file);
+    Object.entries(metadata).forEach(([key, value]) => {
+      formData.append(key, typeof value === 'object' ? JSON.stringify(value) : value);
+    });
+
+    const { data } = await api.post('/api/content', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  },
+
+  async update(id, updates) {
+    const { data } = await api.put(`/api/content/${id}`, updates);
+    return data;
+  },
+
+  async delete(id) {
+    const { data } = await api.delete(`/api/content/${id}`);
+    return data;
+  },
+
+  async addVersion(id, versionData) {
+    const { data } = await api.post(`/api/content/${id}/versions`, versionData);
+    return data;
+  },
+};
+
+// Grid API
+export const gridApi = {
+  async getAll() {
+    const { data } = await api.get('/api/grid');
+    return data;
+  },
+
+  async getById(id) {
+    const { data } = await api.get(`/api/grid/${id}`);
+    return data;
+  },
+
+  async create(gridData) {
+    const { data } = await api.post('/api/grid', gridData);
+    return data;
+  },
+
+  async update(id, updates) {
+    const { data } = await api.put(`/api/grid/${id}`, updates);
+    return data;
+  },
+
+  async addContent(gridId, contentId, position) {
+    // Position can be { row, col } object or a number
+    let row, col;
+    if (typeof position === 'object') {
+      row = position.row;
+      col = position.col;
+    } else {
+      // Convert flat position to row/col (assuming 3 columns default)
+      row = Math.floor(position / 3);
+      col = position % 3;
+    }
+    const { data } = await api.post(`/api/grid/${gridId}/add-content`, { contentId, row, col });
+    return data;
+  },
+
+  async removeContent(gridId, contentId) {
+    const { data } = await api.post(`/api/grid/${gridId}/remove-content`, { contentId });
+    return data;
+  },
+
+  async reorder(gridId, items) {
+    const { data } = await api.post(`/api/grid/${gridId}/reorder`, { items });
+    return data;
+  },
+};
+
+// AI API
+export const aiApi = {
+  async analyzeContent(contentId) {
+    const { data } = await api.post('/api/ai/analyze', { contentId });
+    return data;
+  },
+
+  async generateCaption(idea, tone = 'casual', options = {}) {
+    const { data } = await api.post('/api/alchemy/captions', { idea, tone, ...options });
+    return data.captions || [];
+  },
+
+  async generateHashtags(contentId, count = 20) {
+    const { data } = await api.post('/api/ai/generate-hashtags', { contentId, count });
+    return data.hashtags || [];
+  },
+
+  async suggestContentType(contentId) {
+    const { data } = await api.post('/api/ai/suggest-type', { contentId });
+    return data;
+  },
+
+  async generateIdeas(niche, examples = []) {
+    const { data } = await api.post('/api/alchemy/ideas', { niche, examples });
+    return data.ideas || [];
+  },
+
+  async compareVersions(contentId, versionIds) {
+    const { data } = await api.post('/api/ai/compare-versions', { contentId, versionIds });
+    return data;
+  },
+
+  async getOptimalTiming(platform, contentType) {
+    const { data } = await api.post('/api/ai/optimal-timing', { platform, contentType });
+    return data;
+  },
+};
+
+// Collection/Scheduling API
+export const collectionApi = {
+  async getAll() {
+    const { data } = await api.get('/api/collection');
+    return data;
+  },
+
+  async getById(id) {
+    const { data } = await api.get(`/api/collection/${id}`);
+    return data;
+  },
+
+  async create(collectionData) {
+    const { data } = await api.post('/api/collection', collectionData);
+    return data;
+  },
+
+  async update(id, updates) {
+    const { data } = await api.put(`/api/collection/${id}`, updates);
+    return data;
+  },
+
+  async delete(id) {
+    const { data } = await api.delete(`/api/collection/${id}`);
+    return data;
+  },
+
+  async schedule(id, scheduleData) {
+    const { data } = await api.post(`/api/collection/${id}/schedule`, scheduleData);
+    return data;
+  },
+
+  async pause(id) {
+    const { data } = await api.post(`/api/collection/${id}/pause`);
+    return data;
+  },
+
+  async resume(id) {
+    const { data } = await api.post(`/api/collection/${id}/resume`);
+    return data;
+  },
+};
+
+// Posting API
+export const postingApi = {
+  async postNow(contentId, platforms, options = {}) {
+    const { data } = await api.post('/api/post/now', { contentId, platforms, ...options });
+    return data;
+  },
+
+  async schedulePost(contentId, platforms, scheduledAt, options = {}) {
+    const { data } = await api.post('/api/post/schedule', {
+      contentId,
+      platforms,
+      scheduledAt,
+      ...options
+    });
+    return data;
+  },
+
+  async cancelScheduled(postId) {
+    const { data } = await api.post(`/api/post/${postId}/cancel`);
+    return data;
+  },
+
+  async getScheduled() {
+    const { data } = await api.get('/api/post/scheduled');
+    return data;
+  },
+
+  async getHistory(params = {}) {
+    const { data } = await api.get('/api/post/history', { params });
+    return data;
+  },
+};
+
+// Platform Connection API
+export const platformApi = {
+  async getConnections() {
+    const { data } = await api.get('/api/auth/connections');
+    return data;
+  },
+
+  async getInstagramAuthUrl() {
+    const { data } = await api.get('/api/auth/instagram');
+    return data.url;
+  },
+
+  async getTikTokAuthUrl() {
+    const { data } = await api.get('/api/auth/tiktok');
+    return data.url;
+  },
+
+  async disconnect(platform) {
+    const { data } = await api.post(`/api/auth/${platform}/disconnect`);
+    return data;
+  },
+
+  async refreshToken(platform) {
+    const { data } = await api.post(`/api/auth/${platform}/refresh`);
+    return data;
+  },
+};
+
+export default api;

@@ -202,6 +202,8 @@ exports.removeRow = async (req, res) => {
 exports.addContentToGrid = async (req, res) => {
   try {
     const { contentId, row, col } = req.body;
+    const rowNum = Number(row) || 0;
+    const colNum = Number(col) || 0;
 
     const grid = await Grid.findOne({ _id: req.params.id, userId: req.userId });
     if (!grid) {
@@ -214,10 +216,25 @@ exports.addContentToGrid = async (req, res) => {
       return res.status(404).json({ error: 'Content not found' });
     }
 
-    // Find the cell
-    const cell = grid.cells.find(c => c.position.row === row && c.position.col === col);
+    // Auto-expand grid if needed
+    const neededRows = rowNum + 1;
+    if (grid.totalRows < neededRows) {
+      // Add new rows
+      for (let r = grid.totalRows; r < neededRows; r++) {
+        for (let c = 0; c < grid.columns; c++) {
+          grid.cells.push(createEmptyCell(r, c));
+        }
+      }
+      grid.totalRows = neededRows;
+    }
+
+    // Find the cell (should exist now)
+    let cell = grid.cells.find(c => c.position.row === rowNum && c.position.col === colNum);
+
+    // Create cell if it doesn't exist (edge case)
     if (!cell) {
-      return res.status(404).json({ error: 'Cell not found' });
+      cell = createEmptyCell(rowNum, colNum);
+      grid.cells.push(cell);
     }
 
     // Update cell
