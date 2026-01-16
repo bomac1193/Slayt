@@ -65,11 +65,13 @@ function SortableRow({ rowId, rowIndex, children }) {
 }
 
 // Draggable grid item with drop zone (handles both internal drags AND file drops from explorer)
-function DraggableGridItem({ post, postId, activeItemId, onDragStart, onDragEnd, onFileDrop }) {
+// Default drag = rearrange, Shift+drag = replace/carousel, File drop = replace/carousel
+function DraggableGridItem({ post, postId, onDragStart, onDragEnd, onFileDrop, onReorder, onReplaceOrCarousel }) {
   const [isDragging, setIsDragging] = useState(false);
   const [isOver, setIsOver] = useState(false);
   const [isFileOver, setIsFileOver] = useState(false);
-  const itemRef = useRef(null);
+  const [isShiftDrag, setIsShiftDrag] = useState(false);
+  const dragCounterRef = useRef(0); // Counter to handle nested element drag events
 
   // Get all images for this post (for carousel support)
   const images = post.images || (post.image ? [post.image] : []);
@@ -81,8 +83,13 @@ function DraggableGridItem({ post, postId, activeItemId, onDragStart, onDragEnd,
     // Set global flag IMMEDIATELY to prevent file drop overlay
     setInternalDragActive(true);
 
+    // Check if shift is held - store in dataTransfer for the drop handler
+    const shiftHeld = e.shiftKey;
+    setIsShiftDrag(shiftHeld);
+
     setIsDragging(true);
     e.dataTransfer.setData('application/postpilot-item', postId);
+    e.dataTransfer.setData('application/postpilot-shift', shiftHeld ? 'true' : 'false');
     e.dataTransfer.effectAllowed = 'move';
 
     // Create a custom drag image
@@ -101,11 +108,29 @@ function DraggableGridItem({ post, postId, activeItemId, onDragStart, onDragEnd,
   const handleDragEnd = (e) => {
     e.stopPropagation();
     setIsDragging(false);
+    setIsShiftDrag(false);
+    dragCounterRef.current = 0;
 
     // Clear global flag
     setInternalDragActive(false);
+  };
 
-    onDragEnd?.();
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Increment counter - this handles nested elements
+    dragCounterRef.current++;
+
+    // Set global flag for file drags to block parent overlay
+    if (e.dataTransfer.types.includes('Files')) {
+      setInternalDragActive(true);
+      setIsFileOver(true);
+      setIsOver(false);
+    } else if (e.dataTransfer.types.includes('application/postpilot-item')) {
+      setIsOver(true);
+      setIsFileOver(false);
+    }
   };
 
   const handleDragOver = (e) => {
@@ -115,44 +140,58 @@ function DraggableGridItem({ post, postId, activeItemId, onDragStart, onDragEnd,
     // Check if it's an internal item drag
     if (e.dataTransfer.types.includes('application/postpilot-item')) {
       e.dataTransfer.dropEffect = 'move';
-      setIsOver(true);
-      setIsFileOver(false);
     }
     // Check if it's a file drag from outside (Windows Explorer)
     else if (e.dataTransfer.types.includes('Files')) {
       e.dataTransfer.dropEffect = 'copy';
-      setIsFileOver(true);
-      setIsOver(false);
-      // Set flag to prevent parent overlay
+      // Keep setting the flag to ensure overlay stays hidden
       setInternalDragActive(true);
     }
   };
 
   const handleDragLeave = (e) => {
+    e.preventDefault();
     e.stopPropagation();
-    setIsOver(false);
-    setIsFileOver(false);
+
+    // Decrement counter - only clear highlights when truly leaving
+    dragCounterRef.current--;
+
+    if (dragCounterRef.current === 0) {
+      setIsOver(false);
+      setIsFileOver(false);
+    }
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // Reset state
+    dragCounterRef.current = 0;
     setIsOver(false);
     setIsFileOver(false);
 
-    // Clear the flag
-    setInternalDragActive(false);
-
     // Check for internal item drag first
     const sourceId = e.dataTransfer.getData('application/postpilot-item');
+
     if (sourceId && sourceId !== postId) {
-      onDragEnd?.(sourceId, postId);
+      // Check if shift was held during drag
+      const wasShiftDrag = e.dataTransfer.getData('application/postpilot-shift') === 'true';
+
+      if (wasShiftDrag) {
+        // Shift+drag = show replace/carousel modal
+        onReplaceOrCarousel?.(sourceId, postId);
+      } else {
+        // Normal drag = reorder
+        onReorder?.(sourceId, postId);
+      }
       return;
     }
 
-    // Check for file drop from Windows Explorer
+    // Check for file drop from Windows Explorer - always show modal
     const files = Array.from(e.dataTransfer.files || []);
     const imageFiles = files.filter(f => f.type.startsWith('image/'));
+
     if (imageFiles.length > 0 && onFileDrop) {
       onFileDrop(postId, post, imageFiles);
     }
@@ -160,16 +199,16 @@ function DraggableGridItem({ post, postId, activeItemId, onDragStart, onDragEnd,
 
   return (
     <div
-      ref={itemRef}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={`aspect-square bg-dark-700 overflow-hidden cursor-grab active:cursor-grabbing relative select-none ${
         isDragging ? 'opacity-40' : ''
-      } ${isOver ? 'ring-2 ring-accent-purple ring-inset scale-105 transition-transform' : ''} ${isFileOver ? 'ring-2 ring-green-500 ring-inset scale-105 transition-transform' : ''}`}
+      } ${isOver ? 'ring-4 ring-accent-purple scale-105 transition-all duration-150' : ''} ${isFileOver ? 'ring-4 ring-green-500 scale-105 transition-all duration-150' : ''}`}
     >
       {images.length > 0 ? (
         <>
@@ -181,7 +220,7 @@ function DraggableGridItem({ post, postId, activeItemId, onDragStart, onDragEnd,
           />
           {/* Carousel indicator */}
           {isCarousel && (
-            <div className="absolute top-2 right-2 bg-dark-900/70 rounded px-1.5 py-0.5 flex items-center gap-1">
+            <div className="absolute top-2 right-2 bg-dark-900/70 rounded px-1.5 py-0.5 flex items-center gap-1 pointer-events-none">
               <Layers className="w-3 h-3 text-white" />
               <span className="text-xs text-white font-medium">{images.length}</span>
             </div>
@@ -189,18 +228,27 @@ function DraggableGridItem({ post, postId, activeItemId, onDragStart, onDragEnd,
         </>
       ) : post.color ? (
         <div
-          className="w-full h-full"
+          className="w-full h-full pointer-events-none"
           style={{ backgroundColor: post.color }}
         />
       ) : (
-        <div className="w-full h-full bg-dark-600" />
+        <div className="w-full h-full bg-dark-600 pointer-events-none" />
       )}
 
-      {/* File drop indicator */}
+      {/* File drop indicator overlay */}
       {isFileOver && (
-        <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center">
-          <div className="bg-dark-900/80 rounded-lg px-2 py-1">
-            <span className="text-xs text-white font-medium">Drop here</span>
+        <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center pointer-events-none">
+          <div className="bg-dark-900/90 rounded-lg px-3 py-2">
+            <span className="text-sm text-white font-medium">Drop to add</span>
+          </div>
+        </div>
+      )}
+
+      {/* Internal drag indicator overlay */}
+      {isOver && (
+        <div className="absolute inset-0 bg-accent-purple/30 flex items-center justify-center pointer-events-none">
+          <div className="bg-dark-900/90 rounded-lg px-3 py-2">
+            <span className="text-sm text-white font-medium">Drop here</span>
           </div>
         </div>
       )}
@@ -271,8 +319,23 @@ function GridPreview({ posts, layout }) {
     // Could track dragging state here if needed
   };
 
-  // Handle item drop onto another item
-  const handleItemDrop = (sourceId, targetId) => {
+  // Handle reorder (default drag without shift) - just swap positions, no modal
+  const handleReorder = (sourceId, targetId) => {
+    if (!sourceId || !targetId || sourceId === targetId) return;
+
+    const sourceIndex = posts.findIndex(p => (p.id || p._id) === sourceId);
+    const targetIndex = posts.findIndex(p => (p.id || p._id) === targetId);
+
+    if (sourceIndex === -1 || targetIndex === -1) return;
+
+    // Swap the posts
+    const newPosts = [...posts];
+    [newPosts[sourceIndex], newPosts[targetIndex]] = [newPosts[targetIndex], newPosts[sourceIndex]];
+    setGridPosts(newPosts);
+  };
+
+  // Handle replace/carousel drag (shift+drag) - show modal
+  const handleReplaceOrCarouselDrag = (sourceId, targetId) => {
     if (!sourceId || !targetId || sourceId === targetId) return;
 
     const sourcePost = posts.find(p => (p.id || p._id) === sourceId);
@@ -710,23 +773,37 @@ function GridPreview({ posts, layout }) {
       </div>
 
       {/* Grid with Row Drag (via grip handle) and Item Drag (for replace/carousel) */}
-      {/* This wrapper prevents ALL drag events from bubbling to parent file drop zone */}
+      {/* This wrapper blocks parent overlay by setting flag, but lets items handle their own drops */}
       <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
         onDragEnter={(e) => {
           e.preventDefault();
           e.stopPropagation();
+          // Set flag when entering preview grid - blocks parent overlay
+          setInternalDragActive(true);
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          // Keep flag set while dragging over preview grid
+          setInternalDragActive(true);
         }}
         onDragLeave={(e) => {
           e.preventDefault();
           e.stopPropagation();
+          // Only clear flag if actually leaving the grid container entirely
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = e.clientX;
+          const y = e.clientY;
+          if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+            setInternalDragActive(false);
+          }
         }}
         onDrop={(e) => {
+          // This catches drops that miss all grid items (dropped on empty space)
           e.preventDefault();
           e.stopPropagation();
+          setInternalDragActive(false);
+          // Don't do anything else - drop was on empty space, not an item
         }}
       >
         {/* Row Drag and Drop */}
@@ -753,7 +830,8 @@ function GridPreview({ posts, layout }) {
                         post={post}
                         postId={post.id || post._id}
                         onDragStart={handleItemDragStart}
-                        onDragEnd={handleItemDrop}
+                        onReorder={handleReorder}
+                        onReplaceOrCarousel={handleReplaceOrCarouselDrag}
                         onFileDrop={handleFileDrop}
                       />
                     ))}
