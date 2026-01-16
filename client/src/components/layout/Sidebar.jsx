@@ -73,26 +73,17 @@ function Sidebar() {
       <div className="h-16 flex items-center justify-between px-4 border-b border-dark-700">
         {!sidebarCollapsed && (
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 via-purple-600 to-amber-500 flex items-center justify-center shadow-lg shadow-purple-500/20 relative">
+            <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center">
               <MagicWandLogo className="w-5 h-5 text-white" />
-              {/* Subtle glow effect */}
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-400/20 to-amber-400/20 blur-sm -z-10" />
             </div>
-            <div className="flex flex-col">
-              <span className="font-display font-bold text-lg tracking-tight bg-gradient-to-r from-white via-purple-100 to-amber-100 bg-clip-text text-transparent">
-                PostPilot
-              </span>
-              <span className="text-[10px] text-purple-300/60 tracking-widest uppercase -mt-0.5">
-                Create Magic
-              </span>
-            </div>
+            <span className="font-display font-semibold text-lg text-white tracking-tight">
+              PostPilot
+            </span>
           </div>
         )}
         {sidebarCollapsed && (
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 via-purple-600 to-amber-500 flex items-center justify-center mx-auto shadow-lg shadow-purple-500/20 relative group cursor-pointer">
+          <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center mx-auto group cursor-pointer">
             <MagicWandLogo className="w-5 h-5 text-white transition-transform group-hover:rotate-12" />
-            {/* Subtle glow effect */}
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-400/20 to-amber-400/20 blur-sm -z-10" />
           </div>
         )}
       </div>
