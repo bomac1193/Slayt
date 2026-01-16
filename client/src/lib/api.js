@@ -95,6 +95,20 @@ export const contentApi = {
     return data;
   },
 
+  async uploadReel(videoFile, thumbnailBlob, metadata = {}) {
+    const formData = new FormData();
+    formData.append('media', videoFile);
+    formData.append('thumbnail', thumbnailBlob, 'thumbnail.jpg');
+    Object.entries(metadata).forEach(([key, value]) => {
+      formData.append(key, typeof value === 'object' ? JSON.stringify(value) : value);
+    });
+
+    const { data } = await api.post('/api/content/reel', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  },
+
   async update(id, updates) {
     const { data } = await api.put(`/api/content/${id}`, updates);
     return data;

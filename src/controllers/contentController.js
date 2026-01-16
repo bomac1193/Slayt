@@ -64,14 +64,79 @@ exports.createContent = async (req, res) => {
   }
 };
 
+// Create new reel (video with client-generated thumbnail)
+exports.createReel = async (req, res) => {
+  try {
+    const videoFile = req.files?.media?.[0];
+    const thumbnailFile = req.files?.thumbnail?.[0];
+
+    if (!videoFile) {
+      return res.status(400).json({ error: 'Video file required' });
+    }
+
+    const { title, duration, width, height, isReel, recommendedType } = req.body;
+
+    const mediaUrl = `/uploads/${videoFile.filename}`;
+    let thumbnailUrl = null;
+
+    // Use the client-generated thumbnail if provided
+    if (thumbnailFile) {
+      // Move thumbnail to thumbnails directory
+      const thumbnailFilename = `thumb-${videoFile.filename.replace(/\.[^/.]+$/, '')}.jpg`;
+      const thumbnailPath = path.join(__dirname, '../../uploads/thumbnails', thumbnailFilename);
+
+      // Copy the uploaded thumbnail to the thumbnails directory
+      await fs.copyFile(thumbnailFile.path, thumbnailPath);
+      // Remove the original uploaded thumbnail from uploads directory
+      await fs.unlink(thumbnailFile.path);
+
+      thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
+    }
+
+    // Parse metadata
+    const metadata = {
+      duration: parseFloat(duration) || 0,
+      width: parseInt(width) || 0,
+      height: parseInt(height) || 0,
+      isReel: isReel === 'true' || isReel === true,
+      fileSize: videoFile.size
+    };
+
+    const content = new Content({
+      userId: req.userId,
+      title: title || 'Untitled Reel',
+      mediaUrl,
+      originalMediaUrl: mediaUrl,
+      thumbnailUrl,
+      mediaType: 'video',
+      platform: 'instagram',
+      metadata,
+      aiSuggestions: {
+        recommendedType: recommendedType || 'reel'
+      }
+    });
+
+    await content.save();
+
+    res.status(201).json({
+      message: 'Reel created successfully',
+      content
+    });
+  } catch (error) {
+    console.error('Create reel error:', error);
+    res.status(500).json({ error: 'Failed to create reel' });
+  }
+};
+
 // Get all content for user
 exports.getAllContent = async (req, res) => {
   try {
-    const { platform, status, limit = 50, offset = 0 } = req.query;
+    const { platform, status, mediaType, limit = 50, offset = 0 } = req.query;
 
     const filter = { userId: req.userId };
     if (platform) filter.platform = platform;
     if (status) filter.status = status;
+    if (mediaType) filter.mediaType = mediaType;
 
     const content = await Content.find(filter)
       .sort({ createdAt: -1 })
@@ -113,7 +178,7 @@ exports.getContentById = async (req, res) => {
 // Update content
 exports.updateContent = async (req, res) => {
   try {
-    const { title, caption, hashtags, location, status } = req.body;
+    const { title, caption, hashtags, location, status, mentions, audioTrack, scheduledFor } = req.body;
 
     const content = await Content.findOne({ _id: req.params.id, userId: req.userId });
     if (!content) {
@@ -124,6 +189,15 @@ exports.updateContent = async (req, res) => {
     if (caption !== undefined) content.caption = caption;
     if (hashtags !== undefined) content.hashtags = hashtags;
     if (location !== undefined) content.location = location;
+    if (mentions !== undefined) content.mentions = mentions;
+    if (audioTrack !== undefined) content.audioTrack = audioTrack;
+    if (scheduledFor !== undefined) {
+      content.scheduledFor = scheduledFor;
+      // Update status to scheduled if a date is set
+      if (scheduledFor) {
+        content.status = 'scheduled';
+      }
+    }
     if (status) content.status = status;
 
     await content.save();
@@ -135,6 +209,54 @@ exports.updateContent = async (req, res) => {
   } catch (error) {
     console.error('Update content error:', error);
     res.status(500).json({ error: 'Failed to update content' });
+  }
+};
+
+// Update thumbnail for content (e.g., reel)
+exports.updateThumbnail = async (req, res) => {
+  try {
+    const thumbnailFile = req.file;
+
+    if (!thumbnailFile) {
+      return res.status(400).json({ error: 'Thumbnail file required' });
+    }
+
+    const content = await Content.findOne({ _id: req.params.id, userId: req.userId });
+    if (!content) {
+      return res.status(404).json({ error: 'Content not found' });
+    }
+
+    // Delete old thumbnail if exists
+    if (content.thumbnailUrl) {
+      try {
+        const oldThumbnailPath = path.join(__dirname, '../../uploads', content.thumbnailUrl.replace('/uploads/', ''));
+        await fs.unlink(oldThumbnailPath);
+      } catch (err) {
+        // Ignore error if old thumbnail doesn't exist
+        console.error('Could not delete old thumbnail:', err.message);
+      }
+    }
+
+    // Move new thumbnail to thumbnails directory
+    const thumbnailFilename = `thumb-${Date.now()}-${Math.round(Math.random() * 1E9)}.jpg`;
+    const thumbnailPath = path.join(__dirname, '../../uploads/thumbnails', thumbnailFilename);
+
+    // Copy the uploaded thumbnail to the thumbnails directory
+    await fs.copyFile(thumbnailFile.path, thumbnailPath);
+    // Remove the original uploaded file from uploads directory
+    await fs.unlink(thumbnailFile.path);
+
+    // Update content with new thumbnail URL
+    content.thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
+    await content.save();
+
+    res.json({
+      message: 'Thumbnail updated successfully',
+      content
+    });
+  } catch (error) {
+    console.error('Update thumbnail error:', error);
+    res.status(500).json({ error: 'Failed to update thumbnail' });
   }
 };
 

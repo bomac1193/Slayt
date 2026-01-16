@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isInternalDragActive } from '../utils/dragState';
+import { generateVideoThumbnail } from '../utils/videoUtils';
 import {
   DndContext,
   closestCenter,
@@ -111,8 +112,13 @@ function GridPlanner() {
 
   // Drag-drop upload state
   const [isDraggingFiles, setIsDraggingFiles] = useState(false);
+  const [isDraggingVideo, setIsDraggingVideo] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+  const dragCounterRef = useRef(0);
+
+  // Reels state from store
+  const addReel = useAppStore((state) => state.addReel);
 
   // Fetch all grids from backend
   const fetchGrids = useCallback(async () => {
@@ -400,10 +406,57 @@ function GridPlanner() {
     e.preventDefault();
     e.stopPropagation();
     setIsDraggingFiles(false);
+    setIsDraggingVideo(false);
+    dragCounterRef.current = 0;
 
     const files = Array.from(e.dataTransfer?.files || []);
-    const imageFiles = files.filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
+    const videoFiles = files.filter(f => f.type.startsWith('video/'));
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
 
+    // Handle video files - upload as reels
+    if (videoFiles.length > 0) {
+      setUploading(true);
+      setUploadProgress({ current: 0, total: videoFiles.length });
+
+      for (let i = 0; i < videoFiles.length; i++) {
+        const videoFile = videoFiles[i];
+        setUploadProgress({ current: i + 1, total: videoFiles.length });
+
+        try {
+          // Generate thumbnail
+          const { thumbnailBlob, duration, width, height, isVertical } =
+            await generateVideoThumbnail(videoFile);
+
+          // Upload video with thumbnail as reel
+          const result = await contentApi.uploadReel(videoFile, thumbnailBlob, {
+            title: videoFile.name.replace(/\.[^/.]+$/, ''),
+            mediaType: 'video',
+            duration,
+            width,
+            height,
+            isReel: true,
+            recommendedType: isVertical ? 'reel' : 'video'
+          });
+
+          // Add to reels state
+          if (result.content) {
+            addReel(result.content);
+          } else {
+            addReel(result);
+          }
+        } catch (err) {
+          console.error('Reel upload failed for', videoFile.name, err);
+        }
+      }
+
+      setUploading(false);
+      setUploadProgress({ current: 0, total: 0 });
+
+      // If only videos were dropped, we're done
+      if (imageFiles.length === 0) return;
+    }
+
+    // Handle image files - add to grid
     if (imageFiles.length === 0) return;
 
     setUploading(true);
@@ -489,7 +542,18 @@ function GridPlanner() {
 
     setUploading(false);
     setUploadProgress({ current: 0, total: 0 });
-  }, [gridPosts, setGridPosts, currentGridId, currentLayout, grids, isAuthenticated]);
+  }, [gridPosts, setGridPosts, currentGridId, currentLayout, grids, isAuthenticated, addReel]);
+
+  // Helper to check if any items in dataTransfer are videos
+  const hasVideoFiles = useCallback((dataTransfer) => {
+    if (!dataTransfer?.items) return false;
+    for (const item of dataTransfer.items) {
+      if (item.kind === 'file' && item.type.startsWith('video/')) {
+        return true;
+      }
+    }
+    return false;
+  }, []);
 
   // Drag event handlers
   const handleDragOver = useCallback((e) => {
@@ -502,16 +566,20 @@ function GridPlanner() {
     e.preventDefault();
     e.stopPropagation();
     if (e.dataTransfer?.types?.includes('Files')) {
+      const isVideo = hasVideoFiles(e.dataTransfer);
       setIsDraggingFiles(true);
+      setIsDraggingVideo(isVideo);
     }
-  }, []);
+  }, [hasVideoFiles]);
 
   const handleDragLeave = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
+    dragCounterRef.current--;
     // Only set to false if we're leaving the drop zone entirely
-    if (e.currentTarget === e.target) {
+    if (dragCounterRef.current === 0) {
       setIsDraggingFiles(false);
+      setIsDraggingVideo(false);
     }
   }, []);
 
@@ -524,10 +592,13 @@ function GridPlanner() {
     }
     e.preventDefault();
     e.stopPropagation();
+    dragCounterRef.current++;
     if (e.dataTransfer?.types?.includes('Files')) {
+      const isVideo = hasVideoFiles(e.dataTransfer);
       setIsDraggingFiles(true);
+      setIsDraggingVideo(isVideo);
     }
-  }, []);
+  }, [hasVideoFiles]);
 
   // File input handler for click-to-upload
   const handleFileInputChange = useCallback((e) => {
@@ -566,9 +637,22 @@ function GridPlanner() {
       {isDraggingFiles && (
         <div className="absolute inset-0 z-50 bg-dark-900/90 backdrop-blur-sm flex items-center justify-center rounded-2xl border-2 border-dashed border-accent-purple">
           <div className="text-center">
-            <ImagePlus className="w-16 h-16 text-accent-purple mx-auto mb-4" />
-            <p className="text-xl font-semibold text-dark-100 mb-2">Drop images here</p>
-            <p className="text-dark-400">Release to upload and add to grid</p>
+            {isDraggingVideo ? (
+              <>
+                <svg className="w-16 h-16 text-accent-purple mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-xl font-semibold text-dark-100 mb-2">Drop Video to Upload</p>
+                <p className="text-dark-400">Release to upload as a Reel</p>
+              </>
+            ) : (
+              <>
+                <ImagePlus className="w-16 h-16 text-accent-purple mx-auto mb-4" />
+                <p className="text-xl font-semibold text-dark-100 mb-2">Drop images here</p>
+                <p className="text-dark-400">Release to upload and add to grid</p>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -956,7 +1040,7 @@ function GridPlanner() {
         {/* Grid */}
         <div className="flex-1 overflow-auto">
           {showPreview ? (
-            <GridPreview posts={gridPosts} layout={currentLayout} showRowHandles={showRowHandles} />
+            <GridPreview posts={gridPosts} layout={currentLayout} showRowHandles={showRowHandles} onDeletePost={handleDeletePost} />
           ) : (
             <div className="bg-dark-800 rounded-2xl p-6 border border-dark-700">
               {/* Instagram Header Mock */}

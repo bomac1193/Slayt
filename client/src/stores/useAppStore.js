@@ -29,6 +29,9 @@ export const useAppStore = create(
       // Calendar
       scheduledPosts: [],
 
+      // Reels
+      reels: [],
+
       // Platform connections
       connectedPlatforms: {
         instagram: { connected: false, account: null },
@@ -109,6 +112,10 @@ export const useAppStore = create(
         return state;
       }),
       clearHistory: () => set({ editorHistory: [], historyIndex: -1 }),
+
+      // Reels actions
+      setReels: (reels) => set({ reels }),
+      addReel: (reel) => set((state) => ({ reels: [reel, ...state.reels] })),
 
       // Calendar actions
       setScheduledPosts: (posts) => set({ scheduledPosts: posts }),

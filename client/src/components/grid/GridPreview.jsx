@@ -1,6 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { User, Upload, ZoomIn, ZoomOut, X, Check, Camera, RotateCcw, Save, GripVertical, Replace, Layers, Trash2, Eye, EyeOff } from 'lucide-react';
+import { User, Upload, ZoomIn, ZoomOut, X, Check, Camera, RotateCcw, Save, GripVertical, Replace, Layers, Trash2, Eye, EyeOff, Play } from 'lucide-react';
 import { setInternalDragActive } from '../../utils/dragState';
+import { generateVideoThumbnail, formatDuration } from '../../utils/videoUtils';
+import { contentApi } from '../../lib/api';
+import api from '../../lib/api';
+import ReelPlayer from './ReelPlayer';
+import ReelThumbnailSelector from './ReelThumbnailSelector';
+import ReelEditor from './ReelEditor';
 import {
   DndContext,
   closestCenter,
@@ -14,6 +20,7 @@ import {
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
+  rectSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
@@ -36,7 +43,10 @@ function SortableRow({ rowId, rowIndex, children, showHandle = true }) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: rowId });
+  } = useSortable({
+    id: rowId,
+    disabled: !showHandle, // Disable sorting when handle is hidden
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -284,7 +294,183 @@ function DraggableGridItem({ post, postId, onDragStart, onDragEnd, onFileDrop, o
   );
 }
 
-function GridPreview({ posts, layout, showRowHandles = true }) {
+// Sortable reel row component with drag handle
+function SortableReelRow({ rowId, rowIndex, children, showHandle = true }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: rowId,
+    disabled: !showHandle, // Disable sorting when handle is hidden
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center">
+      {/* Drag Handle */}
+      {showHandle && (
+        <div
+          {...attributes}
+          {...listeners}
+          className="flex items-center justify-center px-2 py-8 cursor-grab active:cursor-grabbing hover:bg-dark-700/50 rounded-l transition-colors"
+          title="Drag to reorder row"
+        >
+          <GripVertical className="w-5 h-5 text-dark-500 hover:text-dark-300" />
+        </div>
+      )}
+      {/* Row Content */}
+      <div className="flex-1">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Draggable reel grid item component
+function DraggableReelItem({ reel, reelId, onEdit, onPlay, onReorder }) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [isOver, setIsOver] = useState(false);
+  const dragCounterRef = useRef(0);
+
+  const handleDragStart = (e) => {
+    e.stopPropagation();
+    setIsDragging(true);
+    e.dataTransfer.setData('application/postpilot-reel', reelId);
+    e.dataTransfer.effectAllowed = 'move';
+
+    // Create a custom drag image
+    const dragImage = e.target.cloneNode(true);
+    dragImage.style.width = '60px';
+    dragImage.style.height = '107px';
+    dragImage.style.borderRadius = '8px';
+    dragImage.style.opacity = '0.9';
+    document.body.appendChild(dragImage);
+    e.dataTransfer.setDragImage(dragImage, 30, 53);
+    setTimeout(() => document.body.removeChild(dragImage), 0);
+  };
+
+  const handleDragEnd = (e) => {
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounterRef.current = 0;
+  };
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.types.includes('application/postpilot-reel')) {
+      setIsOver(true);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.types.includes('application/postpilot-reel')) {
+      e.dataTransfer.dropEffect = 'move';
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsOver(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsOver(false);
+
+    const sourceId = e.dataTransfer.getData('application/postpilot-reel');
+    if (sourceId && sourceId !== reelId) {
+      onReorder?.(sourceId, reelId);
+    }
+  };
+
+  const handleClick = (e) => {
+    // Don't open editor if we just finished dragging
+    if (!isDragging) {
+      onEdit?.(reel);
+    }
+  };
+
+  return (
+    <div
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      onClick={handleClick}
+      className={`aspect-[9/16] bg-dark-700 relative overflow-hidden cursor-grab active:cursor-grabbing group select-none ${
+        isDragging ? 'opacity-40' : ''
+      } ${isOver ? 'ring-4 ring-accent-purple scale-105 transition-all duration-150' : ''}`}
+    >
+      <img
+        src={reel.thumbnailUrl || reel.mediaUrl}
+        alt=""
+        className="w-full h-full object-cover transition-transform group-hover:scale-105 pointer-events-none"
+        draggable={false}
+      />
+
+      {/* Overlay with play button */}
+      <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors pointer-events-none">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onPlay?.(reel);
+          }}
+          className="w-12 h-12 bg-white/20 group-hover:bg-white/40 rounded-full flex items-center justify-center transition-all opacity-70 group-hover:opacity-100 pointer-events-auto"
+        >
+          <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+        </button>
+      </div>
+
+      {/* Duration badge */}
+      {reel.metadata?.duration && (
+        <div className="absolute bottom-1 right-1 bg-black/70 px-1.5 py-0.5 rounded text-xs text-white pointer-events-none">
+          {formatDuration(reel.metadata.duration)}
+        </div>
+      )}
+
+      {/* Edit indicator on hover */}
+      <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        <div className="bg-black/70 px-2 py-1 rounded text-xs text-white">
+          Click to edit
+        </div>
+      </div>
+
+      {/* Drop indicator overlay */}
+      {isOver && (
+        <div className="absolute inset-0 bg-accent-purple/30 flex items-center justify-center pointer-events-none">
+          <div className="bg-dark-900/90 rounded-lg px-3 py-2">
+            <span className="text-sm text-white font-medium">Drop here</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GridPreview({ posts, layout, showRowHandles = true, onDeletePost }) {
   const cols = layout?.cols || 3;
   const user = useAppStore((state) => state.user);
   const setUser = useAppStore((state) => state.setUser);
@@ -347,6 +533,41 @@ function GridPreview({ posts, layout, showRowHandles = true }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
+  // Tab state for Posts/Reels/Tagged
+  const [activeTab, setActiveTab] = useState('posts');
+
+  // Reels state
+  const reels = useAppStore((state) => state.reels);
+  const setReels = useAppStore((state) => state.setReels);
+  const addReel = useAppStore((state) => state.addReel);
+  const [isVideoDragOver, setIsVideoDragOver] = useState(false);
+  const [uploadingReel, setUploadingReel] = useState(false);
+  const videoDragCounterRef = useRef(0);
+
+  // Reel player, editor, and thumbnail selector state
+  const [selectedReel, setSelectedReel] = useState(null);
+  const [showReelPlayer, setShowReelPlayer] = useState(false);
+  const [showReelEditor, setShowReelEditor] = useState(false);
+  const [showThumbnailSelector, setShowThumbnailSelector] = useState(false);
+  const [pendingReelUpload, setPendingReelUpload] = useState(null); // Stores video file for thumbnail selection after upload
+  const [reelRowDragActiveId, setReelRowDragActiveId] = useState(null);
+
+  // Group reels into rows of 3
+  const reelRows = [];
+  for (let i = 0; i < reels.length; i += 3) {
+    reelRows.push(reels.slice(i, i + 3));
+  }
+  const reelRowIds = reelRows.map((_, index) => `reel-row-${index}`);
+
+  // Reel row drag sensors
+  const reelRowSensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
   // Handle item selection
   const handleSelectItem = useCallback((postId) => {
     setSelectedItemId(prevId => prevId === postId ? null : postId);
@@ -365,13 +586,19 @@ function GridPreview({ posts, layout, showRowHandles = true }) {
   const handleConfirmDelete = useCallback(() => {
     if (itemToDelete) {
       const itemId = itemToDelete.id || itemToDelete._id;
-      const newPosts = posts.filter(p => (p.id || p._id) !== itemId);
-      setGridPosts(newPosts);
+      // Call the parent's delete handler which persists to backend
+      if (onDeletePost) {
+        onDeletePost(itemId);
+      } else {
+        // Fallback to local-only delete if no handler provided
+        const newPosts = posts.filter(p => (p.id || p._id) !== itemId);
+        setGridPosts(newPosts);
+      }
       setSelectedItemId(null);
     }
     setShowDeleteConfirm(false);
     setItemToDelete(null);
-  }, [itemToDelete, posts, setGridPosts]);
+  }, [itemToDelete, posts, setGridPosts, onDeletePost]);
 
   // Cancel delete
   const handleCancelDelete = useCallback(() => {
@@ -417,6 +644,270 @@ function GridPreview({ posts, layout, showRowHandles = true }) {
   const handleBackgroundClick = useCallback(() => {
     setSelectedItemId(null);
   }, []);
+
+  // Video drag handlers for Reels tab
+  const handleVideoDragEnter = (e) => {
+    e.preventDefault();
+    videoDragCounterRef.current++;
+    if (e.dataTransfer?.types?.includes('Files')) {
+      setIsVideoDragOver(true);
+    }
+  };
+
+  const handleVideoDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+
+  const handleVideoDragLeave = (e) => {
+    e.preventDefault();
+    videoDragCounterRef.current--;
+    if (videoDragCounterRef.current === 0) {
+      setIsVideoDragOver(false);
+    }
+  };
+
+  const handleVideoDrop = async (e) => {
+    e.preventDefault();
+    setIsVideoDragOver(false);
+    videoDragCounterRef.current = 0;
+
+    // Check if user is authenticated
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.error('Please log in to upload reels');
+      alert('Please log in to upload reels');
+      return;
+    }
+
+    const files = Array.from(e.dataTransfer.files);
+    const videoFile = files.find(f => f.type.startsWith('video/'));
+
+    if (!videoFile) {
+      console.error('No video file found in drop');
+      return;
+    }
+
+    setUploadingReel(true);
+
+    try {
+      // Generate initial thumbnail
+      const { thumbnailBlob, duration, width, height, isVertical } =
+        await generateVideoThumbnail(videoFile);
+
+      // Upload video with thumbnail
+      const result = await contentApi.uploadReel(videoFile, thumbnailBlob, {
+        title: videoFile.name.replace(/\.[^/.]+$/, ''),
+        mediaType: 'video',
+        duration,
+        width,
+        height,
+        isReel: true,
+        recommendedType: isVertical ? 'reel' : 'video'
+      });
+
+      // Add to reels state - the response contains both message and content
+      const uploadedReel = result.content || result;
+      addReel(uploadedReel);
+
+      // Show thumbnail selector for the newly uploaded reel
+      setSelectedReel(uploadedReel);
+      setPendingReelUpload(videoFile);
+      setShowThumbnailSelector(true);
+    } catch (err) {
+      console.error('Reel upload failed:', err);
+      if (err.response?.status === 401) {
+        alert('Please log in to upload reels');
+      }
+    } finally {
+      setUploadingReel(false);
+    }
+  };
+
+  // Fetch reels on component mount (only if authenticated)
+  useEffect(() => {
+    const fetchReels = async () => {
+      // Only fetch if user is authenticated (has token)
+      const token = localStorage.getItem('token');
+      if (!token) {
+        return;
+      }
+
+      try {
+        const response = await api.get('/api/content', {
+          params: { mediaType: 'video' }
+        });
+        const data = response.data;
+        // Filter for reels (vertical videos or those marked as reel)
+        const reelContent = (data.content || data).filter(c =>
+          c.aiSuggestions?.recommendedType === 'reel' ||
+          c.metadata?.isReel === true ||
+          (c.metadata?.height && c.metadata?.width && c.metadata.height > c.metadata.width)
+        );
+        setReels(reelContent);
+      } catch (err) {
+        console.error('Failed to fetch reels:', err);
+      }
+    };
+    fetchReels();
+  }, [setReels, user]);
+
+  // Handle clicking on a reel to edit it
+  const handleReelEdit = (reel) => {
+    setSelectedReel(reel);
+    setShowReelEditor(true);
+  };
+
+  // Handle playing a reel
+  const handleReelPlay = (reel) => {
+    setSelectedReel(reel);
+    setShowReelPlayer(true);
+  };
+
+  // Handle reordering reels by dragging
+  const handleReelReorder = (sourceId, targetId) => {
+    if (!sourceId || !targetId || sourceId === targetId) return;
+
+    const sourceIndex = reels.findIndex(r => (r._id || r.id) === sourceId);
+    const targetIndex = reels.findIndex(r => (r._id || r.id) === targetId);
+
+    if (sourceIndex === -1 || targetIndex === -1) return;
+
+    // Swap the reels
+    const newReels = [...reels];
+    [newReels[sourceIndex], newReels[targetIndex]] = [newReels[targetIndex], newReels[sourceIndex]];
+    setReels(newReels);
+  };
+
+  // Handle opening thumbnail selector from editor
+  const handleOpenThumbnailSelector = () => {
+    setShowReelEditor(false);
+    setShowReelPlayer(false);
+    setShowThumbnailSelector(true);
+  };
+
+  // Handle saving reel edits
+  const handleSaveReelEdits = async (updates) => {
+    if (!selectedReel) return;
+
+    const reelId = selectedReel._id || selectedReel.id;
+
+    try {
+      await api.put(`/api/content/${reelId}`, updates);
+
+      // Update the reel in local state
+      const updatedReels = reels.map(r =>
+        (r._id || r.id) === reelId
+          ? { ...r, ...updates }
+          : r
+      );
+      setReels(updatedReels);
+
+      // Close the editor
+      setShowReelEditor(false);
+      setSelectedReel(null);
+    } catch (err) {
+      console.error('Failed to save reel:', err);
+      throw err;
+    }
+  };
+
+  // Handle deleting a reel
+  const handleDeleteReel = async () => {
+    if (!selectedReel) return;
+
+    const reelId = selectedReel._id || selectedReel.id;
+
+    try {
+      await api.delete(`/api/content/${reelId}`);
+
+      // Remove from local state
+      const updatedReels = reels.filter(r => (r._id || r.id) !== reelId);
+      setReels(updatedReels);
+
+      // Close the editor
+      setShowReelEditor(false);
+      setSelectedReel(null);
+    } catch (err) {
+      console.error('Failed to delete reel:', err);
+      throw err;
+    }
+  };
+
+  // Handle reel row drag start
+  const handleReelRowDragStart = (event) => {
+    setReelRowDragActiveId(event.active.id);
+  };
+
+  // Handle reel row drag end - reorder rows
+  const handleReelRowDragEnd = (event) => {
+    const { active, over } = event;
+    setReelRowDragActiveId(null);
+
+    if (!over || active.id === over.id) return;
+
+    const oldRowIndex = parseInt(active.id.replace('reel-row-', ''));
+    const newRowIndex = parseInt(over.id.replace('reel-row-', ''));
+
+    if (isNaN(oldRowIndex) || isNaN(newRowIndex)) return;
+
+    // Swap the rows by reordering the reels array
+    const newReelRows = arrayMove(reelRows, oldRowIndex, newRowIndex);
+    const newReels = newReelRows.flat();
+    setReels(newReels);
+    // Note: You might want to persist this order to the backend
+  };
+
+  // Handle saving thumbnail
+  const handleSaveThumbnail = async (thumbnailBlob, thumbnailUrl) => {
+    if (!selectedReel) return;
+
+    const reelId = selectedReel._id || selectedReel.id;
+
+    try {
+      // Upload the new thumbnail
+      const formData = new FormData();
+      formData.append('thumbnail', thumbnailBlob, 'thumbnail.jpg');
+
+      await api.put(`/api/content/${reelId}/thumbnail`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      // Update the reel in local state
+      const updatedReels = reels.map(r =>
+        (r._id || r.id) === reelId
+          ? { ...r, thumbnailUrl: thumbnailUrl }
+          : r
+      );
+      setReels(updatedReels);
+
+      // Close the thumbnail selector
+      setShowThumbnailSelector(false);
+      setPendingReelUpload(null);
+    } catch (err) {
+      console.error('Failed to save thumbnail:', err);
+      alert('Failed to save thumbnail. Please try again.');
+    }
+  };
+
+  // Handle closing thumbnail selector
+  const handleCloseThumbnailSelector = () => {
+    setShowThumbnailSelector(false);
+    setPendingReelUpload(null);
+    // Don't clear selectedReel - might want to go back to editor
+  };
+
+  // Handle closing reel player
+  const handleCloseReelPlayer = () => {
+    setShowReelPlayer(false);
+    setSelectedReel(null);
+  };
+
+  // Handle closing reel editor
+  const handleCloseReelEditor = () => {
+    setShowReelEditor(false);
+    setSelectedReel(null);
+  };
 
   // Handle item drag start (just for tracking)
   const handleItemDragStart = (postId, post) => {
@@ -858,58 +1349,70 @@ function GridPreview({ posts, layout, showRowHandles = true }) {
 
       {/* Tab Bar */}
       <div className="flex border-b border-dark-700">
-        <button className="flex-1 py-3 border-b-2 border-dark-100">
-          <svg className="w-6 h-6 mx-auto text-dark-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <button
+          onClick={() => setActiveTab('posts')}
+          className={`flex-1 py-3 transition-colors ${activeTab === 'posts' ? 'border-b-2 border-dark-100 text-dark-100' : 'text-dark-500 hover:text-dark-300'}`}
+        >
+          <svg className="w-6 h-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
           </svg>
         </button>
-        <button className="flex-1 py-3 text-dark-500">
+        <button
+          onClick={() => setActiveTab('reels')}
+          className={`flex-1 py-3 transition-colors ${activeTab === 'reels' ? 'border-b-2 border-dark-100 text-dark-100' : 'text-dark-500 hover:text-dark-300'}`}
+        >
           <svg className="w-6 h-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
-        <button className="flex-1 py-3 text-dark-500">
+        <button
+          onClick={() => setActiveTab('tagged')}
+          className={`flex-1 py-3 transition-colors ${activeTab === 'tagged' ? 'border-b-2 border-dark-100 text-dark-100' : 'text-dark-500 hover:text-dark-300'}`}
+        >
           <svg className="w-6 h-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
         </button>
       </div>
 
-      {/* Grid with Row Drag (via grip handle) and Item Drag (for replace/carousel) */}
-      {/* This wrapper blocks parent overlay by setting flag, but lets items handle their own drops */}
-      <div
-        onDragEnter={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          // Set flag when entering preview grid - blocks parent overlay
-          setInternalDragActive(true);
-        }}
-        onDragOver={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          // Keep flag set while dragging over preview grid
-          setInternalDragActive(true);
-        }}
-        onDragLeave={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          // Only clear flag if actually leaving the grid container entirely
-          const rect = e.currentTarget.getBoundingClientRect();
-          const x = e.clientX;
-          const y = e.clientY;
-          if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-            setInternalDragActive(false);
-          }
-        }}
-        onDrop={(e) => {
-          // This catches drops that miss all grid items (dropped on empty space)
-          e.preventDefault();
-          e.stopPropagation();
-          setInternalDragActive(false);
-          // Don't do anything else - drop was on empty space, not an item
-        }}
-      >
+      {/* Posts Tab Content */}
+      {activeTab === 'posts' && (
+        <>
+          {/* Grid with Row Drag (via grip handle) and Item Drag (for replace/carousel) */}
+          {/* This wrapper blocks parent overlay by setting flag, but lets items handle their own drops */}
+          <div
+            onDragEnter={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              // Set flag when entering preview grid - blocks parent overlay
+              setInternalDragActive(true);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              // Keep flag set while dragging over preview grid
+              setInternalDragActive(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              // Only clear flag if actually leaving the grid container entirely
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = e.clientX;
+              const y = e.clientY;
+              if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                setInternalDragActive(false);
+              }
+            }}
+            onDrop={(e) => {
+              // This catches drops that miss all grid items (dropped on empty space)
+              e.preventDefault();
+              e.stopPropagation();
+              setInternalDragActive(false);
+              // Don't do anything else - drop was on empty space, not an item
+            }}
+          >
         {/* Row Drag and Drop */}
         <DndContext
           sensors={rowSensors}
@@ -998,10 +1501,145 @@ function GridPreview({ posts, layout, showRowHandles = true }) {
         </DndContext>
       </div>
 
-      {/* Empty State */}
-      {posts.length === 0 && (
+          {/* Empty State for Posts */}
+          {posts.length === 0 && (
+            <div className="py-16 text-center">
+              <p className="text-dark-400">No posts to preview</p>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Reels Tab Content */}
+      {activeTab === 'reels' && (
+        <div
+          className={`min-h-[300px] transition-colors relative ${
+            isVideoDragOver
+              ? 'bg-accent-purple/20 border-2 border-dashed border-accent-purple'
+              : ''
+          }`}
+          onDragEnter={handleVideoDragEnter}
+          onDragOver={handleVideoDragOver}
+          onDragLeave={handleVideoDragLeave}
+          onDrop={handleVideoDrop}
+        >
+          {/* Drop Overlay */}
+          {isVideoDragOver && (
+            <div className="absolute inset-0 flex items-center justify-center bg-dark-900/80 z-10">
+              <div className="text-center">
+                <svg className="w-16 h-16 text-accent-purple mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-xl font-medium text-dark-100">Drop Video to Upload</p>
+                <p className="text-sm text-dark-400 mt-2">MP4, MOV, AVI, or WebM</p>
+              </div>
+            </div>
+          )}
+
+          {/* Upload Progress */}
+          {uploadingReel && (
+            <div className="py-8 text-center">
+              <div className="w-12 h-12 border-4 border-accent-purple/30 border-t-accent-purple rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-dark-200">Uploading reel...</p>
+            </div>
+          )}
+
+          {/* Reels Grid with Row Drag and Drop */}
+          {!uploadingReel && reels.length > 0 && (
+            <DndContext
+              sensors={reelRowSensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleReelRowDragStart}
+              onDragEnd={handleReelRowDragEnd}
+              modifiers={[restrictToVerticalAxis]}
+            >
+              <SortableContext items={reelRowIds} strategy={verticalListSortingStrategy}>
+                <div className="flex flex-col">
+                  {reelRows.map((row, rowIndex) => (
+                    <SortableReelRow
+                      key={`reel-row-${rowIndex}`}
+                      rowId={`reel-row-${rowIndex}`}
+                      rowIndex={rowIndex}
+                      showHandle={showRowHandles}
+                    >
+                      <div className="grid grid-cols-3 gap-0.5">
+                        {row.map((reel) => (
+                          <DraggableReelItem
+                            key={reel._id || reel.id}
+                            reel={reel}
+                            reelId={reel._id || reel.id}
+                            onEdit={handleReelEdit}
+                            onPlay={handleReelPlay}
+                            onReorder={handleReelReorder}
+                          />
+                        ))}
+                        {/* Fill empty cells in incomplete rows */}
+                        {row.length < 3 &&
+                          Array.from({ length: 3 - row.length }).map((_, i) => (
+                            <div
+                              key={`empty-reel-${rowIndex}-${i}`}
+                              className="aspect-[9/16] bg-dark-700/30 rounded-lg border border-dashed border-dark-600"
+                            />
+                          ))}
+                      </div>
+                    </SortableReelRow>
+                  ))}
+                </div>
+              </SortableContext>
+
+              {/* Row Drag Overlay */}
+              <DragOverlay>
+                {reelRowDragActiveId ? (
+                  <div className="flex items-center bg-dark-800/90 rounded-lg ring-2 ring-accent-purple shadow-xl">
+                    <div className="px-2 py-8">
+                      <GripVertical className="w-5 h-5 text-accent-purple" />
+                    </div>
+                    <div className="grid grid-cols-3 gap-0.5 flex-1">
+                      {(() => {
+                        const rowIndex = parseInt(reelRowDragActiveId.replace('reel-row-', ''));
+                        const draggedRow = reelRows[rowIndex] || [];
+                        return draggedRow.map((reel) => (
+                          <div key={reel._id || reel.id} className="aspect-[9/16] bg-dark-700 overflow-hidden rounded">
+                            <img
+                              src={reel.thumbnailUrl || reel.mediaUrl}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          )}
+
+          {/* Empty State */}
+          {!uploadingReel && reels.length === 0 && !isVideoDragOver && (
+            <div className="py-16 text-center">
+              <svg className="w-16 h-16 text-dark-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-dark-400 text-lg font-medium mt-3">No Reels Yet</p>
+              <p className="text-dark-500 text-sm">Drag a video here to upload</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tagged Tab Content */}
+      {activeTab === 'tagged' && (
         <div className="py-16 text-center">
-          <p className="text-dark-400">No posts to preview</p>
+          <div className="flex flex-col items-center gap-3">
+            <svg className="w-16 h-16 text-dark-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <p className="text-dark-400 text-lg font-medium">No Tagged Photos</p>
+            <p className="text-dark-500 text-sm">Photos you're tagged in will appear here</p>
+          </div>
         </div>
       )}
 
@@ -1364,6 +2002,40 @@ function GridPreview({ posts, layout, showRowHandles = true }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Reel Editor Modal */}
+      {showReelEditor && selectedReel && (
+        <ReelEditor
+          reel={selectedReel}
+          onSave={handleSaveReelEdits}
+          onDelete={handleDeleteReel}
+          onClose={handleCloseReelEditor}
+          onChangeThumbnail={handleOpenThumbnailSelector}
+          onPlay={() => {
+            setShowReelEditor(false);
+            setShowReelPlayer(true);
+          }}
+        />
+      )}
+
+      {/* Reel Player Modal */}
+      {showReelPlayer && selectedReel && (
+        <ReelPlayer
+          reel={selectedReel}
+          onClose={handleCloseReelPlayer}
+          onSelectThumbnail={handleOpenThumbnailSelector}
+        />
+      )}
+
+      {/* Reel Thumbnail Selector Modal */}
+      {showThumbnailSelector && selectedReel && (
+        <ReelThumbnailSelector
+          reel={selectedReel}
+          videoFile={pendingReelUpload}
+          onSave={handleSaveThumbnail}
+          onClose={handleCloseThumbnailSelector}
+        />
       )}
     </div>
   );

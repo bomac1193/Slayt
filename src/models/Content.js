@@ -148,6 +148,7 @@ const contentSchema = new mongoose.Schema({
   hashtags: [String],
   mentions: [String],
   location: String,
+  audioTrack: String, // For reels - song or audio name
   createdAt: {
     type: Date,
     default: Date.now
