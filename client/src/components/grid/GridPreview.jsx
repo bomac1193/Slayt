@@ -544,6 +544,12 @@ function GridPreview({ posts, layout }) {
       </div>
 
       {/* Grid with Item Drag and Drop (for replace/carousel) */}
+      {/* Prevent native drag events from bubbling to parent file drop zone */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        onDrop={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      >
       <DndContext
         sensors={itemSensors}
         collisionDetection={closestCenter}
@@ -659,6 +665,7 @@ function GridPreview({ posts, layout }) {
           ) : null}
         </DragOverlay>
       </DndContext>
+      </div>
 
       {/* Empty State */}
       {posts.length === 0 && (
