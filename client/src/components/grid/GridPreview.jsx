@@ -1130,7 +1130,43 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost }) {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [editBrandName, setEditBrandName] = useState('');
   const [editBio, setEditBio] = useState('');
+  const [editPronouns, setEditPronouns] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Highlights state
+  const [highlights, setHighlights] = useState(() => {
+    const saved = localStorage.getItem('instagram-highlights');
+    return saved ? JSON.parse(saved) : [
+      { id: '1', name: 'Highlights', cover: null, coverPosition: { x: 0, y: 0 }, coverZoom: 1, stories: [] },
+      { id: '2', name: 'DJ Sets', cover: null, coverPosition: { x: 0, y: 0 }, coverZoom: 1, stories: [] },
+      { id: '3', name: 'Studio', cover: null, coverPosition: { x: 0, y: 0 }, coverZoom: 1, stories: [] },
+    ];
+  });
+  const [showHighlightModal, setShowHighlightModal] = useState(false);
+  const [editingHighlight, setEditingHighlight] = useState(null);
+  const [highlightName, setHighlightName] = useState('');
+  const [highlightCover, setHighlightCover] = useState(null);
+  const [highlightPosition, setHighlightPosition] = useState({ x: 0, y: 0 });
+  const [highlightZoom, setHighlightZoom] = useState(1);
+  const [isHighlightDragging, setIsHighlightDragging] = useState(false);
+  const [highlightDragStart, setHighlightDragStart] = useState({ x: 0, y: 0 });
+  const highlightInputRef = useRef(null);
+  const highlightPreviewRef = useRef(null);
+
+  // Highlight drag-to-reorder state
+  const [draggingHighlightId, setDraggingHighlightId] = useState(null);
+  const [highlightDragOverId, setHighlightDragOverId] = useState(null);
+
+  // Verified badge state
+  const [isVerified, setIsVerified] = useState(() => {
+    const saved = localStorage.getItem('instagram-verified');
+    return saved === 'true';
+  });
+
+  // Save verified state
+  useEffect(() => {
+    localStorage.setItem('instagram-verified', isVerified.toString());
+  }, [isVerified]);
 
   const fileInputRef = useRef(null);
 
@@ -1261,6 +1297,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost }) {
   const handleEditProfile = () => {
     setEditBrandName(user?.brandName || '');
     setEditBio(user?.bio || '');
+    setEditPronouns(user?.pronouns || '');
     setShowEditProfile(true);
   };
 
@@ -1273,6 +1310,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost }) {
       ...user,
       brandName: editBrandName,
       bio: editBio,
+      pronouns: editPronouns,
     });
 
     setTimeout(() => {
@@ -1286,17 +1324,192 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost }) {
     setShowEditProfile(false);
     setEditBrandName('');
     setEditBio('');
+    setEditPronouns('');
+  };
+
+  // Save highlights to localStorage
+  useEffect(() => {
+    localStorage.setItem('instagram-highlights', JSON.stringify(highlights));
+  }, [highlights]);
+
+  // Highlight handlers
+  const handleHighlightClick = (highlight) => {
+    setEditingHighlight(highlight);
+    setHighlightName(highlight.name);
+    setHighlightCover(highlight.cover);
+    setHighlightPosition(highlight.coverPosition || { x: 0, y: 0 });
+    setHighlightZoom(highlight.coverZoom || 1);
+    setShowHighlightModal(true);
+  };
+
+  const handleAddHighlight = () => {
+    const newHighlight = {
+      id: Date.now().toString(),
+      name: 'New',
+      cover: null,
+      coverPosition: { x: 0, y: 0 },
+      coverZoom: 1,
+      stories: [],
+    };
+    setHighlights([...highlights, newHighlight]);
+    handleHighlightClick(newHighlight);
+  };
+
+  const handleHighlightCoverUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset position and zoom for new upload
+    setHighlightPosition({ x: 0, y: 0 });
+    setHighlightZoom(1);
+
+    if (file.type.startsWith('video/')) {
+      // Generate thumbnail from video
+      const video = document.createElement('video');
+      video.src = URL.createObjectURL(file);
+      video.onloadedmetadata = () => {
+        video.currentTime = 1;
+      };
+      video.onseeked = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        setHighlightCover(canvas.toDataURL('image/jpeg', 0.8));
+        URL.revokeObjectURL(video.src);
+      };
+    } else if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setHighlightCover(event.target?.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Highlight drag handlers for repositioning
+  const handleHighlightMouseDown = (e) => {
+    if (!highlightCover) return;
+    e.preventDefault();
+    setIsHighlightDragging(true);
+    setHighlightDragStart({
+      x: e.clientX - highlightPosition.x,
+      y: e.clientY - highlightPosition.y,
+    });
+  };
+
+  const handleHighlightMouseMove = (e) => {
+    if (!isHighlightDragging) return;
+    const newX = e.clientX - highlightDragStart.x;
+    const newY = e.clientY - highlightDragStart.y;
+    // Limit movement based on zoom
+    const maxMove = 50 * highlightZoom;
+    setHighlightPosition({
+      x: Math.max(-maxMove, Math.min(maxMove, newX)),
+      y: Math.max(-maxMove, Math.min(maxMove, newY)),
+    });
+  };
+
+  const handleHighlightMouseUp = () => {
+    setIsHighlightDragging(false);
+  };
+
+  const handleSaveHighlight = () => {
+    const updatedHighlights = highlights.map(h =>
+      h.id === editingHighlight.id
+        ? { ...h, name: highlightName, cover: highlightCover, coverPosition: highlightPosition, coverZoom: highlightZoom }
+        : h
+    );
+    setHighlights(updatedHighlights);
+    setShowHighlightModal(false);
+    setEditingHighlight(null);
+  };
+
+  const handleDeleteHighlight = () => {
+    setHighlights(highlights.filter(h => h.id !== editingHighlight.id));
+    setShowHighlightModal(false);
+    setEditingHighlight(null);
+  };
+
+  // Highlight drag-to-reorder handlers
+  const handleHighlightDragStart = (e, highlightId) => {
+    setDraggingHighlightId(highlightId);
+    e.dataTransfer.setData('application/highlight-id', highlightId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleHighlightDragOver = (e, highlightId) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (highlightId !== draggingHighlightId) {
+      setHighlightDragOverId(highlightId);
+    }
+  };
+
+  const handleHighlightDragLeave = () => {
+    setHighlightDragOverId(null);
+  };
+
+  const handleHighlightDrop = (e, targetId) => {
+    e.preventDefault();
+    const sourceId = e.dataTransfer.getData('application/highlight-id');
+
+    if (sourceId && sourceId !== targetId) {
+      const sourceIndex = highlights.findIndex(h => h.id === sourceId);
+      const targetIndex = highlights.findIndex(h => h.id === targetId);
+
+      if (sourceIndex !== -1 && targetIndex !== -1) {
+        const newHighlights = [...highlights];
+        const [removed] = newHighlights.splice(sourceIndex, 1);
+        newHighlights.splice(targetIndex, 0, removed);
+        setHighlights(newHighlights);
+      }
+    }
+
+    setDraggingHighlightId(null);
+    setHighlightDragOverId(null);
+  };
+
+  const handleHighlightDragEnd = () => {
+    setDraggingHighlightId(null);
+    setHighlightDragOverId(null);
   };
 
   return (
     <div className="max-w-md mx-auto bg-dark-800 rounded-2xl overflow-hidden border border-dark-700">
-      {/* Profile Header */}
-      <div className="p-4 border-b border-dark-700">
-        <div className="flex items-center gap-4">
+      {/* Top Bar - Username with Verified Badge (like Instagram) */}
+      <div className="flex items-center justify-between px-4 py-2">
+        <div className="flex items-center gap-1">
+          <span className="text-sm font-semibold text-dark-100">
+            {user?.username || 'username'}
+          </span>
+          {isVerified && (
+            <svg className="w-3.5 h-3.5" viewBox="0 0 40 40" fill="none">
+              <circle cx="20" cy="20" r="20" fill="#0095F6" />
+              <path d="M17.5 27L12 21.5L14.5 19L17.5 22L26.5 13L29 15.5L17.5 27Z" fill="white" />
+            </svg>
+          )}
+          <svg className="w-3 h-3 text-dark-100 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+        <button
+          onClick={() => setIsVerified(!isVerified)}
+          className={`text-[10px] px-1.5 py-0.5 rounded ${isVerified ? 'bg-blue-500/20 text-blue-400' : 'bg-dark-700 text-dark-400'} hover:opacity-80 transition-opacity`}
+          title="Toggle verified badge"
+        >
+          {isVerified ? '✓ Verified' : 'Add ✓'}
+        </button>
+      </div>
+
+      {/* Profile Header - Instagram Style */}
+      <div className="px-4 pt-2 pb-3">
+        {/* Avatar and Stats Row */}
+        <div className="flex items-center gap-7">
           {/* Clickable Avatar */}
           <button
             onClick={handleAvatarClick}
-            className="relative w-20 h-20 rounded-full bg-gradient-to-br from-accent-purple via-accent-pink to-accent-orange p-0.5 group cursor-pointer"
+            className="relative w-[86px] h-[86px] rounded-full bg-gradient-to-br from-accent-purple via-accent-pink to-accent-orange p-[3px] group cursor-pointer flex-shrink-0"
           >
             <div className="w-full h-full rounded-full bg-dark-800 overflow-hidden relative">
               {user?.avatar ? (
@@ -1322,36 +1535,124 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost }) {
             </div>
             {/* Hover overlay */}
             <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <Camera className="w-6 h-6 text-white" />
+              <Camera className="w-5 h-5 text-white" />
             </div>
           </button>
-          <div className="flex-1">
-            <div className="flex items-center gap-6 mb-2">
-              <div className="text-center">
-                <p className="font-semibold text-dark-100">{posts.length}</p>
-                <p className="text-xs text-dark-400">posts</p>
-              </div>
-              <div className="text-center">
-                <p className="font-semibold text-dark-100">12.4K</p>
-                <p className="text-xs text-dark-400">followers</p>
-              </div>
-              <div className="text-center">
-                <p className="font-semibold text-dark-100">892</p>
-                <p className="text-xs text-dark-400">following</p>
-              </div>
+
+          {/* Stats Row - Posts, Followers, Following */}
+          <div className="flex-1 flex justify-around text-center">
+            <div>
+              <p className="text-base font-semibold text-dark-100">{posts.length}</p>
+              <p className="text-xs text-dark-400">posts</p>
+            </div>
+            <div>
+              <p className="text-base font-semibold text-dark-100">12.4K</p>
+              <p className="text-xs text-dark-400">followers</p>
+            </div>
+            <div>
+              <p className="text-base font-semibold text-dark-100">892</p>
+              <p className="text-xs text-dark-400">following</p>
             </div>
           </div>
         </div>
+
+        {/* Name, Pronouns & Bio */}
         <div className="mt-3">
-          <p className="font-semibold text-dark-100">{user?.brandName || 'Your Brand'}</p>
-          {user?.bio && <p className="text-sm text-dark-300 whitespace-pre-line">{user.bio}</p>}
+          <div className="flex items-center gap-1">
+            <span className="text-sm font-semibold text-dark-100">{user?.brandName || user?.name || 'Your Name'}</span>
+            {user?.pronouns && (
+              <span className="text-dark-500 text-xs">· {user.pronouns}</span>
+            )}
+          </div>
+          {user?.bio && (
+            <p className="text-sm text-dark-300 whitespace-pre-line mt-0.5 leading-tight">{user.bio}</p>
+          )}
         </div>
-        <button
-          onClick={handleEditProfile}
-          className="w-full mt-4 py-1.5 bg-dark-700 text-dark-200 text-sm font-medium rounded-lg hover:bg-dark-600 transition-colors"
-        >
-          Edit Profile
-        </button>
+
+        {/* Action Buttons - Follow & Message (Instagram style) */}
+        <div className="flex gap-1.5 mt-3">
+          <button className="flex-1 py-[7px] bg-[#0095F6] hover:bg-[#1877F2] text-white text-[13px] font-semibold rounded-lg transition-colors">
+            Follow
+          </button>
+          <button className="flex-1 py-[7px] bg-dark-700 hover:bg-dark-600 text-dark-100 text-[13px] font-semibold rounded-lg transition-colors">
+            Message
+          </button>
+          <button
+            onClick={handleEditProfile}
+            className="w-9 py-[7px] bg-dark-700 hover:bg-dark-600 text-dark-200 rounded-lg transition-colors flex items-center justify-center"
+            title="Edit Profile"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Highlights (Instagram style - draggable, with gradient ring when has content) */}
+        <div className="mt-4 -mx-4 px-4 overflow-x-auto scrollbar-hide">
+          <div className="flex gap-3 pb-1">
+            {highlights.map((highlight) => (
+              <div
+                key={highlight.id}
+                draggable
+                onDragStart={(e) => handleHighlightDragStart(e, highlight.id)}
+                onDragOver={(e) => handleHighlightDragOver(e, highlight.id)}
+                onDragLeave={handleHighlightDragLeave}
+                onDrop={(e) => handleHighlightDrop(e, highlight.id)}
+                onDragEnd={handleHighlightDragEnd}
+                onClick={() => handleHighlightClick(highlight)}
+                className={`flex flex-col items-center gap-1 flex-shrink-0 cursor-grab active:cursor-grabbing select-none transition-all ${
+                  draggingHighlightId === highlight.id ? 'opacity-50 scale-95' : ''
+                } ${highlightDragOverId === highlight.id ? 'scale-110' : ''}`}
+              >
+                <div className={`w-[66px] h-[66px] rounded-full p-[3px] transition-all ${
+                  highlight.cover
+                    ? 'bg-gradient-to-br from-accent-purple via-accent-pink to-accent-orange'
+                    : 'border-[2px] border-dark-600'
+                } ${highlightDragOverId === highlight.id ? 'ring-2 ring-accent-purple ring-offset-2 ring-offset-dark-800' : ''}`}>
+                  <div className="w-full h-full rounded-full bg-dark-800 overflow-hidden border-[2px] border-dark-800 relative">
+                    {highlight.cover ? (
+                      <img
+                        src={highlight.cover}
+                        alt=""
+                        className="absolute pointer-events-none"
+                        draggable={false}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'contain',
+                          left: '50%',
+                          top: '50%',
+                          transformOrigin: 'center center',
+                          transform: `translate(-50%, -50%) translate(${(highlight.coverPosition?.x || 0) * 0.5}px, ${(highlight.coverPosition?.y || 0) * 0.5}px) scale(${getActualZoom(highlight.coverZoom || 1)})`,
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <svg className="w-5 h-5 text-dark-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <span className="text-[11px] text-dark-300 max-w-[62px] truncate">{highlight.name}</span>
+              </div>
+            ))}
+            {/* Add New Highlight */}
+            <button
+              onClick={handleAddHighlight}
+              className="flex flex-col items-center gap-1 flex-shrink-0"
+            >
+              <div className="w-[66px] h-[66px] rounded-full border-[2px] border-dashed border-dark-600 flex items-center justify-center hover:border-dark-400 transition-colors">
+                <svg className="w-5 h-5 text-dark-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <span className="text-[11px] text-dark-400">New</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Tab Bar */}
@@ -1796,13 +2097,27 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost }) {
               {/* Brand Name */}
               <div>
                 <label className="block text-sm font-medium text-dark-300 mb-1">
-                  Brand Name
+                  Name
                 </label>
                 <input
                   type="text"
                   value={editBrandName}
                   onChange={(e) => setEditBrandName(e.target.value)}
-                  placeholder="Your Brand"
+                  placeholder="Your Name"
+                  className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-dark-100 placeholder-dark-500 focus:border-accent-purple focus:ring-1 focus:ring-accent-purple outline-none transition-colors"
+                />
+              </div>
+
+              {/* Pronouns */}
+              <div>
+                <label className="block text-sm font-medium text-dark-300 mb-1">
+                  Pronouns
+                </label>
+                <input
+                  type="text"
+                  value={editPronouns}
+                  onChange={(e) => setEditPronouns(e.target.value)}
+                  placeholder="e.g. he/him, she/her, they/them"
                   className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-dark-100 placeholder-dark-500 focus:border-accent-purple focus:ring-1 focus:ring-accent-purple outline-none transition-colors"
                 />
               </div>
@@ -1825,8 +2140,11 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost }) {
               {/* Preview */}
               <div className="p-3 bg-dark-700/50 rounded-lg">
                 <p className="text-xs text-dark-400 mb-2">Preview</p>
-                <p className="font-semibold text-dark-100">{editBrandName || 'Your Brand'}</p>
-                {editBio && <p className="text-sm text-dark-300 whitespace-pre-line">{editBio}</p>}
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-dark-100">{editBrandName || 'Your Name'}</p>
+                  {editPronouns && <span className="text-dark-400 text-sm">{editPronouns}</span>}
+                </div>
+                {editBio && <p className="text-sm text-dark-300 whitespace-pre-line mt-1">{editBio}</p>}
               </div>
             </div>
 
@@ -1851,6 +2169,158 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost }) {
                     Save
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Highlight Edit Modal */}
+      {showHighlightModal && editingHighlight && (
+        <div
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
+          onClick={() => setShowHighlightModal(false)}
+          onMouseMove={handleHighlightMouseMove}
+          onMouseUp={handleHighlightMouseUp}
+          onMouseLeave={handleHighlightMouseUp}
+        >
+          <div
+            className="bg-dark-800 rounded-2xl p-6 w-full max-w-sm border border-dark-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-dark-100">Edit Highlight</h3>
+              <button onClick={() => setShowHighlightModal(false)} className="text-dark-400 hover:text-dark-200">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Cover Preview - Draggable, shows exactly what will be saved */}
+            <div className="flex justify-center mb-4">
+              <div
+                ref={highlightPreviewRef}
+                className={`w-32 h-32 rounded-full bg-gradient-to-br from-accent-purple via-accent-pink to-accent-orange p-[3px] ${
+                  highlightCover ? 'cursor-grab active:cursor-grabbing' : ''
+                }`}
+                onMouseDown={handleHighlightMouseDown}
+              >
+                <div className="w-full h-full rounded-full bg-dark-800 overflow-hidden border-[3px] border-dark-800 relative">
+                  {highlightCover ? (
+                    <img
+                      src={highlightCover}
+                      alt=""
+                      className="absolute pointer-events-none select-none"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        left: '50%',
+                        top: '50%',
+                        transformOrigin: 'center center',
+                        transform: `translate(-50%, -50%) translate(${highlightPosition.x}px, ${highlightPosition.y}px) scale(${getActualZoom(highlightZoom)})`,
+                      }}
+                      draggable={false}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <svg className="w-10 h-10 text-dark-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {highlightCover && (
+              <p className="text-xs text-dark-500 text-center mb-3">Drag to reposition</p>
+            )}
+
+            {/* Zoom Slider - only show when there's a cover */}
+            {highlightCover && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-dark-400">Zoom</label>
+                  <span className="text-xs text-dark-500">{Math.round(getActualZoom(highlightZoom) * 100)}%</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ZoomOut className="w-4 h-4 text-dark-500" />
+                  <input
+                    type="range"
+                    min="0.8"
+                    max="2"
+                    step="0.05"
+                    value={highlightZoom}
+                    onChange={(e) => setHighlightZoom(parseFloat(e.target.value))}
+                    className="flex-1 h-1 bg-dark-600 rounded-lg appearance-none cursor-pointer slider-accent"
+                  />
+                  <ZoomIn className="w-4 h-4 text-dark-500" />
+                </div>
+                <button
+                  onClick={() => {
+                    setHighlightPosition({ x: 0, y: 0 });
+                    setHighlightZoom(1);
+                  }}
+                  className="w-full mt-2 py-1 text-xs text-dark-400 hover:text-dark-200 transition-colors"
+                >
+                  Reset Position & Zoom
+                </button>
+              </div>
+            )}
+
+            {/* Upload Cover Button */}
+            <div className="mb-4">
+              <input
+                ref={highlightInputRef}
+                type="file"
+                accept="image/*,video/*"
+                onChange={handleHighlightCoverUpload}
+                className="hidden"
+              />
+              <button
+                onClick={() => highlightInputRef.current?.click()}
+                className="w-full py-2 bg-dark-700 hover:bg-dark-600 text-dark-200 text-sm rounded-lg transition-colors"
+              >
+                {highlightCover ? 'Change Cover' : 'Upload Cover (Image or Video)'}
+              </button>
+            </div>
+
+            {/* Highlight Name */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-dark-300 mb-1">
+                Highlight Name
+              </label>
+              <input
+                type="text"
+                value={highlightName}
+                onChange={(e) => setHighlightName(e.target.value)}
+                placeholder="Highlight name"
+                maxLength={15}
+                className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-dark-100 placeholder-dark-500 focus:border-accent-purple focus:ring-1 focus:ring-accent-purple outline-none transition-colors"
+              />
+              <p className="text-xs text-dark-500 mt-1">{highlightName.length}/15 characters</p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={handleDeleteHighlight}
+                className="px-4 py-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors text-sm"
+              >
+                Delete
+              </button>
+              <div className="flex-1" />
+              <button
+                onClick={() => setShowHighlightModal(false)}
+                className="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-dark-200 rounded-lg transition-colors text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveHighlight}
+                className="px-4 py-2 bg-accent-purple hover:bg-accent-purple/80 text-white rounded-lg transition-colors text-sm"
+              >
+                Save
               </button>
             </div>
           </div>

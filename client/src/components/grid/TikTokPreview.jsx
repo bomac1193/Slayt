@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { User, Settings, Share2, Plus, Play, Heart, MessageCircle, Bookmark, MoreHorizontal, GripVertical, Music2, X, Check, Loader2 } from 'lucide-react';
+import { User, Settings, Share2, Plus, Play, Heart, MessageCircle, Bookmark, MoreHorizontal, GripVertical, Music2, X, Check, Loader2, ChevronDown, Mail } from 'lucide-react';
 import { useAppStore } from '../../stores/useAppStore';
 import { contentApi } from '../../lib/api';
 import api from '../../lib/api';
@@ -38,6 +38,19 @@ function DraggableTikTokItem({ video, videoId, onEdit, onPlay, onReorder }) {
   const [isDragging, setIsDragging] = useState(false);
   const [isOver, setIsOver] = useState(false);
   const dragCounterRef = useRef(0);
+
+  // Stable fake view count - seeded by videoId to stay consistent
+  const stableViewCount = useRef(null);
+  if (stableViewCount.current === null) {
+    // Generate a consistent number based on videoId hash
+    let hash = 0;
+    const id = videoId || 'default';
+    for (let i = 0; i < id.length; i++) {
+      hash = ((hash << 5) - hash) + id.charCodeAt(i);
+      hash |= 0;
+    }
+    stableViewCount.current = Math.abs(hash % 50000) + 1000;
+  }
 
   const handleDragStart = (e) => {
     e.stopPropagation();
@@ -142,7 +155,7 @@ function DraggableTikTokItem({ video, videoId, onEdit, onPlay, onReorder }) {
       {/* View count */}
       <div className="absolute bottom-1 left-1 flex items-center gap-1 text-white text-xs pointer-events-none">
         <Play className="w-3 h-3 fill-white" />
-        <span>{formatViews(video.metadata?.views || Math.floor(Math.random() * 10000))}</span>
+        <span>{formatViews(video.metadata?.views || stableViewCount.current)}</span>
       </div>
 
       {/* Drop indicator */}
@@ -225,6 +238,12 @@ function TikTokPreview({ showRowHandles = true }) {
   const [editUsername, setEditUsername] = useState('');
   const [editBio, setEditBio] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Inline username editing state
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [inlineUsername, setInlineUsername] = useState('');
+  const [showSavePrompt, setShowSavePrompt] = useState(false);
+  const usernameInputRef = useRef(null);
 
   // Row drag state
   const [rowDragActiveId, setRowDragActiveId] = useState(null);
@@ -444,7 +463,7 @@ function TikTokPreview({ showRowHandles = true }) {
         bio: editBio,
       };
 
-      await api.put('/api/users/profile', updates);
+      await api.put('/api/auth/profile', updates);
 
       setUser({
         ...user,
@@ -466,52 +485,177 @@ function TikTokPreview({ showRowHandles = true }) {
     setEditBio('');
   };
 
+  // Inline username editing handlers
+  const handleUsernameClick = () => {
+    setInlineUsername(user?.username || '');
+    setIsEditingUsername(true);
+    setTimeout(() => usernameInputRef.current?.focus(), 0);
+  };
+
+  const handleUsernameBlur = () => {
+    if (inlineUsername !== (user?.username || '')) {
+      setShowSavePrompt(true);
+    } else {
+      setIsEditingUsername(false);
+    }
+  };
+
+  const handleUsernameKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (inlineUsername !== (user?.username || '')) {
+        setShowSavePrompt(true);
+      } else {
+        setIsEditingUsername(false);
+      }
+    } else if (e.key === 'Escape') {
+      setIsEditingUsername(false);
+      setInlineUsername('');
+    }
+  };
+
+  // Use ref to track saving state to avoid stale closures
+  const savingRef = useRef(false);
+  const inlineUsernameRef = useRef('');
+  inlineUsernameRef.current = inlineUsername;
+
+  const handleSaveUsername = async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setIsSaving(true);
+    try {
+      const newUsername = inlineUsernameRef.current;
+      await api.put('/api/auth/profile', { username: newUsername });
+      setUser({
+        ...user,
+        username: newUsername,
+      });
+      setShowSavePrompt(false);
+      setIsEditingUsername(false);
+      setInlineUsername('');
+    } catch (err) {
+      console.error('Failed to save username:', err);
+      alert('Failed to save username. Please try again.');
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
+  };
+
+  // Handle Enter key for save prompt
+  useEffect(() => {
+    if (!showSavePrompt) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        handleSaveUsername();
+      } else if (e.key === 'Escape') {
+        handleCancelUsernameEdit();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showSavePrompt]);
+
+  const handleCancelUsernameEdit = () => {
+    setShowSavePrompt(false);
+    setIsEditingUsername(false);
+    setInlineUsername('');
+  };
+
   return (
     <div className="max-w-md mx-auto bg-dark-800 rounded-2xl overflow-hidden border border-dark-700">
       {/* TikTok Profile Header */}
       <div className="p-4 border-b border-dark-700">
-        {/* Profile Info Row */}
-        <div className="flex items-center gap-4">
-          {/* Avatar */}
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-400 to-pink-500 p-0.5 flex-shrink-0">
+        {/* Avatar - Centered */}
+        <div className="flex justify-center mb-3">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-400 to-pink-500 p-0.5">
             <div className="w-full h-full rounded-full bg-dark-800 flex items-center justify-center overflow-hidden">
               {user?.profileImage || user?.avatar ? (
                 <img src={user.profileImage || user.avatar} alt="" className="w-full h-full object-cover" />
               ) : (
-                <User className="w-8 h-8 text-dark-400" />
+                <User className="w-10 h-10 text-dark-400" />
               )}
             </div>
           </div>
+        </div>
 
-          {/* Stats */}
-          <div className="flex-1">
-            <div className="flex items-center gap-6 mb-2">
-              <div className="text-center">
-                <p className="font-semibold text-dark-100">{user?.following || '142'}</p>
-                <p className="text-xs text-dark-400">Following</p>
-              </div>
-              <div className="text-center">
-                <p className="font-semibold text-dark-100">{user?.followers || '10.2K'}</p>
-                <p className="text-xs text-dark-400">Followers</p>
-              </div>
-              <div className="text-center">
-                <p className="font-semibold text-dark-100">{user?.likes || '52.4K'}</p>
-                <p className="text-xs text-dark-400">Likes</p>
-              </div>
+        {/* Screen Name - Centered without @ */}
+        <h2 className="text-lg font-bold text-dark-100 text-center">
+          {user?.brandName || user?.name || 'Display Name'}
+        </h2>
+
+        {/* Username - Centered with @ - Clickable to edit */}
+        {isEditingUsername ? (
+          <div className="flex justify-center mb-3">
+            <div className="flex items-center">
+              <span className="text-sm text-dark-400">@</span>
+              <input
+                ref={usernameInputRef}
+                type="text"
+                value={inlineUsername}
+                onChange={(e) => setInlineUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                onBlur={handleUsernameBlur}
+                onKeyDown={handleUsernameKeyDown}
+                className="bg-transparent text-sm text-dark-400 border-b border-cyan-400 outline-none text-center w-32"
+                placeholder="username"
+              />
             </div>
+          </div>
+        ) : (
+          <p
+            onClick={handleUsernameClick}
+            className="text-sm text-dark-400 text-center mb-3 cursor-pointer hover:text-cyan-400 transition-colors"
+            title="Click to edit username"
+          >
+            @{user?.username || 'username'}
+          </p>
+        )}
+
+        {/* Stats Row */}
+        <div className="flex items-center justify-center gap-5 mb-4">
+          <div className="text-center">
+            <p className="font-bold text-dark-100">{user?.following || '142'}</p>
+            <p className="text-xs text-dark-400">Following</p>
+          </div>
+          <div className="text-center">
+            <p className="font-bold text-dark-100">{user?.followers || '10.2K'}</p>
+            <p className="text-xs text-dark-400">Followers</p>
+          </div>
+          <div className="text-center">
+            <p className="font-bold text-dark-100">{user?.likes || '52.4K'}</p>
+            <p className="text-xs text-dark-400">Likes</p>
           </div>
         </div>
 
-        {/* Bio */}
-        <div className="mt-3">
-          <p className="font-semibold text-dark-100">@{user?.username || user?.brandName || 'your_username'}</p>
-          {user?.bio && <p className="text-sm text-dark-300 whitespace-pre-line">{user.bio}</p>}
+        {/* Action Buttons Row - Follow, Message, Dropdown */}
+        <div className="flex items-center justify-center gap-2 mb-3">
+          {/* Follow Button */}
+          <button className="flex-1 max-w-[140px] py-2 bg-[#fe2c55] hover:bg-[#ef2950] text-white text-sm font-semibold rounded-md transition-colors">
+            Follow
+          </button>
+          {/* Message Button */}
+          <button className="w-10 h-9 bg-dark-700 hover:bg-dark-600 rounded-md flex items-center justify-center transition-colors">
+            <Mail className="w-4 h-4 text-dark-200" />
+          </button>
+          {/* Dropdown Button */}
+          <button className="w-10 h-9 bg-dark-700 hover:bg-dark-600 rounded-md flex items-center justify-center transition-colors">
+            <ChevronDown className="w-4 h-4 text-dark-200" />
+          </button>
         </div>
 
-        {/* Action Button */}
+        {/* Bio/Slogan */}
+        {user?.bio && (
+          <p className="text-sm text-dark-300 text-center whitespace-pre-line">{user.bio}</p>
+        )}
+
+        {/* Edit Profile Button (for owner view) */}
         <button
           onClick={handleEditProfile}
-          className="w-full mt-4 py-1.5 bg-dark-700 hover:bg-dark-600 text-dark-200 text-sm font-medium rounded-lg transition-colors"
+          className="w-full mt-3 py-1.5 bg-dark-700 hover:bg-dark-600 text-dark-200 text-xs font-medium rounded transition-colors"
         >
           Edit Profile
         </button>
@@ -781,6 +925,40 @@ function TikTokPreview({ showRowHandles = true }) {
                   'Save Changes'
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Save Username Prompt */}
+      {showSavePrompt && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-800 rounded-xl w-full max-w-xs overflow-hidden border border-dark-700">
+            <div className="p-4 text-center">
+              <p className="text-dark-100 font-medium mb-2">Save username?</p>
+              <p className="text-dark-400 text-sm mb-4">
+                Change username to <span className="text-cyan-400">@{inlineUsername}</span>?
+              </p>
+              <p className="text-dark-500 text-xs mb-4">Press Enter to save</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCancelUsernameEdit}
+                  className="flex-1 py-2 bg-dark-700 hover:bg-dark-600 text-dark-300 rounded-lg transition-colors text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleSaveUsername()}
+                  disabled={isSaving}
+                  className="flex-1 py-2 bg-cyan-500 hover:bg-cyan-400 disabled:bg-cyan-500/50 text-white rounded-lg transition-colors text-sm flex items-center justify-center gap-1"
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    'Yes'
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
