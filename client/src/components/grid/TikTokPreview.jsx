@@ -440,29 +440,16 @@ function TikTokPreview({ showRowHandles = true }) {
   };
 
   return (
-    <div className="bg-dark-800 rounded-2xl overflow-hidden border border-dark-700">
+    <div className="max-w-md mx-auto bg-dark-800 rounded-2xl overflow-hidden border border-dark-700">
       {/* TikTok Profile Header */}
-      <div className="p-4 pb-0">
-        {/* Top bar */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <span className="text-dark-100 font-semibold">@{user?.username || 'your_username'}</span>
-            <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-cyan-400">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <div className="flex items-center gap-2">
-            <TikTokIcon className="w-5 h-5 text-dark-400" />
-          </div>
-        </div>
-
-        {/* Profile Info */}
-        <div className="flex items-start gap-4 mb-4">
+      <div className="p-4 border-b border-dark-700">
+        {/* Profile Info Row */}
+        <div className="flex items-center gap-4">
           {/* Avatar */}
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-400 to-pink-500 p-0.5 flex-shrink-0">
             <div className="w-full h-full rounded-full bg-dark-800 flex items-center justify-center overflow-hidden">
-              {user?.profileImage ? (
-                <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
+              {user?.profileImage || user?.avatar ? (
+                <img src={user.profileImage || user.avatar} alt="" className="w-full h-full object-cover" />
               ) : (
                 <User className="w-8 h-8 text-dark-400" />
               )}
@@ -471,17 +458,17 @@ function TikTokPreview({ showRowHandles = true }) {
 
           {/* Stats */}
           <div className="flex-1">
-            <div className="flex items-center gap-6 mb-3">
+            <div className="flex items-center gap-6 mb-2">
               <div className="text-center">
-                <p className="text-lg font-bold text-dark-100">{user?.following || '142'}</p>
+                <p className="font-semibold text-dark-100">{user?.following || '142'}</p>
                 <p className="text-xs text-dark-400">Following</p>
               </div>
               <div className="text-center">
-                <p className="text-lg font-bold text-dark-100">{user?.followers || '10.2K'}</p>
+                <p className="font-semibold text-dark-100">{user?.followers || '10.2K'}</p>
                 <p className="text-xs text-dark-400">Followers</p>
               </div>
               <div className="text-center">
-                <p className="text-lg font-bold text-dark-100">{user?.likes || '52.4K'}</p>
+                <p className="font-semibold text-dark-100">{user?.likes || '52.4K'}</p>
                 <p className="text-xs text-dark-400">Likes</p>
               </div>
             </div>
@@ -489,58 +476,36 @@ function TikTokPreview({ showRowHandles = true }) {
         </div>
 
         {/* Bio */}
-        <div className="mb-4">
-          <p className="text-sm text-dark-100 font-medium">{user?.displayName || 'Your Name'}</p>
-          <p className="text-sm text-dark-300 mt-1">{user?.bio || 'Add a bio to your profile'}</p>
+        <div className="mt-3">
+          <p className="font-semibold text-dark-100">@{user?.username || user?.brandName || 'your_username'}</p>
+          {user?.bio && <p className="text-sm text-dark-300 whitespace-pre-line">{user.bio}</p>}
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2 mb-4">
-          <button className="flex-1 py-2 bg-dark-700 hover:bg-dark-600 text-dark-100 rounded-md text-sm font-medium transition-colors">
-            Edit profile
-          </button>
-          <button className="flex-1 py-2 bg-dark-700 hover:bg-dark-600 text-dark-100 rounded-md text-sm font-medium transition-colors">
-            Share profile
-          </button>
-          <button className="px-3 py-2 bg-dark-700 hover:bg-dark-600 text-dark-100 rounded-md transition-colors">
-            <Bookmark className="w-4 h-4" />
-          </button>
-        </div>
+        {/* Action Button */}
+        <button className="w-full mt-4 py-1.5 bg-dark-700 hover:bg-dark-600 text-dark-200 text-sm font-medium rounded-lg transition-colors">
+          Edit Profile
+        </button>
+      </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-dark-700">
-          <button
-            onClick={() => setActiveTab('videos')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
-              activeTab === 'videos' ? 'text-dark-100' : 'text-dark-400'
-            }`}
-          >
-            <div className="flex items-center justify-center gap-1">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-5 h-5">
-                <rect x="3" y="3" width="7" height="7" strokeWidth="2" />
-                <rect x="14" y="3" width="7" height="7" strokeWidth="2" />
-                <rect x="3" y="14" width="7" height="7" strokeWidth="2" />
-                <rect x="14" y="14" width="7" height="7" strokeWidth="2" />
-              </svg>
-            </div>
-            {activeTab === 'videos' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-dark-100" />
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('liked')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
-              activeTab === 'liked' ? 'text-dark-100' : 'text-dark-400'
-            }`}
-          >
-            <div className="flex items-center justify-center">
-              <Heart className="w-5 h-5" />
-            </div>
-            {activeTab === 'liked' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-dark-100" />
-            )}
-          </button>
-        </div>
+      {/* Tab Bar */}
+      <div className="flex border-b border-dark-700">
+        <button
+          onClick={() => setActiveTab('videos')}
+          className={`flex-1 py-3 transition-colors ${activeTab === 'videos' ? 'border-b-2 border-dark-100 text-dark-100' : 'text-dark-500 hover:text-dark-300'}`}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-6 h-6 mx-auto">
+            <rect x="3" y="3" width="7" height="7" strokeWidth="2" />
+            <rect x="14" y="3" width="7" height="7" strokeWidth="2" />
+            <rect x="3" y="14" width="7" height="7" strokeWidth="2" />
+            <rect x="14" y="14" width="7" height="7" strokeWidth="2" />
+          </svg>
+        </button>
+        <button
+          onClick={() => setActiveTab('liked')}
+          className={`flex-1 py-3 transition-colors ${activeTab === 'liked' ? 'border-b-2 border-dark-100 text-dark-100' : 'text-dark-500 hover:text-dark-300'}`}
+        >
+          <Heart className="w-6 h-6 mx-auto" />
+        </button>
       </div>
 
       {/* Videos Grid */}
