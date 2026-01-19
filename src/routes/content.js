@@ -4,12 +4,21 @@ const contentController = require('../controllers/contentController');
 const { authenticate } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
+// Reel upload (video with client-generated thumbnail)
+router.post('/reel', authenticate, upload.fields([
+  { name: 'media', maxCount: 1 },
+  { name: 'thumbnail', maxCount: 1 }
+]), contentController.createReel);
+
 // Content CRUD
 router.post('/', authenticate, upload.single('media'), contentController.createContent);
 router.get('/', authenticate, contentController.getAllContent);
 router.get('/:id', authenticate, contentController.getContentById);
 router.put('/:id', authenticate, contentController.updateContent);
 router.delete('/:id', authenticate, contentController.deleteContent);
+
+// Thumbnail update
+router.put('/:id/thumbnail', authenticate, upload.single('thumbnail'), contentController.updateThumbnail);
 
 // Version management
 router.post('/:id/versions', authenticate, upload.single('media'), contentController.addVersion);

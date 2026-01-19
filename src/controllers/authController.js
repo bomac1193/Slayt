@@ -100,6 +100,40 @@ exports.getCurrentUser = async (req, res) => {
   }
 };
 
+// Update user profile
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, bio, avatar } = req.body;
+    const userId = req.userId;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update fields if provided
+    if (name !== undefined) user.name = name;
+    if (bio !== undefined) user.bio = bio;
+    if (avatar !== undefined) user.avatar = avatar;
+
+    await user.save();
+
+    res.json({
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        bio: user.bio,
+        avatar: user.avatar
+      }
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+};
+
 // Instagram OAuth - Initiate Login (for signing in)
 exports.instagramAuthLogin = (req, res, next) => {
   if (!process.env.INSTAGRAM_CLIENT_ID || !process.env.INSTAGRAM_CLIENT_SECRET) {
@@ -325,19 +359,21 @@ exports.googleAuth = (req, res, next) => {
 exports.googleCallback = (req, res, next) => {
   passport.authenticate('google', { session: false }, async (err, user, info) => {
     try {
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
       if (err || !user) {
         console.error('Google auth error:', err || 'No user returned');
-        return res.redirect('/?google=error');
+        return res.redirect(`${frontendUrl}/login?google=error`);
       }
 
       // Generate JWT token
       const token = generateToken(user._id);
 
       // Redirect to frontend with token
-      res.redirect(`/?google=success&token=${token}`);
+      res.redirect(`${frontendUrl}/login?google=success&token=${token}`);
     } catch (error) {
       console.error('Google callback error:', error);
-      res.redirect('/?google=error');
+      res.redirect(`${frontendUrl}/login?google=error`);
     }
   })(req, res, next);
 };

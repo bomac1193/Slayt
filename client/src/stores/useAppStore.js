@@ -1,692 +1,595 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { youtubeApi, rolloutApi } from '../lib/api';
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
-const STORAGE_KEY = 'postpilot-state';
+// Main application store
+export const useAppStore = create(
+  persist(
+    (set, get) => ({
+      // User state
+      user: null,
+      isAuthenticated: false,
 
-const initialState = {
-  posts: [],
-  selectedId: null,
-  scheduledContent: [],
-  draggedContent: null,
-  theme: 'light',
-  currentWorkspace: null,
-  // YouTube Collections - now from API
-  youtubeCollections: [],
-  currentCollectionId: null,
-  youtubeCollectionsLoading: false,
-  youtubeCollectionsError: null,
-  // YouTube Videos - now from API
-  youtubeVideos: [],
-  youtubeVideosLoading: false,
-  youtubeVideosError: null,
-  // Rollouts - now from API
-  rollouts: [],
-  currentRolloutId: null,
-  rolloutsLoading: false,
-  rolloutsError: null,
-  // Initialization flag
-  initialized: false,
-};
+      // Theme
+      theme: 'dark',
 
-function loadState() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      // Only load non-API data from localStorage
-      return {
-        ...initialState,
-        posts: parsed.posts || [],
-        theme: parsed.theme || 'light',
-        currentWorkspace: parsed.currentWorkspace || null,
-        // Keep IDs from localStorage for initial selection, but data will come from API
-        currentCollectionId: parsed.currentCollectionId || null,
-        currentRolloutId: parsed.currentRolloutId || null,
-      };
+      // Posts/Content
+      posts: [],
+      selectedPostId: null,
+
+      // Grid planner
+      gridPosts: [],
+      gridLayout: '3x3',
+
+      // Editor state
+      editorMode: 'quick', // 'quick' | 'pro'
+      currentImage: null,
+      editorHistory: [],
+      historyIndex: -1,
+
+      // Calendar
+      scheduledPosts: [],
+
+      // Reels
+      reels: [],
+      reelOrder: [], // Persisted array of reel IDs for custom ordering
+
+      // YouTube Planner
+      youtubeVideos: [],
+      youtubeViewMode: 'grid', // 'grid' | 'sidebar'
+      selectedYoutubeVideoId: null,
+      youtubeCompetitors: [],
+      youtubeChannelSettings: {
+        channelName: 'Your Channel',
+        channelAvatar: null,
+        useSharedProfile: false, // Use same name/avatar as IG/TikTok
+      },
+      // YouTube Collections
+      youtubeCollections: [
+        { id: 'default', name: 'My Videos', createdAt: new Date().toISOString() }
+      ],
+      currentYoutubeCollectionId: 'default',
+      // Videos stored by collection ID for persistence
+      youtubeVideosByCollection: { default: [] },
+
+      // Platform connections
+      connectedPlatforms: {
+        instagram: { connected: false, account: null },
+        tiktok: { connected: false, account: null },
+        facebook: { connected: false, account: null },
+        twitter: { connected: false, account: null },
+        linkedin: { connected: false, account: null },
+        youtube: { connected: false, account: null },
+        pinterest: { connected: false, account: null },
+        threads: { connected: false, account: null },
+      },
+
+      // UI state
+      sidebarCollapsed: false,
+      activePanel: 'grid', // 'grid' | 'editor' | 'calendar' | 'ai' | 'settings'
+
+      // Actions
+      setUser: (user) => set({ user, isAuthenticated: !!user }),
+      logout: () => set({ user: null, isAuthenticated: false }),
+
+      setTheme: (theme) => set({ theme }),
+      toggleTheme: () => set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
+
+      // Post actions
+      setPosts: (posts) => set({ posts }),
+      addPost: (post) => set((state) => ({
+        posts: [{ ...post, id: post.id || crypto.randomUUID(), createdAt: Date.now() }, ...state.posts]
+      })),
+      updatePost: (id, updates) => set((state) => ({
+        posts: state.posts.map((p) => (p.id === id || p._id === id) ? { ...p, ...updates } : p),
+        // Also update gridPosts if the post exists there
+        gridPosts: state.gridPosts.map((p) => (p.id === id || p._id === id) ? { ...p, ...updates } : p)
+      })),
+      deletePost: (id) => set((state) => ({
+        posts: state.posts.filter((p) => p.id !== id && p._id !== id),
+        selectedPostId: state.selectedPostId === id ? null : state.selectedPostId
+      })),
+      selectPost: (id) => set({ selectedPostId: id }),
+
+      // Grid actions
+      setGridPosts: (gridPosts) => set({ gridPosts }),
+      addToGrid: (post) => set((state) => ({
+        gridPosts: [...state.gridPosts, { ...post, gridPosition: state.gridPosts.length }]
+      })),
+      removeFromGrid: (id) => set((state) => ({
+        gridPosts: state.gridPosts.filter((p) => p.id !== id)
+      })),
+      reorderGrid: (fromIndex, toIndex) => set((state) => {
+        const newGridPosts = [...state.gridPosts];
+        const [removed] = newGridPosts.splice(fromIndex, 1);
+        newGridPosts.splice(toIndex, 0, removed);
+        return { gridPosts: newGridPosts.map((p, i) => ({ ...p, gridPosition: i })) };
+      }),
+
+      // Editor actions
+      setEditorMode: (mode) => set({ editorMode: mode }),
+      setCurrentImage: (image) => set({ currentImage: image }),
+
+      // History for undo/redo
+      pushHistory: (state) => set((prev) => {
+        const newHistory = prev.editorHistory.slice(0, prev.historyIndex + 1);
+        newHistory.push(state);
+        return {
+          editorHistory: newHistory.slice(-50), // Keep last 50 states
+          historyIndex: newHistory.length - 1
+        };
+      }),
+      undo: () => set((state) => {
+        if (state.historyIndex > 0) {
+          return { historyIndex: state.historyIndex - 1 };
+        }
+        return state;
+      }),
+      redo: () => set((state) => {
+        if (state.historyIndex < state.editorHistory.length - 1) {
+          return { historyIndex: state.historyIndex + 1 };
+        }
+        return state;
+      }),
+      clearHistory: () => set({ editorHistory: [], historyIndex: -1 }),
+
+      // Reels actions
+      setReels: (reels) => set((state) => {
+        // Sort reels according to saved order if available
+        if (state.reelOrder && state.reelOrder.length > 0) {
+          const orderMap = new Map(state.reelOrder.map((id, index) => [id, index]));
+          const sortedReels = [...reels].sort((a, b) => {
+            const aId = a._id || a.id;
+            const bId = b._id || b.id;
+            const aOrder = orderMap.has(aId) ? orderMap.get(aId) : Infinity;
+            const bOrder = orderMap.has(bId) ? orderMap.get(bId) : Infinity;
+            return aOrder - bOrder;
+          });
+          return { reels: sortedReels };
+        }
+        return { reels };
+      }),
+      addReel: (reel) => set((state) => {
+        const reelId = reel._id || reel.id;
+        return {
+          reels: [reel, ...state.reels],
+          reelOrder: [reelId, ...state.reelOrder]
+        };
+      }),
+      // Update reels AND order together (for manual reordering - bypasses sorting)
+      reorderReels: (reels) => set({
+        reels: reels,
+        reelOrder: reels.map(r => r._id || r.id)
+      }),
+
+      // YouTube Planner actions
+      setYoutubeVideos: (videos) => set({ youtubeVideos: videos }),
+      addYoutubeVideo: (video) => set((state) => ({
+        youtubeVideos: [...state.youtubeVideos, {
+          ...video,
+          id: video.id || crypto.randomUUID(),
+          createdAt: video.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          position: state.youtubeVideos.length,
+        }]
+      })),
+      updateYoutubeVideo: (id, updates) => set((state) => ({
+        youtubeVideos: state.youtubeVideos.map(v =>
+          v.id === id ? { ...v, ...updates, updatedAt: new Date().toISOString() } : v
+        )
+      })),
+      deleteYoutubeVideo: (id) => set((state) => ({
+        youtubeVideos: state.youtubeVideos.filter(v => v.id !== id),
+        selectedYoutubeVideoId: state.selectedYoutubeVideoId === id ? null : state.selectedYoutubeVideoId
+      })),
+      reorderYoutubeVideos: (videos) => set({
+        youtubeVideos: videos.map((v, i) => ({ ...v, position: i }))
+      }),
+      selectYoutubeVideo: (id) => set({ selectedYoutubeVideoId: id }),
+      setYoutubeViewMode: (mode) => set({ youtubeViewMode: mode }),
+
+      // YouTube Competitors actions
+      setYoutubeCompetitors: (competitors) => set({ youtubeCompetitors: competitors }),
+      addYoutubeCompetitor: (competitor) => set((state) => ({
+        youtubeCompetitors: [...state.youtubeCompetitors, {
+          ...competitor,
+          id: competitor.id || crypto.randomUUID(),
+        }]
+      })),
+      updateYoutubeCompetitor: (id, updates) => set((state) => ({
+        youtubeCompetitors: state.youtubeCompetitors.map(c =>
+          c.id === id ? { ...c, ...updates } : c
+        )
+      })),
+      deleteYoutubeCompetitor: (id) => set((state) => ({
+        youtubeCompetitors: state.youtubeCompetitors.filter(c => c.id !== id)
+      })),
+      reorderYoutubeCompetitors: (competitors) => set({ youtubeCompetitors: competitors }),
+
+      // YouTube Collections actions
+      setYoutubeCollections: (collections) => set({ youtubeCollections: collections }),
+      addYoutubeCollection: (name) => set((state) => {
+        const newCollection = {
+          id: crypto.randomUUID(),
+          name: name || 'New Collection',
+          createdAt: new Date().toISOString(),
+        };
+        // Save current collection's videos before switching
+        const updatedVideosByCollection = {
+          ...state.youtubeVideosByCollection,
+          [state.currentYoutubeCollectionId]: state.youtubeVideos,
+          [newCollection.id]: [], // Initialize empty array for new collection
+        };
+        return {
+          youtubeCollections: [...state.youtubeCollections, newCollection],
+          currentYoutubeCollectionId: newCollection.id,
+          youtubeVideos: [], // Start fresh for new collection
+          youtubeVideosByCollection: updatedVideosByCollection,
+          selectedYoutubeVideoId: null,
+        };
+      }),
+      renameYoutubeCollection: (id, name) => set((state) => ({
+        youtubeCollections: state.youtubeCollections.map(c =>
+          c.id === id ? { ...c, name } : c
+        )
+      })),
+      duplicateYoutubeCollection: (id) => set((state) => {
+        const sourceCollection = state.youtubeCollections.find(c => c.id === id);
+        if (!sourceCollection) return state;
+
+        const newId = crypto.randomUUID();
+        const newCollection = {
+          id: newId,
+          name: `${sourceCollection.name} (Copy)`,
+          createdAt: new Date().toISOString(),
+        };
+
+        // Get videos from source collection
+        const sourceVideos = id === state.currentYoutubeCollectionId
+          ? state.youtubeVideos
+          : (state.youtubeVideosByCollection[id] || []);
+
+        // Deep copy videos with new IDs
+        const duplicatedVideos = sourceVideos.map(v => ({
+          ...v,
+          id: crypto.randomUUID(),
+          createdAt: new Date().toISOString(),
+        }));
+
+        // Save current videos before switching
+        const updatedVideosByCollection = {
+          ...state.youtubeVideosByCollection,
+          [state.currentYoutubeCollectionId]: state.youtubeVideos,
+          [newId]: duplicatedVideos,
+        };
+
+        return {
+          youtubeCollections: [...state.youtubeCollections, newCollection],
+          currentYoutubeCollectionId: newId,
+          youtubeVideos: duplicatedVideos,
+          youtubeVideosByCollection: updatedVideosByCollection,
+          selectedYoutubeVideoId: null,
+        };
+      }),
+      deleteYoutubeCollection: (id) => set((state) => {
+        // Can't delete the last collection
+        if (state.youtubeCollections.length <= 1) return state;
+
+        const newCollections = state.youtubeCollections.filter(c => c.id !== id);
+        const wasCurrentCollection = state.currentYoutubeCollectionId === id;
+        const newCurrentId = wasCurrentCollection
+          ? newCollections[0]?.id || 'default'
+          : state.currentYoutubeCollectionId;
+
+        // Remove deleted collection from videos map
+        const { [id]: _, ...remainingVideosByCollection } = state.youtubeVideosByCollection;
+
+        return {
+          youtubeCollections: newCollections,
+          currentYoutubeCollectionId: newCurrentId,
+          youtubeVideos: wasCurrentCollection
+            ? (remainingVideosByCollection[newCurrentId] || [])
+            : state.youtubeVideos,
+          youtubeVideosByCollection: remainingVideosByCollection,
+          selectedYoutubeVideoId: wasCurrentCollection ? null : state.selectedYoutubeVideoId,
+        };
+      }),
+      setCurrentYoutubeCollection: (id) => set((state) => {
+        // Save current collection's videos before switching
+        const updatedVideosByCollection = {
+          ...state.youtubeVideosByCollection,
+          [state.currentYoutubeCollectionId]: state.youtubeVideos,
+        };
+        return {
+          currentYoutubeCollectionId: id,
+          youtubeVideos: updatedVideosByCollection[id] || [],
+          youtubeVideosByCollection: updatedVideosByCollection,
+          selectedYoutubeVideoId: null,
+        };
+      }),
+      // Save current videos to collection (call before switching or on unmount)
+      saveCurrentYoutubeCollectionVideos: () => set((state) => ({
+        youtubeVideosByCollection: {
+          ...state.youtubeVideosByCollection,
+          [state.currentYoutubeCollectionId]: state.youtubeVideos,
+        }
+      })),
+
+      // YouTube Channel Settings actions
+      setYoutubeChannelSettings: (settings) => set((state) => ({
+        youtubeChannelSettings: { ...state.youtubeChannelSettings, ...settings }
+      })),
+      updateYoutubeChannelAvatar: (avatar) => set((state) => ({
+        youtubeChannelSettings: { ...state.youtubeChannelSettings, channelAvatar: avatar }
+      })),
+      updateYoutubeChannelName: (name) => set((state) => ({
+        youtubeChannelSettings: { ...state.youtubeChannelSettings, channelName: name }
+      })),
+      toggleYoutubeUseSharedProfile: () => set((state) => ({
+        youtubeChannelSettings: {
+          ...state.youtubeChannelSettings,
+          useSharedProfile: !state.youtubeChannelSettings.useSharedProfile
+        }
+      })),
+
+      // Calendar actions
+      setScheduledPosts: (posts) => set({ scheduledPosts: posts }),
+      schedulePost: (post, date) => set((state) => ({
+        scheduledPosts: [...state.scheduledPosts, { ...post, scheduledAt: date, status: 'scheduled' }]
+      })),
+      unschedulePost: (id) => set((state) => ({
+        scheduledPosts: state.scheduledPosts.filter((p) => p.id !== id)
+      })),
+
+      // Platform actions
+      connectPlatform: (platform, account) => set((state) => ({
+        connectedPlatforms: {
+          ...state.connectedPlatforms,
+          [platform]: { connected: true, account }
+        }
+      })),
+      disconnectPlatform: (platform) => set((state) => ({
+        connectedPlatforms: {
+          ...state.connectedPlatforms,
+          [platform]: { connected: false, account: null }
+        }
+      })),
+
+      // UI actions
+      setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+      toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      setActivePanel: (panel) => set({ activePanel: panel }),
+
+      // Get selected post helper
+      getSelectedPost: () => {
+        const state = get();
+        return state.posts.find((p) => p.id === state.selectedPostId) || null;
+      },
+    }),
+    {
+      name: 'postpilot-storage',
+      storage: {
+        getItem: (name) => {
+          try {
+            const str = localStorage.getItem(name);
+            return str ? JSON.parse(str) : null;
+          } catch (e) {
+            console.error('Failed to load from localStorage:', e);
+            return null;
+          }
+        },
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, JSON.stringify(value));
+          } catch (e) {
+            console.error('Failed to save to localStorage:', e);
+            // If quota exceeded, try to clear old data and retry
+            if (e.name === 'QuotaExceededError' || e.code === 22) {
+              console.warn('localStorage quota exceeded, attempting to clear space...');
+              try {
+                // Try to save without YouTube thumbnails as fallback
+                const reducedValue = {
+                  ...value,
+                  state: {
+                    ...value.state,
+                    youtubeVideos: value.state?.youtubeVideos?.map(v => ({
+                      ...v,
+                      thumbnail: null // Remove thumbnails if quota exceeded
+                    })) || []
+                  }
+                };
+                localStorage.setItem(name, JSON.stringify(reducedValue));
+                console.warn('Saved without thumbnails due to storage limit');
+              } catch (e2) {
+                console.error('Failed to save even without thumbnails:', e2);
+              }
+            }
+          }
+        },
+        removeItem: (name) => {
+          try {
+            localStorage.removeItem(name);
+          } catch (e) {
+            console.error('Failed to remove from localStorage:', e);
+          }
+        },
+      },
+      partialize: (state) => ({
+        theme: state.theme,
+        posts: state.posts,
+        // gridPosts removed - should always come from MongoDB to avoid stale data
+        sidebarCollapsed: state.sidebarCollapsed,
+        // User profile data for persistence
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+        // Reel order for custom sorting
+        reelOrder: state.reelOrder,
+        // YouTube Planner data
+        youtubeVideos: state.youtubeVideos,
+        youtubeViewMode: state.youtubeViewMode,
+        youtubeCompetitors: state.youtubeCompetitors,
+        youtubeChannelSettings: state.youtubeChannelSettings,
+        // YouTube Collections
+        youtubeCollections: state.youtubeCollections,
+        currentYoutubeCollectionId: state.currentYoutubeCollectionId,
+        youtubeVideosByCollection: state.youtubeVideosByCollection,
+      }),
+      // Custom merge to ensure persisted data takes precedence
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...persistedState,
+        // Ensure user data is preserved if it exists in persisted state
+        user: persistedState?.user || currentState.user,
+        isAuthenticated: persistedState?.isAuthenticated || currentState.isAuthenticated,
+        // Ensure YouTube data is preserved
+        youtubeVideos: persistedState?.youtubeVideos || currentState.youtubeVideos,
+        youtubeViewMode: persistedState?.youtubeViewMode || currentState.youtubeViewMode,
+        youtubeCompetitors: persistedState?.youtubeCompetitors || currentState.youtubeCompetitors,
+        youtubeChannelSettings: persistedState?.youtubeChannelSettings || currentState.youtubeChannelSettings,
+        // Ensure YouTube Collections are preserved
+        youtubeCollections: persistedState?.youtubeCollections || currentState.youtubeCollections,
+        currentYoutubeCollectionId: persistedState?.currentYoutubeCollectionId || currentState.currentYoutubeCollectionId,
+        youtubeVideosByCollection: persistedState?.youtubeVideosByCollection || currentState.youtubeVideosByCollection,
+      }),
     }
-  } catch (error) {
-    console.warn('Failed to load state:', error);
-  }
-  return initialState;
-}
+  )
+);
 
-function saveState(state) {
-  try {
-    // Only save non-API data to localStorage
-    const toSave = {
-      posts: state.posts,
-      theme: state.theme,
-      currentWorkspace: state.currentWorkspace,
-      // Save current IDs so we can restore selection on reload
-      currentCollectionId: state.currentCollectionId,
-      currentRolloutId: state.currentRolloutId,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-  } catch (error) {
-    console.warn('Failed to save state:', error);
-  }
-}
+// Editor-specific store (not persisted - canvas state is transient)
+export const useEditorStore = create((set, get) => ({
+  // Canvas state
+  canvas: null,
+  activeObject: null,
+  zoom: 1,
+  pan: { x: 0, y: 0 },
 
-export function useAppStore() {
-  const [state, setState] = useState(loadState);
+  // Tool state
+  activeTool: 'select', // 'select' | 'crop' | 'text' | 'draw'
+  brushSize: 10,
+  brushColor: '#ffffff',
 
-  const updateState = useCallback((updates) => {
-    setState(prev => {
-      const newState = typeof updates === 'function' ? updates(prev) : { ...prev, ...updates };
-      saveState(newState);
-      return newState;
-    });
-  }, []);
+  // Crop state
+  cropMode: false,
+  cropAspectRatio: '1:1', // '1:1' | '4:5' | '16:9' | '9:16' | 'free'
+  cropRect: null,
 
-  // Initialize data from API
-  const initializeFromApi = useCallback(async () => {
-    if (state.initialized) return;
+  // Adjustments
+  adjustments: {
+    brightness: 0,
+    contrast: 0,
+    saturation: 0,
+    exposure: 0,
+    highlights: 0,
+    shadows: 0,
+    temperature: 0,
+    tint: 0,
+    vibrance: 0,
+    sharpness: 0,
+  },
 
-    try {
-      // Load YouTube collections
-      updateState({ youtubeCollectionsLoading: true, rolloutsLoading: true });
+  // Filters
+  activeFilter: null,
+  filterIntensity: 100,
 
-      const [collectionsResponse, rolloutsResponse] = await Promise.all([
-        youtubeApi.getCollections().catch(err => {
-          console.warn('Failed to fetch YouTube collections:', err);
-          return { collections: [] };
-        }),
-        rolloutApi.getAll().catch(err => {
-          console.warn('Failed to fetch rollouts:', err);
-          return { rollouts: [] };
-        }),
-      ]);
+  // Transform
+  rotation: 0,
+  flipH: false,
+  flipV: false,
+  scale: 1,
 
-      updateState(prev => ({
-        ...prev,
-        youtubeCollections: collectionsResponse.collections || [],
-        youtubeCollectionsLoading: false,
-        youtubeCollectionsError: null,
-        rollouts: rolloutsResponse.rollouts || [],
-        rolloutsLoading: false,
-        rolloutsError: null,
-        initialized: true,
-      }));
-    } catch (error) {
-      console.error('Failed to initialize from API:', error);
-      updateState({
-        youtubeCollectionsLoading: false,
-        youtubeCollectionsError: error.message,
-        rolloutsLoading: false,
-        rolloutsError: error.message,
-        initialized: true,
-      });
+  // Layers
+  layers: [],
+  activeLayerId: null,
+
+  // Actions
+  setCanvas: (canvas) => set({ canvas }),
+  setActiveObject: (obj) => set({ activeObject: obj }),
+  setZoom: (zoom) => set({ zoom: Math.max(0.1, Math.min(5, zoom)) }),
+  setPan: (pan) => set({ pan }),
+
+  setActiveTool: (tool) => set({ activeTool: tool }),
+  setBrushSize: (size) => set({ brushSize: size }),
+  setBrushColor: (color) => set({ brushColor: color }),
+
+  setCropMode: (enabled) => set({ cropMode: enabled }),
+  setCropAspectRatio: (ratio) => set({ cropAspectRatio: ratio }),
+  setCropRect: (rect) => set({ cropRect: rect }),
+
+  setAdjustment: (key, value) => set((state) => ({
+    adjustments: { ...state.adjustments, [key]: value }
+  })),
+  resetAdjustments: () => set({
+    adjustments: {
+      brightness: 0,
+      contrast: 0,
+      saturation: 0,
+      exposure: 0,
+      highlights: 0,
+      shadows: 0,
+      temperature: 0,
+      tint: 0,
+      vibrance: 0,
+      sharpness: 0,
     }
-  }, [state.initialized, updateState]);
-
-  // Initialize on mount
-  useEffect(() => {
-    initializeFromApi();
-  }, [initializeFromApi]);
-
-  // Post actions (unchanged - localStorage based)
-  const addPost = useCallback((post) => {
-    updateState(prev => ({
-      ...prev,
-      posts: [post, ...prev.posts],
-      selectedId: post.id,
-    }));
-  }, [updateState]);
-
-  const updatePost = useCallback((id, updates) => {
-    updateState(prev => ({
-      ...prev,
-      posts: prev.posts.map(p => p.id === id ? { ...p, ...updates } : p),
-    }));
-  }, [updateState]);
-
-  const deletePost = useCallback((id) => {
-    updateState(prev => ({
-      ...prev,
-      posts: prev.posts.filter(p => p.id !== id),
-      selectedId: prev.selectedId === id ? null : prev.selectedId,
-    }));
-  }, [updateState]);
-
-  const selectPost = useCallback((id) => {
-    updateState({ selectedId: id });
-  }, [updateState]);
-
-  const reorderPosts = useCallback((sourceId, targetId) => {
-    if (sourceId === targetId) return;
-    updateState(prev => {
-      const sourceIndex = prev.posts.findIndex(p => p.id === sourceId);
-      const targetIndex = prev.posts.findIndex(p => p.id === targetId);
-      if (sourceIndex === -1 || targetIndex === -1) return prev;
-
-      const updated = [...prev.posts];
-      const [moved] = updated.splice(sourceIndex, 1);
-      updated.splice(targetIndex, 0, moved);
-      return { ...prev, posts: updated };
-    });
-  }, [updateState]);
-
-  // Drag state
-  const setDraggedContent = useCallback((content) => {
-    updateState({ draggedContent: content });
-  }, [updateState]);
-
-  // Schedule actions
-  const addScheduledContent = useCallback((item) => {
-    updateState(prev => ({
-      ...prev,
-      scheduledContent: [...prev.scheduledContent, item],
-    }));
-  }, [updateState]);
-
-  const removeScheduledContent = useCallback((itemId) => {
-    updateState(prev => ({
-      ...prev,
-      scheduledContent: prev.scheduledContent.filter(s => s.id !== itemId),
-    }));
-  }, [updateState]);
-
-  const updateScheduledContent = useCallback((itemId, updates) => {
-    updateState(prev => ({
-      ...prev,
-      scheduledContent: prev.scheduledContent.map(s =>
-        s.id === itemId ? { ...s, ...updates } : s
-      ),
-    }));
-  }, [updateState]);
-
-  // Theme actions
-  const setTheme = useCallback((theme) => {
-    updateState({ theme });
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [updateState]);
-
-  const toggleTheme = useCallback(() => {
-    updateState(prev => {
-      const newTheme = prev.theme === 'light' ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', newTheme);
-      return { ...prev, theme: newTheme };
-    });
-  }, [updateState]);
-
-  // Workspace actions
-  const setCurrentWorkspace = useCallback((workspace) => {
-    updateState({ currentWorkspace: workspace });
-  }, [updateState]);
-
-  // YouTube Collection actions - now with API calls
-  const fetchYoutubeCollections = useCallback(async () => {
-    try {
-      updateState({ youtubeCollectionsLoading: true });
-      const response = await youtubeApi.getCollections();
-      updateState({
-        youtubeCollections: response.collections || [],
-        youtubeCollectionsLoading: false,
-        youtubeCollectionsError: null,
-      });
-      return response.collections;
-    } catch (error) {
-      updateState({
-        youtubeCollectionsLoading: false,
-        youtubeCollectionsError: error.message,
-      });
-      throw error;
-    }
-  }, [updateState]);
-
-  const addYoutubeCollection = useCallback(async (collection) => {
-    try {
-      const response = await youtubeApi.createCollection(collection);
-      const newCollection = response.collection;
-
-      // Update local state with server response
-      updateState(prev => ({
-        ...prev,
-        youtubeCollections: [newCollection, ...prev.youtubeCollections],
-        currentCollectionId: newCollection._id,
-      }));
-
-      return newCollection;
-    } catch (error) {
-      console.error('Failed to create YouTube collection:', error);
-      throw error;
-    }
-  }, [updateState]);
-
-  const updateYoutubeCollection = useCallback(async (id, updates) => {
-    try {
-      const response = await youtubeApi.updateCollection(id, updates);
-      const updatedCollection = response.collection;
-
-      // Update local state
-      updateState(prev => ({
-        ...prev,
-        youtubeCollections: prev.youtubeCollections.map(c =>
-          c._id === id ? updatedCollection : c
-        ),
-      }));
-
-      return updatedCollection;
-    } catch (error) {
-      console.error('Failed to update YouTube collection:', error);
-      throw error;
-    }
-  }, [updateState]);
-
-  const deleteYoutubeCollection = useCallback(async (id) => {
-    try {
-      await youtubeApi.deleteCollection(id);
-
-      // Update local state
-      updateState(prev => ({
-        ...prev,
-        youtubeCollections: prev.youtubeCollections.filter(c => c._id !== id),
-        currentCollectionId: prev.currentCollectionId === id ? null : prev.currentCollectionId,
-      }));
-    } catch (error) {
-      console.error('Failed to delete YouTube collection:', error);
-      throw error;
-    }
-  }, [updateState]);
-
-  const setCurrentCollection = useCallback((id) => {
-    updateState({ currentCollectionId: id });
-  }, [updateState]);
-
-  // Collection tag actions
-  const updateYoutubeCollectionTags = useCallback(async (collectionId, tags) => {
-    return updateYoutubeCollection(collectionId, { tags });
-  }, [updateYoutubeCollection]);
-
-  const addTagToCollection = useCallback(async (collectionId, tag) => {
-    const collection = state.youtubeCollections.find(c => c._id === collectionId);
-    if (!collection) return;
-
-    const currentTags = collection.tags || [];
-    if (!currentTags.includes(tag)) {
-      return updateYoutubeCollection(collectionId, { tags: [...currentTags, tag] });
-    }
-  }, [state.youtubeCollections, updateYoutubeCollection]);
-
-  const removeTagFromCollection = useCallback(async (collectionId, tag) => {
-    const collection = state.youtubeCollections.find(c => c._id === collectionId);
-    if (!collection) return;
-
-    const currentTags = collection.tags || [];
-    return updateYoutubeCollection(collectionId, { tags: currentTags.filter(t => t !== tag) });
-  }, [state.youtubeCollections, updateYoutubeCollection]);
-
-  // YouTube Video actions
-  const fetchYoutubeVideos = useCallback(async (collectionId) => {
-    try {
-      updateState({ youtubeVideosLoading: true });
-      const response = await youtubeApi.getVideos(collectionId);
-      updateState({
-        youtubeVideos: response.videos || [],
-        youtubeVideosLoading: false,
-        youtubeVideosError: null,
-      });
-      return response.videos;
-    } catch (error) {
-      updateState({
-        youtubeVideosLoading: false,
-        youtubeVideosError: error.message,
-      });
-      throw error;
-    }
-  }, [updateState]);
-
-  const addYoutubeVideo = useCallback(async (video) => {
-    try {
-      const response = await youtubeApi.createVideo(video);
-      const newVideo = response.video;
-
-      updateState(prev => ({
-        ...prev,
-        youtubeVideos: [...prev.youtubeVideos, newVideo],
-      }));
-
-      return newVideo;
-    } catch (error) {
-      console.error('Failed to create YouTube video:', error);
-      throw error;
-    }
-  }, [updateState]);
-
-  const updateYoutubeVideo = useCallback(async (id, updates) => {
-    try {
-      const response = await youtubeApi.updateVideo(id, updates);
-      const updatedVideo = response.video;
-
-      updateState(prev => ({
-        ...prev,
-        youtubeVideos: prev.youtubeVideos.map(v =>
-          v._id === id ? updatedVideo : v
-        ),
-      }));
-
-      return updatedVideo;
-    } catch (error) {
-      console.error('Failed to update YouTube video:', error);
-      throw error;
-    }
-  }, [updateState]);
-
-  const deleteYoutubeVideo = useCallback(async (id) => {
-    try {
-      await youtubeApi.deleteVideo(id);
-
-      updateState(prev => ({
-        ...prev,
-        youtubeVideos: prev.youtubeVideos.filter(v => v._id !== id),
-      }));
-    } catch (error) {
-      console.error('Failed to delete YouTube video:', error);
-      throw error;
-    }
-  }, [updateState]);
-
-  const reorderYoutubeVideos = useCallback(async (collectionId, videoIds) => {
-    try {
-      const response = await youtubeApi.reorderVideos(collectionId, videoIds);
-
-      updateState(prev => ({
-        ...prev,
-        youtubeVideos: response.videos,
-      }));
-
-      return response.videos;
-    } catch (error) {
-      console.error('Failed to reorder YouTube videos:', error);
-      throw error;
-    }
-  }, [updateState]);
-
-  // Rollout actions - now with API calls
-  const fetchRollouts = useCallback(async () => {
-    try {
-      updateState({ rolloutsLoading: true });
-      const response = await rolloutApi.getAll();
-      updateState({
-        rollouts: response.rollouts || [],
-        rolloutsLoading: false,
-        rolloutsError: null,
-      });
-      return response.rollouts;
-    } catch (error) {
-      updateState({
-        rolloutsLoading: false,
-        rolloutsError: error.message,
-      });
-      throw error;
-    }
-  }, [updateState]);
-
-  const addRollout = useCallback(async (rollout) => {
-    try {
-      const response = await rolloutApi.create(rollout);
-      const newRollout = response.rollout;
-
-      updateState(prev => ({
-        ...prev,
-        rollouts: [newRollout, ...prev.rollouts],
-        currentRolloutId: newRollout._id,
-      }));
-
-      return newRollout;
-    } catch (error) {
-      console.error('Failed to create rollout:', error);
-      throw error;
-    }
-  }, [updateState]);
-
-  const updateRollout = useCallback(async (id, updates) => {
-    try {
-      const response = await rolloutApi.update(id, updates);
-      const updatedRollout = response.rollout;
-
-      updateState(prev => ({
-        ...prev,
-        rollouts: prev.rollouts.map(r =>
-          r._id === id ? updatedRollout : r
-        ),
-      }));
-
-      return updatedRollout;
-    } catch (error) {
-      console.error('Failed to update rollout:', error);
-      throw error;
-    }
-  }, [updateState]);
-
-  const deleteRollout = useCallback(async (id) => {
-    try {
-      await rolloutApi.delete(id);
-
-      updateState(prev => ({
-        ...prev,
-        rollouts: prev.rollouts.filter(r => r._id !== id),
-        currentRolloutId: prev.currentRolloutId === id ? null : prev.currentRolloutId,
-      }));
-    } catch (error) {
-      console.error('Failed to delete rollout:', error);
-      throw error;
-    }
-  }, [updateState]);
-
-  const setCurrentRollout = useCallback((id) => {
-    updateState({ currentRolloutId: id });
-  }, [updateState]);
-
-  // Rollout section actions
-  const addRolloutSection = useCallback(async (rolloutId, section) => {
-    try {
-      const response = await rolloutApi.addSection(rolloutId, section);
-      const updatedRollout = response.rollout;
-
-      updateState(prev => ({
-        ...prev,
-        rollouts: prev.rollouts.map(r =>
-          r._id === rolloutId ? updatedRollout : r
-        ),
-      }));
-
-      return updatedRollout;
-    } catch (error) {
-      console.error('Failed to add section:', error);
-      throw error;
-    }
-  }, [updateState]);
-
-  const updateRolloutSection = useCallback(async (rolloutId, sectionId, updates) => {
-    try {
-      const response = await rolloutApi.updateSection(rolloutId, sectionId, updates);
-      const updatedRollout = response.rollout;
-
-      updateState(prev => ({
-        ...prev,
-        rollouts: prev.rollouts.map(r =>
-          r._id === rolloutId ? updatedRollout : r
-        ),
-      }));
-
-      return updatedRollout;
-    } catch (error) {
-      console.error('Failed to update section:', error);
-      throw error;
-    }
-  }, [updateState]);
-
-  const deleteRolloutSection = useCallback(async (rolloutId, sectionId) => {
-    try {
-      const response = await rolloutApi.deleteSection(rolloutId, sectionId);
-      const updatedRollout = response.rollout;
-
-      updateState(prev => ({
-        ...prev,
-        rollouts: prev.rollouts.map(r =>
-          r._id === rolloutId ? updatedRollout : r
-        ),
-      }));
-
-      return updatedRollout;
-    } catch (error) {
-      console.error('Failed to delete section:', error);
-      throw error;
-    }
-  }, [updateState]);
-
-  const reorderRolloutSections = useCallback(async (rolloutId, sourceIndex, targetIndex) => {
-    if (sourceIndex === targetIndex) return;
-
-    const rollout = state.rollouts.find(r => r._id === rolloutId);
-    if (!rollout) return;
-
-    const sections = [...rollout.sections];
-    const [moved] = sections.splice(sourceIndex, 1);
-    sections.splice(targetIndex, 0, moved);
-
-    const sectionIds = sections.map(s => s.id);
-
-    try {
-      const response = await rolloutApi.reorderSections(rolloutId, sectionIds);
-      const updatedRollout = response.rollout;
-
-      updateState(prev => ({
-        ...prev,
-        rollouts: prev.rollouts.map(r =>
-          r._id === rolloutId ? updatedRollout : r
-        ),
-      }));
-
-      return updatedRollout;
-    } catch (error) {
-      console.error('Failed to reorder sections:', error);
-      throw error;
-    }
-  }, [state.rollouts, updateState]);
-
-  // Collection in section actions
-  const addCollectionToSection = useCallback(async (rolloutId, sectionId, collectionId) => {
-    try {
-      const response = await rolloutApi.addCollectionToSection(rolloutId, sectionId, collectionId);
-      const updatedRollout = response.rollout;
-
-      updateState(prev => ({
-        ...prev,
-        rollouts: prev.rollouts.map(r =>
-          r._id === rolloutId ? updatedRollout : r
-        ),
-      }));
-
-      return updatedRollout;
-    } catch (error) {
-      console.error('Failed to add collection to section:', error);
-      throw error;
-    }
-  }, [updateState]);
-
-  const removeCollectionFromSection = useCallback(async (rolloutId, sectionId, collectionId) => {
-    try {
-      const response = await rolloutApi.removeCollectionFromSection(rolloutId, sectionId, collectionId);
-      const updatedRollout = response.rollout;
-
-      updateState(prev => ({
-        ...prev,
-        rollouts: prev.rollouts.map(r =>
-          r._id === rolloutId ? updatedRollout : r
-        ),
-      }));
-
-      return updatedRollout;
-    } catch (error) {
-      console.error('Failed to remove collection from section:', error);
-      throw error;
-    }
-  }, [updateState]);
-
-  // Derived state
-  const selectedPost = useMemo(() =>
-    state.posts.find(p => p.id === state.selectedId) || null,
-    [state.posts, state.selectedId]
-  );
-
-  const currentRollout = useMemo(() =>
-    state.rollouts.find(r => r._id === state.currentRolloutId) || null,
-    [state.rollouts, state.currentRolloutId]
-  );
-
-  const currentCollection = useMemo(() =>
-    state.youtubeCollections.find(c => c._id === state.currentCollectionId) || null,
-    [state.youtubeCollections, state.currentCollectionId]
-  );
-
-  return {
-    // State
-    ...state,
-    selectedPost,
-    currentRollout,
-    currentCollection,
-
-    // Initialization
-    initializeFromApi,
-
-    // Post Actions
-    addPost,
-    updatePost,
-    deletePost,
-    selectPost,
-    reorderPosts,
-    setDraggedContent,
-
-    // Schedule Actions
-    addScheduledContent,
-    removeScheduledContent,
-    updateScheduledContent,
-
-    // Theme Actions
-    setTheme,
-    toggleTheme,
-
-    // Workspace Actions
-    setCurrentWorkspace,
-
-    // YouTube Collection Actions
-    fetchYoutubeCollections,
-    addYoutubeCollection,
-    updateYoutubeCollection,
-    deleteYoutubeCollection,
-    setCurrentCollection,
-    updateYoutubeCollectionTags,
-    addTagToCollection,
-    removeTagFromCollection,
-
-    // YouTube Video Actions
-    fetchYoutubeVideos,
-    addYoutubeVideo,
-    updateYoutubeVideo,
-    deleteYoutubeVideo,
-    reorderYoutubeVideos,
-
-    // Rollout Actions
-    fetchRollouts,
-    addRollout,
-    updateRollout,
-    deleteRollout,
-    setCurrentRollout,
-
-    // Section Actions
-    addRolloutSection,
-    updateRolloutSection,
-    deleteRolloutSection,
-    reorderRolloutSections,
-
-    // Collection in Section Actions
-    addCollectionToSection,
-    removeCollectionFromSection,
-
-    updateState,
-  };
-}
-
-export default useAppStore;
+  }),
+
+  setActiveFilter: (filter) => set({ activeFilter: filter }),
+  setFilterIntensity: (intensity) => set({ filterIntensity: intensity }),
+
+  setRotation: (deg) => set({ rotation: deg % 360 }),
+  rotate90: () => set((state) => ({ rotation: (state.rotation + 90) % 360 })),
+  toggleFlipH: () => set((state) => ({ flipH: !state.flipH })),
+  toggleFlipV: () => set((state) => ({ flipV: !state.flipV })),
+  setScale: (scale) => set({ scale: Math.max(0.1, Math.min(10, scale)) }),
+
+  resetTransform: () => set({ rotation: 0, flipH: false, flipV: false, scale: 1 }),
+
+  // Layer management
+  addLayer: (layer) => set((state) => ({
+    layers: [...state.layers, { ...layer, id: layer.id || crypto.randomUUID() }]
+  })),
+  removeLayer: (id) => set((state) => ({
+    layers: state.layers.filter((l) => l.id !== id),
+    activeLayerId: state.activeLayerId === id ? null : state.activeLayerId
+  })),
+  updateLayer: (id, updates) => set((state) => ({
+    layers: state.layers.map((l) => l.id === id ? { ...l, ...updates } : l)
+  })),
+  setActiveLayer: (id) => set({ activeLayerId: id }),
+  reorderLayers: (fromIndex, toIndex) => set((state) => {
+    const newLayers = [...state.layers];
+    const [removed] = newLayers.splice(fromIndex, 1);
+    newLayers.splice(toIndex, 0, removed);
+    return { layers: newLayers };
+  }),
+
+  // Reset all
+  reset: () => set({
+    canvas: null,
+    activeObject: null,
+    zoom: 1,
+    pan: { x: 0, y: 0 },
+    activeTool: 'select',
+    cropMode: false,
+    cropRect: null,
+    adjustments: {
+      brightness: 0,
+      contrast: 0,
+      saturation: 0,
+      exposure: 0,
+      highlights: 0,
+      shadows: 0,
+      temperature: 0,
+      tint: 0,
+      vibrance: 0,
+      sharpness: 0,
+    },
+    activeFilter: null,
+    filterIntensity: 100,
+    rotation: 0,
+    flipH: false,
+    flipV: false,
+    scale: 1,
+    layers: [],
+    activeLayerId: null,
+  }),
+}));

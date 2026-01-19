@@ -33,6 +33,10 @@ const userSchema = new mongoose.Schema({
   avatar: {
     type: String
   },
+  bio: {
+    type: String,
+    maxlength: 500
+  },
   authProvider: {
     type: String,
     enum: ['local', 'google', 'instagram'],
