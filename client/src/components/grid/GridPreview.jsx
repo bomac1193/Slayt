@@ -1482,6 +1482,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
   const [highlightZoom, setHighlightZoom] = useState(1);
   const [isHighlightDragging, setIsHighlightDragging] = useState(false);
   const [highlightDragStart, setHighlightDragStart] = useState({ x: 0, y: 0 });
+  const [isHighlightUploading, setIsHighlightUploading] = useState(false);
   const highlightInputRef = useRef(null);
   const highlightPreviewRef = useRef(null);
 
@@ -1756,6 +1757,11 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
     setHighlightPosition({ x: 0, y: 0 });
     setHighlightZoom(1);
 
+    // Show immediate preview with blob URL
+    const previewUrl = URL.createObjectURL(file);
+    setHighlightCover(previewUrl);
+    setIsHighlightUploading(true);
+
     // Helper to upload blob/file to Cloudinary
     const uploadToCloudinary = async (blob) => {
       const formData = new FormData();
@@ -1774,7 +1780,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
     if (file.type.startsWith('video/')) {
       // Generate thumbnail from video then upload
       const video = document.createElement('video');
-      video.src = URL.createObjectURL(file);
+      video.src = previewUrl;
       video.onloadedmetadata = () => {
         video.currentTime = 1;
       };
@@ -1783,24 +1789,31 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         canvas.getContext('2d').drawImage(video, 0, 0);
-        URL.revokeObjectURL(video.src);
+
+        // Show video frame preview immediately
+        const frameDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        setHighlightCover(frameDataUrl);
 
         // Convert canvas to blob and upload
         canvas.toBlob(async (blob) => {
           if (blob) {
             const coverUrl = await uploadToCloudinary(blob);
+            setIsHighlightUploading(false);
             if (coverUrl) {
               setHighlightCover(coverUrl);
             }
+            URL.revokeObjectURL(previewUrl);
           }
         }, 'image/jpeg', 0.8);
       };
     } else if (file.type.startsWith('image/')) {
-      // Upload image directly
+      // Upload image to Cloudinary
       const coverUrl = await uploadToCloudinary(file);
+      setIsHighlightUploading(false);
       if (coverUrl) {
         setHighlightCover(coverUrl);
       }
+      URL.revokeObjectURL(previewUrl);
     }
   };
 
@@ -1832,9 +1845,17 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
   };
 
   const handleSaveHighlight = () => {
+    // Don't save if still uploading
+    if (isHighlightUploading) return;
+
+    // Only save proper URLs (not data URLs or blob URLs to avoid localStorage quota issues)
+    const coverToSave = highlightCover && !highlightCover.startsWith('data:') && !highlightCover.startsWith('blob:')
+      ? highlightCover
+      : null;
+
     const updatedHighlights = highlights.map(h =>
       h.id === editingHighlight.id
-        ? { ...h, name: highlightName, cover: highlightCover, coverPosition: highlightPosition, coverZoom: highlightZoom }
+        ? { ...h, name: highlightName, cover: coverToSave, coverPosition: highlightPosition, coverZoom: highlightZoom }
         : h
     );
     setHighlights(updatedHighlights);
@@ -2841,12 +2862,21 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
                 accept="image/*,video/*"
                 onChange={handleHighlightCoverUpload}
                 className="hidden"
+                disabled={isHighlightUploading}
               />
               <button
                 onClick={() => highlightInputRef.current?.click()}
-                className="w-full py-2 bg-dark-700 hover:bg-dark-600 text-dark-200 text-sm rounded-lg transition-colors"
+                disabled={isHighlightUploading}
+                className="w-full py-2 bg-dark-700 hover:bg-dark-600 text-dark-200 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {highlightCover ? 'Change Cover' : 'Upload Cover (Image or Video)'}
+                {isHighlightUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  highlightCover ? 'Change Cover' : 'Upload Cover (Image or Video)'
+                )}
               </button>
             </div>
 
@@ -2870,7 +2900,8 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
             <div className="flex gap-2">
               <button
                 onClick={handleDeleteHighlight}
-                className="px-4 py-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors text-sm"
+                disabled={isHighlightUploading}
+                className="px-4 py-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors text-sm disabled:opacity-50"
               >
                 Delete
               </button>
@@ -2883,9 +2914,17 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
               </button>
               <button
                 onClick={handleSaveHighlight}
-                className="px-4 py-2 bg-accent-purple hover:bg-accent-purple/80 text-white rounded-lg transition-colors text-sm"
+                disabled={isHighlightUploading}
+                className="px-4 py-2 bg-accent-purple hover:bg-accent-purple/80 text-white rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                Save
+                {isHighlightUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  'Save'
+                )}
               </button>
             </div>
           </div>
