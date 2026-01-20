@@ -147,7 +147,7 @@ function GridPlanner() {
   const [showPreview, setShowPreview] = useState(true);
   const [activeId, setActiveId] = useState(null);
   const [gridZoom, setGridZoom] = useState(100); // Zoom percentage (50-150)
-  const [showRowHandles, setShowRowHandles] = useState(true); // Toggle for row drag handles in preview
+  const [showRowHandles, setShowRowHandles] = useState(false); // Toggle for row drag handles in preview (default off for post preview mode)
   const [selectedPlatform, setSelectedPlatform] = useState('instagram'); // 'instagram' | 'tiktok'
   const [showPlatformSelector, setShowPlatformSelector] = useState(false);
 

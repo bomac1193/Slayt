@@ -65,7 +65,7 @@ docker run -d -p 27017:27017 --name mongodb mongo:latest
 4. Get your connection string
 5. Update `.env`:
 ```env
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/postpanda
+MONGODB_URI=mongodb+srv://<YOUR_USERNAME>:<YOUR_PASSWORD>@<YOUR_CLUSTER>.mongodb.net/postpanda
 ```
 
 ## Step 4: Start the Server

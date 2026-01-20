@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { User, Upload, ZoomIn, ZoomOut, X, Check, Camera, RotateCcw, Save, GripVertical, Replace, Layers, Trash2, Eye, EyeOff, Play, ChevronDown, FolderPlus, Pencil, LayoutGrid, Loader2, CalendarPlus, ChevronRight } from 'lucide-react';
+import { User, Upload, ZoomIn, ZoomOut, X, Check, Camera, RotateCcw, Save, GripVertical, Replace, Layers, Trash2, Eye, EyeOff, Play, ChevronDown, FolderPlus, Pencil, LayoutGrid, Loader2, CalendarPlus, ChevronRight, Heart, MessageCircle, Bookmark, Send, Share2, MoreHorizontal, Plus } from 'lucide-react';
 import { setInternalDragActive } from '../../utils/dragState';
 import { generateVideoThumbnail, formatDuration } from '../../utils/videoUtils';
 import { contentApi, gridApi, reelCollectionApi, rolloutApi } from '../../lib/api';
@@ -616,6 +616,322 @@ function RolloutPickerModal({ collectionId, collectionName, platform, rollouts, 
   );
 }
 
+// Post Preview Modal - for viewing/editing posts in locked mode
+function PostPreviewModal({ post, onClose, onSave }) {
+  const user = useAppStore((state) => state.user);
+  const [activeTab, setActiveTab] = useState('edit'); // 'edit' | 'instagram' | 'tiktok'
+  const [caption, setCaption] = useState(post?.caption || '');
+  const [hashtags, setHashtags] = useState(post?.hashtags?.join(' ') || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const images = post?.images || (post?.image ? [post.image] : []);
+  const mainImage = images[0];
+  const isCarousel = images.length > 1;
+
+  // Get usernames from connected social accounts
+  const instagramUsername = user?.socialAccounts?.instagram?.username || user?.name || 'username';
+  const tiktokUsername = user?.socialAccounts?.tiktok?.username || user?.name || 'username';
+  const userAvatar = user?.avatar;
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const hashtagArray = hashtags
+        .split(/[\s,]+/)
+        .filter(h => h.startsWith('#') || h.length > 0)
+        .map(h => h.startsWith('#') ? h : `#${h}`)
+        .filter(h => h.length > 1);
+
+      await onSave({
+        caption,
+        hashtags: hashtagArray,
+      });
+      onClose();
+    } catch (err) {
+      console.error('Failed to save post:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Simulated engagement numbers (for preview purposes)
+  const likes = Math.floor(Math.random() * 5000) + 500;
+  const comments = Math.floor(Math.random() * 200) + 20;
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div
+        className="bg-dark-800 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-dark-700 flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header with tabs */}
+        <div className="px-4 py-3 border-b border-dark-700 flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setActiveTab('edit')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'edit'
+                  ? 'bg-accent-purple text-white'
+                  : 'text-dark-300 hover:text-white hover:bg-dark-700'
+              }`}
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => setActiveTab('instagram')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'instagram'
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                  : 'text-dark-300 hover:text-white hover:bg-dark-700'
+              }`}
+            >
+              Instagram Post
+            </button>
+            <button
+              onClick={() => setActiveTab('tiktok')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'tiktok'
+                  ? 'bg-black text-white border border-dark-500'
+                  : 'text-dark-300 hover:text-white hover:bg-dark-700'
+              }`}
+            >
+              TikTok Feed
+            </button>
+          </div>
+          <button onClick={onClose} className="p-2 text-dark-400 hover:text-white hover:bg-dark-700 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto">
+          {activeTab === 'edit' && (
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Image Preview */}
+              <div className="space-y-4">
+                <div className="aspect-square bg-dark-900 rounded-lg overflow-hidden">
+                  {mainImage ? (
+                    <img
+                      src={mainImage}
+                      alt="Post preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-dark-500">
+                      No image
+                    </div>
+                  )}
+                </div>
+                {isCarousel && (
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {images.map((img, idx) => (
+                      <div
+                        key={idx}
+                        className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border-2 border-dark-600"
+                      >
+                        <img src={img} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Edit Form */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-dark-300 mb-2">
+                    Caption
+                  </label>
+                  <textarea
+                    value={caption}
+                    onChange={(e) => setCaption(e.target.value)}
+                    placeholder="Write a caption..."
+                    rows={6}
+                    maxLength={2200}
+                    className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white placeholder-dark-500 focus:border-accent-purple focus:ring-1 focus:ring-accent-purple outline-none resize-none"
+                  />
+                  <p className="text-xs text-dark-500 mt-1 text-right">{caption.length}/2200</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-dark-300 mb-2">
+                    Hashtags
+                  </label>
+                  <textarea
+                    value={hashtags}
+                    onChange={(e) => setHashtags(e.target.value)}
+                    placeholder="#photography #nature #travel"
+                    rows={3}
+                    className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white placeholder-dark-500 focus:border-accent-purple focus:ring-1 focus:ring-accent-purple outline-none resize-none"
+                  />
+                  <p className="text-xs text-dark-500 mt-1">
+                    {hashtags.split(/[\s,]+/).filter(h => h.length > 0).length} hashtags
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'instagram' && (
+            <div className="p-6 flex justify-center">
+              {/* Instagram Post Preview */}
+              <div className="w-full max-w-[470px] bg-black rounded-lg overflow-hidden border border-dark-700">
+                {/* Header */}
+                <div className="flex items-center gap-3 p-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-500 p-0.5">
+                    <div className="w-full h-full rounded-full bg-dark-800 flex items-center justify-center overflow-hidden">
+                      {userAvatar ? (
+                        <img src={userAvatar} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-4 h-4 text-dark-400" />
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold text-white">{instagramUsername}</span>
+                  <div className="ml-auto">
+                    <MoreHorizontal className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+
+                {/* Image */}
+                <div className="aspect-square bg-dark-900">
+                  {mainImage ? (
+                    <img src={mainImage} alt="Post" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-dark-500">
+                      No image
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="p-3">
+                  <div className="flex items-center gap-4 mb-2">
+                    <Heart className="w-6 h-6 text-white cursor-pointer hover:text-dark-300" />
+                    <MessageCircle className="w-6 h-6 text-white cursor-pointer hover:text-dark-300" />
+                    <Send className="w-6 h-6 text-white cursor-pointer hover:text-dark-300" />
+                    <div className="ml-auto">
+                      <Bookmark className="w-6 h-6 text-white cursor-pointer hover:text-dark-300" />
+                    </div>
+                  </div>
+                  <p className="text-sm font-semibold text-white mb-1">{likes.toLocaleString()} likes</p>
+                  <p className="text-sm text-white">
+                    <span className="font-semibold">{instagramUsername}</span>{' '}
+                    {caption || <span className="text-dark-500 italic">No caption</span>}
+                  </p>
+                  {hashtags && (
+                    <p className="text-sm text-blue-400 mt-1">
+                      {hashtags.split(/[\s,]+/).filter(h => h.length > 0).slice(0, 5).join(' ')}
+                      {hashtags.split(/[\s,]+/).filter(h => h.length > 0).length > 5 && '...'}
+                    </p>
+                  )}
+                  <p className="text-xs text-dark-500 mt-2">View all {comments} comments</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'tiktok' && (
+            <div className="p-6 flex justify-center">
+              {/* TikTok Feed Preview */}
+              <div className="w-full max-w-[320px] bg-black rounded-2xl overflow-hidden border border-dark-700 relative" style={{ aspectRatio: '9/16' }}>
+                {/* Background Image */}
+                <div className="absolute inset-0">
+                  {mainImage ? (
+                    <img src={mainImage} alt="Post" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-dark-900 flex items-center justify-center text-dark-500">
+                      No image
+                    </div>
+                  )}
+                  {/* Gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                </div>
+
+                {/* Right side actions */}
+                <div className="absolute right-3 bottom-24 flex flex-col items-center gap-5">
+                  <div className="flex flex-col items-center">
+                    <div className="w-10 h-10 rounded-full bg-dark-800 border-2 border-white flex items-center justify-center overflow-hidden">
+                      {userAvatar ? (
+                        <img src={userAvatar} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-5 h-5 text-white" />
+                      )}
+                    </div>
+                    <div className="w-5 h-5 -mt-2 rounded-full bg-red-500 flex items-center justify-center">
+                      <Plus className="w-3 h-3 text-white" />
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <Heart className="w-8 h-8 text-white" />
+                    <span className="text-xs text-white mt-1">{(likes / 1000).toFixed(1)}K</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <MessageCircle className="w-8 h-8 text-white" />
+                    <span className="text-xs text-white mt-1">{comments}</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <Bookmark className="w-8 h-8 text-white" />
+                    <span className="text-xs text-white mt-1">Save</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <Share2 className="w-8 h-8 text-white" />
+                    <span className="text-xs text-white mt-1">Share</span>
+                  </div>
+                </div>
+
+                {/* Bottom content */}
+                <div className="absolute left-3 right-16 bottom-4">
+                  <p className="text-sm font-semibold text-white mb-1">{tiktokUsername}</p>
+                  <p className="text-sm text-white line-clamp-2">
+                    {caption || <span className="text-dark-400 italic">No caption</span>}
+                  </p>
+                  {hashtags && (
+                    <p className="text-sm text-white mt-1 line-clamp-1">
+                      {hashtags.split(/[\s,]+/).filter(h => h.length > 0).slice(0, 3).join(' ')}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className="w-4 h-4 rounded bg-dark-700 animate-spin" style={{ animationDuration: '3s' }} />
+                    <span className="text-xs text-white">Original Sound - {tiktokUsername}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-4 py-3 border-t border-dark-700 flex items-center justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-dark-300 hover:text-white hover:bg-dark-700 rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-4 py-2 text-sm bg-accent-purple text-white rounded-lg hover:bg-accent-purple/80 transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Check className="w-4 h-4" />
+                Save Changes
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridId }) {
   const cols = layout?.cols || 3;
   const user = useAppStore((state) => state.user);
@@ -690,6 +1006,10 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+
+  // Post preview modal state (for locked mode)
+  const [showPostPreview, setShowPostPreview] = useState(false);
+  const [previewPost, setPreviewPost] = useState(null);
 
   // Tab state for Posts/Reels/Tagged
   const [activeTab, setActiveTab] = useState('posts');
@@ -885,10 +1205,20 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
     })
   );
 
-  // Handle item selection
+  // Handle item selection - in locked mode, open preview modal instead
   const handleSelectItem = useCallback((postId) => {
-    setSelectedItemId(prevId => prevId === postId ? null : postId);
-  }, []);
+    if (!showRowHandles) {
+      // Locked mode - open post preview modal
+      const post = posts.find(p => (p.id || p._id) === postId);
+      if (post) {
+        setPreviewPost(post);
+        setShowPostPreview(true);
+      }
+    } else {
+      // Normal mode - toggle selection
+      setSelectedItemId(prevId => prevId === postId ? null : postId);
+    }
+  }, [showRowHandles, posts]);
 
   // Handle delete request (from trash icon or keyboard)
   const handleDeleteRequest = useCallback((postId) => {
@@ -922,6 +1252,29 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
     setShowDeleteConfirm(false);
     setItemToDelete(null);
   }, []);
+
+  // Save post preview changes (caption, hashtags)
+  const handleSavePostPreview = useCallback(async (updates) => {
+    if (!previewPost) return;
+
+    const postId = previewPost.id || previewPost._id;
+
+    try {
+      // Update via API
+      await contentApi.update(postId, updates);
+
+      // Update local state
+      const updatedPosts = posts.map(p =>
+        (p.id || p._id) === postId
+          ? { ...p, ...updates }
+          : p
+      );
+      setGridPosts(updatedPosts);
+    } catch (err) {
+      console.error('Failed to save post:', err);
+      throw err;
+    }
+  }, [previewPost, posts, setGridPosts]);
 
   // Keyboard listener for Delete/Backspace and Enter to confirm delete
   useEffect(() => {
@@ -3360,6 +3713,18 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
             setShowRolloutPicker(false);
             setRolloutPickerCollectionId(null);
           }}
+        />
+      )}
+
+      {/* Post Preview Modal (for locked mode) */}
+      {showPostPreview && previewPost && (
+        <PostPreviewModal
+          post={previewPost}
+          onClose={() => {
+            setShowPostPreview(false);
+            setPreviewPost(null);
+          }}
+          onSave={handleSavePostPreview}
         />
       )}
     </div>
