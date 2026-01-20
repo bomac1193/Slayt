@@ -41,6 +41,22 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 1
   },
+  // Instagram highlights - stored in cloud for backup
+  instagramHighlights: [{
+    highlightId: { type: String, required: true },
+    name: { type: String, default: 'New' },
+    cover: { type: String, default: null }, // Cloudinary URL
+    coverPosition: {
+      x: { type: Number, default: 0 },
+      y: { type: Number, default: 0 }
+    },
+    coverZoom: { type: Number, default: 1 },
+    stories: [{ type: String }]
+  }],
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
   bio: {
     type: String,
     maxlength: 500

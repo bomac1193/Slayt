@@ -242,6 +242,64 @@ exports.uploadHighlightCover = async (req, res) => {
   }
 };
 
+// Get user's Instagram highlights from cloud
+exports.getHighlights = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      highlights: user.instagramHighlights || [],
+      isVerified: user.isVerified || false
+    });
+  } catch (error) {
+    console.error('Get highlights error:', error);
+    res.status(500).json({ error: 'Failed to get highlights' });
+  }
+};
+
+// Save user's Instagram highlights to cloud
+exports.saveHighlights = async (req, res) => {
+  try {
+    const { highlights, isVerified } = req.body;
+
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update highlights
+    if (highlights !== undefined) {
+      user.instagramHighlights = highlights.map(h => ({
+        highlightId: h.id || h.highlightId,
+        name: h.name || 'New',
+        cover: h.cover || null,
+        coverPosition: h.coverPosition || { x: 0, y: 0 },
+        coverZoom: h.coverZoom || 1,
+        stories: h.stories || []
+      }));
+    }
+
+    // Update verified status
+    if (isVerified !== undefined) {
+      user.isVerified = isVerified;
+    }
+
+    await user.save();
+
+    res.json({
+      message: 'Highlights saved successfully',
+      highlights: user.instagramHighlights,
+      isVerified: user.isVerified
+    });
+  } catch (error) {
+    console.error('Save highlights error:', error);
+    res.status(500).json({ error: 'Failed to save highlights' });
+  }
+};
+
 // Instagram OAuth - Initiate Login (for signing in)
 exports.instagramAuthLogin = (req, res, next) => {
   if (!process.env.INSTAGRAM_CLIENT_ID || !process.env.INSTAGRAM_CLIENT_SECRET) {

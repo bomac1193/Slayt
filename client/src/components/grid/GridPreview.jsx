@@ -1451,29 +1451,13 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
   const [editPronouns, setEditPronouns] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Highlights state
-  const [highlights, setHighlights] = useState(() => {
-    try {
-      const saved = localStorage.getItem('instagram-highlights');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Filter out data URLs to prevent quota issues on next save
-        return parsed.map(h => ({
-          ...h,
-          cover: h.cover && !h.cover.startsWith('data:') ? h.cover : null
-        }));
-      }
-    } catch (err) {
-      console.error('Failed to load highlights from localStorage:', err);
-      // Clear corrupted data
-      localStorage.removeItem('instagram-highlights');
-    }
-    return [
-      { id: '1', name: 'Highlights', cover: null, coverPosition: { x: 0, y: 0 }, coverZoom: 1, stories: [] },
-      { id: '2', name: 'DJ Sets', cover: null, coverPosition: { x: 0, y: 0 }, coverZoom: 1, stories: [] },
-      { id: '3', name: 'Studio', cover: null, coverPosition: { x: 0, y: 0 }, coverZoom: 1, stories: [] },
-    ];
-  });
+  // Highlights state - loaded from cloud
+  const [highlights, setHighlights] = useState([
+    { id: '1', name: 'Highlights', cover: null, coverPosition: { x: 0, y: 0 }, coverZoom: 1, stories: [] },
+    { id: '2', name: 'DJ Sets', cover: null, coverPosition: { x: 0, y: 0 }, coverZoom: 1, stories: [] },
+    { id: '3', name: 'Studio', cover: null, coverPosition: { x: 0, y: 0 }, coverZoom: 1, stories: [] },
+  ]);
+  const [highlightsLoaded, setHighlightsLoaded] = useState(false);
   const [showHighlightModal, setShowHighlightModal] = useState(false);
   const [editingHighlight, setEditingHighlight] = useState(null);
   const [highlightName, setHighlightName] = useState('');
@@ -1491,15 +1475,39 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
   const [highlightDragOverId, setHighlightDragOverId] = useState(null);
 
   // Verified badge state
-  const [isVerified, setIsVerified] = useState(() => {
-    const saved = localStorage.getItem('instagram-verified');
-    return saved === 'true';
-  });
+  const [isVerified, setIsVerified] = useState(false);
 
-  // Save verified state
+  // Load highlights and verified status from cloud on mount
   useEffect(() => {
-    localStorage.setItem('instagram-verified', isVerified.toString());
-  }, [isVerified]);
+    const loadHighlightsFromCloud = async () => {
+      try {
+        const response = await api.get('/api/auth/highlights');
+        if (response.data.highlights && response.data.highlights.length > 0) {
+          // Map from database format to component format
+          const cloudHighlights = response.data.highlights.map(h => ({
+            id: h.highlightId,
+            name: h.name,
+            cover: h.cover,
+            coverPosition: h.coverPosition || { x: 0, y: 0 },
+            coverZoom: h.coverZoom || 1,
+            stories: h.stories || []
+          }));
+          setHighlights(cloudHighlights);
+        }
+        if (response.data.isVerified !== undefined) {
+          setIsVerified(response.data.isVerified);
+        }
+        setHighlightsLoaded(true);
+        // Clear old localStorage data after successful cloud load
+        localStorage.removeItem('instagram-highlights');
+        localStorage.removeItem('instagram-verified');
+      } catch (err) {
+        console.error('Failed to load highlights from cloud:', err);
+        setHighlightsLoaded(true);
+      }
+    };
+    loadHighlightsFromCloud();
+  }, []);
 
   const fileInputRef = useRef(null);
 
@@ -1700,31 +1708,45 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
     setEditPronouns('');
   };
 
-  // Save highlights to localStorage (only URLs, not data URLs)
+  // Save highlights to cloud (debounced to avoid too many API calls)
+  const saveHighlightsTimeoutRef = useRef(null);
   useEffect(() => {
-    try {
-      // Filter out any data URLs to prevent quota issues - only save Cloudinary URLs
-      const highlightsToSave = highlights.map(h => ({
-        ...h,
-        cover: h.cover && !h.cover.startsWith('data:') ? h.cover : null
-      }));
-      localStorage.setItem('instagram-highlights', JSON.stringify(highlightsToSave));
-    } catch (err) {
-      console.error('Failed to save highlights to localStorage:', err);
-      // If quota exceeded, try to clear and save without covers
-      if (err.name === 'QuotaExceededError') {
-        try {
-          const minimalHighlights = highlights.map(h => ({
-            ...h,
-            cover: null // Remove all covers to save space
-          }));
-          localStorage.setItem('instagram-highlights', JSON.stringify(minimalHighlights));
-        } catch (e) {
-          console.error('Could not save highlights even without covers:', e);
-        }
-      }
+    // Don't save until initial load is complete
+    if (!highlightsLoaded) return;
+
+    // Debounce the save to avoid too many API calls
+    if (saveHighlightsTimeoutRef.current) {
+      clearTimeout(saveHighlightsTimeoutRef.current);
     }
-  }, [highlights]);
+
+    saveHighlightsTimeoutRef.current = setTimeout(async () => {
+      try {
+        // Filter out any data URLs or blob URLs - only save Cloudinary URLs
+        const highlightsToSave = highlights.map(h => ({
+          id: h.id,
+          name: h.name,
+          cover: h.cover && !h.cover.startsWith('data:') && !h.cover.startsWith('blob:') ? h.cover : null,
+          coverPosition: h.coverPosition || { x: 0, y: 0 },
+          coverZoom: h.coverZoom || 1,
+          stories: h.stories || []
+        }));
+
+        await api.put('/api/auth/highlights', {
+          highlights: highlightsToSave,
+          isVerified
+        });
+        console.log('[Highlights] Saved to cloud successfully');
+      } catch (err) {
+        console.error('Failed to save highlights to cloud:', err);
+      }
+    }, 1000); // Wait 1 second before saving
+
+    return () => {
+      if (saveHighlightsTimeoutRef.current) {
+        clearTimeout(saveHighlightsTimeoutRef.current);
+      }
+    };
+  }, [highlights, isVerified, highlightsLoaded]);
 
   // Highlight handlers
   const handleHighlightClick = (highlight) => {

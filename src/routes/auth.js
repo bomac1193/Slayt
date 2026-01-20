@@ -13,6 +13,10 @@ router.put('/profile', authenticate, authController.updateProfile);
 router.put('/avatar', authenticate, upload.single('avatar'), authController.uploadAvatar);
 router.post('/highlight-cover', authenticate, upload.single('cover'), authController.uploadHighlightCover);
 
+// Instagram highlights (cloud backup)
+router.get('/highlights', authenticate, authController.getHighlights);
+router.put('/highlights', authenticate, authController.saveHighlights);
+
 // Google OAuth
 router.get('/google', authController.googleAuth);
 router.get('/google/callback', authController.googleCallback);
