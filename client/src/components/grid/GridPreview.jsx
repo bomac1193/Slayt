@@ -879,27 +879,43 @@ function PostPreviewModal({ post, onClose, onSave }) {
                 {/* Draggable thumbnail strip for carousel */}
                 {isCarousel && (
                   <div className="space-y-2">
-                    <p className="text-xs text-dark-400">Drag to reorder carousel images</p>
+                    <p className="text-xs text-dark-400 flex items-center gap-1">
+                      <GripVertical className="w-3 h-3" />
+                      Drag to reorder carousel images
+                    </p>
                     <div className="flex gap-2 overflow-x-auto pb-2">
                       {carouselImages.map((img, idx) => (
                         <div
                           key={idx}
-                          draggable
+                          draggable="true"
                           onDragStart={(e) => handleDragStart(e, idx)}
                           onDragOver={(e) => handleDragOver(e, idx)}
                           onDragLeave={handleDragLeave}
                           onDrop={(e) => handleDrop(e, idx)}
                           onDragEnd={handleDragEnd}
                           onClick={() => goToIndex(idx)}
-                          className={`w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border-2 cursor-grab active:cursor-grabbing transition-all ${
+                          className={`w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border-2 cursor-grab active:cursor-grabbing transition-all relative select-none ${
                             idx === currentIndex
                               ? 'border-accent-purple ring-2 ring-accent-purple/50'
                               : dragOverIndex === idx
-                              ? 'border-accent-blue scale-110'
+                              ? 'border-accent-blue scale-110 bg-accent-blue/20'
                               : 'border-dark-600 hover:border-dark-400'
                           } ${draggedIndex === idx ? 'opacity-50 scale-95' : ''}`}
                         >
-                          <img src={img} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
+                          <img
+                            src={img}
+                            alt={`Slide ${idx + 1}`}
+                            className="w-full h-full object-cover pointer-events-none select-none"
+                            draggable="false"
+                          />
+                          {/* Drag indicator overlay */}
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/30 transition-colors">
+                            <GripVertical className="w-4 h-4 text-white opacity-0 hover:opacity-100 drop-shadow-lg" />
+                          </div>
+                          {/* Position number */}
+                          <div className="absolute top-1 left-1 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center text-xs text-white font-medium">
+                            {idx + 1}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -2024,7 +2040,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
   };
 
   // Handle replace action
-  const handleReplace = () => {
+  const handleReplace = async () => {
     if (!dropSource || !dropTarget) return;
 
     const sourceId = dropSource.id || dropSource._id;
@@ -2047,13 +2063,27 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
     }).filter(p => (p.id || p._id) !== sourceId); // Remove source post
 
     setGridPosts(newPosts);
+
+    // Persist to backend
+    if (gridId) {
+      try {
+        // Reorder grid to remove the source
+        await gridApi.reorder(gridId, newPosts.map((p, i) => ({
+          contentId: p.id || p._id,
+          position: i,
+        })));
+      } catch (err) {
+        console.error('Failed to save replace to backend:', err);
+      }
+    }
+
     setShowDropModal(false);
     setDropSource(null);
     setDropTarget(null);
   };
 
   // Handle carousel action
-  const handleCreateCarousel = () => {
+  const handleCreateCarousel = async () => {
     if (!dropSource || !dropTarget) return;
 
     const sourceId = dropSource.id || dropSource._id;
@@ -2078,6 +2108,28 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
     }).filter(p => (p.id || p._id) !== sourceId); // Remove source post
 
     setGridPosts(newPosts);
+
+    // Persist to backend
+    try {
+      // Save carousel images to the target content
+      if (targetId && targetId !== 'file-drop') {
+        await contentApi.update(targetId, {
+          carouselImages: combinedImages,
+          mediaUrl: combinedImages[0],
+        });
+      }
+
+      // Reorder grid to remove the source
+      if (gridId && sourceId !== 'file-drop') {
+        await gridApi.reorder(gridId, newPosts.map((p, i) => ({
+          contentId: p.id || p._id,
+          position: i,
+        })));
+      }
+    } catch (err) {
+      console.error('Failed to save carousel to backend:', err);
+    }
+
     setShowDropModal(false);
     setDropSource(null);
     setDropTarget(null);
@@ -2121,7 +2173,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
   };
 
   // Modified replace handler to handle file drops
-  const handleReplaceWithCheck = () => {
+  const handleReplaceWithCheck = async () => {
     if (!dropSource || !dropTarget) return;
 
     const targetId = dropTarget.id || dropTarget._id;
@@ -2141,6 +2193,19 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
         return p;
       });
       setGridPosts(newPosts);
+
+      // Save to backend - for file drops, we save the data URLs as carousel images
+      // Note: These are temporary until the user properly uploads them
+      try {
+        if (targetId) {
+          await contentApi.update(targetId, {
+            carouselImages: dropSource.images,
+            mediaUrl: dropSource.images[0],
+          });
+        }
+      } catch (err) {
+        console.error('Failed to save file drop to backend:', err);
+      }
     } else {
       // Original behavior for internal drags
       handleReplace();
@@ -2154,7 +2219,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
   };
 
   // Modified carousel handler to handle file drops
-  const handleCreateCarouselWithCheck = () => {
+  const handleCreateCarouselWithCheck = async () => {
     if (!dropSource || !dropTarget) return;
 
     const targetId = dropTarget.id || dropTarget._id;
@@ -2179,6 +2244,18 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
         return p;
       });
       setGridPosts(newPosts);
+
+      // Save carousel images to the backend
+      try {
+        if (targetId) {
+          await contentApi.update(targetId, {
+            carouselImages: combinedImages,
+            mediaUrl: combinedImages[0],
+          });
+        }
+      } catch (err) {
+        console.error('Failed to save file drop carousel to backend:', err);
+      }
     } else {
       // Original behavior for internal drags
       handleCreateCarousel();
