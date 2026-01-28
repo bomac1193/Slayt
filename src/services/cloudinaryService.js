@@ -34,7 +34,7 @@ const uploadBuffer = async (buffer, options = {}) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
-        folder: options.folder || 'postpanda',
+        folder: options.folder || 'slayt',
         resource_type: options.resourceType || 'auto',
         public_id: options.publicId,
         transformation: options.transformation,
@@ -65,7 +65,7 @@ const uploadFile = async (filePath, options = {}) => {
   }
 
   return cloudinary.uploader.upload(filePath, {
-    folder: options.folder || 'postpanda',
+    folder: options.folder || 'slayt',
     resource_type: options.resourceType || 'auto',
     public_id: options.publicId,
     transformation: options.transformation,
@@ -83,7 +83,7 @@ const uploadVideo = async (filePath, options = {}) => {
   return uploadFile(filePath, {
     ...options,
     resource_type: 'video',
-    folder: options.folder || 'postpanda/videos',
+    folder: options.folder || 'slayt/videos',
   });
 };
 
@@ -97,7 +97,7 @@ const uploadImage = async (filePath, options = {}) => {
   return uploadFile(filePath, {
     ...options,
     resource_type: 'image',
-    folder: options.folder || 'postpanda/images',
+    folder: options.folder || 'slayt/images',
   });
 };
 
@@ -111,7 +111,7 @@ const uploadThumbnail = async (filePath, options = {}) => {
   return uploadFile(filePath, {
     ...options,
     resource_type: 'image',
-    folder: options.folder || 'postpanda/thumbnails',
+    folder: options.folder || 'slayt/thumbnails',
     transformation: [
       { width: 400, height: 400, crop: 'fill' },
     ],

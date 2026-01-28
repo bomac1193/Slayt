@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAppStore } from '../stores/useAppStore';
+import { youtubeApi } from '../lib/api';
 import YouTubeGridView from '../components/youtube/YouTubeGridView';
 import YouTubeSidebarView from '../components/youtube/YouTubeSidebarView';
 import YouTubeVideoDetails from '../components/youtube/YouTubeVideoDetails';
@@ -25,6 +26,8 @@ import {
   Palette,
   Link2,
   Unlink,
+  RefreshCw,
+  AlertCircle,
 } from 'lucide-react';
 
 // Preset colors for collections
@@ -52,6 +55,7 @@ function YouTubePlanner() {
   // Collections
   const youtubeCollections = useAppStore((state) => state.youtubeCollections);
   const currentYoutubeCollectionId = useAppStore((state) => state.currentYoutubeCollectionId);
+  const setYoutubeCollections = useAppStore((state) => state.setYoutubeCollections);
   const addYoutubeCollection = useAppStore((state) => state.addYoutubeCollection);
   const renameYoutubeCollection = useAppStore((state) => state.renameYoutubeCollection);
   const duplicateYoutubeCollection = useAppStore((state) => state.duplicateYoutubeCollection);
@@ -72,6 +76,11 @@ function YouTubePlanner() {
   const [editingThumbnail, setEditingThumbnail] = useState(null);
   const [editingVideoId, setEditingVideoId] = useState(null);
 
+  // Loading and error states for cloud sync
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+
   // Collections dropdown state
   const [showCollectionsDropdown, setShowCollectionsDropdown] = useState(false);
   const [editingCollectionId, setEditingCollectionId] = useState(null);
@@ -85,10 +94,82 @@ function YouTubePlanner() {
 
   const dragCounterRef = useRef(0);
 
-  // Get current collection
-  const currentCollection = youtubeCollections?.find(c => c.id === currentYoutubeCollectionId)
+  // Get current collection - use _id for backend collections
+  const currentCollection = youtubeCollections?.find(c => (c._id || c.id) === currentYoutubeCollectionId)
     || youtubeCollections?.[0]
     || { id: 'default', name: 'My Videos' };
+
+  // Fetch collections from backend
+  const fetchCollections = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await youtubeApi.getCollections();
+      const collections = data.collections || [];
+
+      // Transform backend data to local format
+      const transformedCollections = collections.map(c => ({
+        ...c,
+        id: c._id, // Use _id as id for consistency
+        videoCount: c.videoCount || 0,
+      }));
+
+      // Update Zustand store
+      setYoutubeCollections(transformedCollections);
+
+      // If we have collections and none is selected, select the first one
+      if (transformedCollections.length > 0) {
+        const currentId = currentYoutubeCollectionId;
+        const exists = transformedCollections.some(c => c._id === currentId || c.id === currentId);
+        if (!exists) {
+          const firstCollection = transformedCollections[0];
+          setCurrentYoutubeCollection(firstCollection._id || firstCollection.id);
+        }
+        // Load videos for current/first collection
+        const targetId = exists ? currentId : (transformedCollections[0]._id || transformedCollections[0].id);
+        await fetchVideosForCollection(targetId);
+      } else {
+        // No collections - create a default one
+        await handleCreateCollection();
+      }
+    } catch (err) {
+      console.error('Failed to fetch YouTube collections:', err);
+      setError('Failed to load collections from cloud. Using local data.');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentYoutubeCollectionId]);
+
+  // Fetch videos for a specific collection
+  const fetchVideosForCollection = useCallback(async (collectionId) => {
+    if (!collectionId) return;
+    try {
+      const data = await youtubeApi.getVideos(collectionId);
+      const videos = data.videos || [];
+
+      // Transform backend data
+      const transformedVideos = videos.map(v => ({
+        ...v,
+        id: v._id,
+      }));
+
+      setYoutubeVideos(transformedVideos);
+    } catch (err) {
+      console.error('Failed to fetch videos for collection:', err);
+    }
+  }, [setYoutubeVideos]);
+
+  // Load data on mount
+  useEffect(() => {
+    fetchCollections();
+  }, []);
+
+  // Load videos when collection changes
+  useEffect(() => {
+    if (currentYoutubeCollectionId && !loading) {
+      fetchVideosForCollection(currentYoutubeCollectionId);
+    }
+  }, [currentYoutubeCollectionId]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -103,36 +184,67 @@ function YouTubePlanner() {
   }, []);
 
   // Switch to different collection
-  const handleSwitchCollection = useCallback((collectionId) => {
+  const handleSwitchCollection = useCallback(async (collectionId) => {
     if (collectionId === currentYoutubeCollectionId) {
       setShowCollectionsDropdown(false);
       return;
     }
     setCurrentYoutubeCollection(collectionId);
     setShowCollectionsDropdown(false);
+    // Videos will be loaded by the useEffect
   }, [currentYoutubeCollectionId, setCurrentYoutubeCollection]);
 
-  // Handle create new collection
-  const handleCreateCollection = useCallback(() => {
-    addYoutubeCollection('New Collection');
-    setShowCollectionsDropdown(false);
-  }, [addYoutubeCollection]);
+  // Handle create new collection - saves to cloud
+  const handleCreateCollection = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const data = await youtubeApi.createCollection({ name: 'New Collection' });
+      const newCollection = {
+        ...data.collection,
+        id: data.collection._id,
+        videoCount: 0,
+      };
+
+      // Update local state
+      setYoutubeCollections([...youtubeCollections, newCollection]);
+      setCurrentYoutubeCollection(newCollection._id);
+      setYoutubeVideos([]);
+      setShowCollectionsDropdown(false);
+    } catch (err) {
+      console.error('Failed to create collection:', err);
+      setError('Failed to create collection. Please try again.');
+    } finally {
+      setSyncing(false);
+    }
+  }, [youtubeCollections, setYoutubeCollections, setCurrentYoutubeCollection, setYoutubeVideos]);
 
   // Handle rename collection
   const handleStartRename = useCallback((e, collection) => {
     e.stopPropagation();
-    setEditingCollectionId(collection.id);
+    setEditingCollectionId(collection._id || collection.id);
     setEditingCollectionName(collection.name);
   }, []);
 
-  const handleSaveRename = useCallback((e) => {
+  const handleSaveRename = useCallback(async (e) => {
     e.stopPropagation();
     if (editingCollectionName.trim()) {
-      renameYoutubeCollection(editingCollectionId, editingCollectionName.trim());
+      setSyncing(true);
+      try {
+        await youtubeApi.updateCollection(editingCollectionId, { name: editingCollectionName.trim() });
+        // Update local state
+        setYoutubeCollections(youtubeCollections.map(c =>
+          (c._id || c.id) === editingCollectionId ? { ...c, name: editingCollectionName.trim() } : c
+        ));
+      } catch (err) {
+        console.error('Failed to rename collection:', err);
+        setError('Failed to rename collection.');
+      } finally {
+        setSyncing(false);
+      }
     }
     setEditingCollectionId(null);
     setEditingCollectionName('');
-  }, [editingCollectionId, editingCollectionName, renameYoutubeCollection]);
+  }, [editingCollectionId, editingCollectionName, youtubeCollections, setYoutubeCollections]);
 
   const handleCancelRename = useCallback((e) => {
     e.stopPropagation();
@@ -140,30 +252,79 @@ function YouTubePlanner() {
     setEditingCollectionName('');
   }, []);
 
-  // Handle duplicate collection
-  const handleDuplicateCollection = useCallback((e, collectionId) => {
+  // Handle duplicate collection - creates a copy in the cloud
+  const handleDuplicateCollection = useCallback(async (e, collectionId) => {
     e.stopPropagation();
-    duplicateYoutubeCollection(collectionId);
-    setShowCollectionsDropdown(false);
-  }, [duplicateYoutubeCollection]);
+    setSyncing(true);
+    try {
+      const sourceCollection = youtubeCollections.find(c => (c._id || c.id) === collectionId);
+      if (!sourceCollection) return;
 
-  // Handle delete collection
-  const handleDeleteCollection = useCallback((e, collectionId) => {
+      // Create new collection with copied name
+      const data = await youtubeApi.createCollection({
+        name: `${sourceCollection.name} (Copy)`,
+        color: sourceCollection.color,
+        tags: sourceCollection.tags || [],
+      });
+
+      const newCollection = {
+        ...data.collection,
+        id: data.collection._id,
+        videoCount: 0,
+      };
+
+      // TODO: Also copy videos if needed
+      setYoutubeCollections([...youtubeCollections, newCollection]);
+      setShowCollectionsDropdown(false);
+    } catch (err) {
+      console.error('Failed to duplicate collection:', err);
+      setError('Failed to duplicate collection.');
+    } finally {
+      setSyncing(false);
+    }
+  }, [youtubeCollections, setYoutubeCollections]);
+
+  // Handle delete collection - removes from cloud
+  const handleDeleteCollection = useCallback(async (e, collectionId) => {
     e.stopPropagation();
     if (youtubeCollections.length <= 1) {
       return; // Can't delete last collection
     }
     if (window.confirm('Are you sure you want to delete this collection? All videos in it will be lost.')) {
-      deleteYoutubeCollection(collectionId);
-    }
-  }, [youtubeCollections, deleteYoutubeCollection]);
+      setSyncing(true);
+      try {
+        await youtubeApi.deleteCollection(collectionId);
 
-  // Handle color selection
-  const handleColorSelect = useCallback((e, collectionId, color) => {
+        // Update local state
+        const newCollections = youtubeCollections.filter(c => (c._id || c.id) !== collectionId);
+        setYoutubeCollections(newCollections);
+
+        // If we deleted the current collection, switch to another
+        if (currentYoutubeCollectionId === collectionId && newCollections.length > 0) {
+          setCurrentYoutubeCollection(newCollections[0]._id || newCollections[0].id);
+        }
+      } catch (err) {
+        console.error('Failed to delete collection:', err);
+        setError('Failed to delete collection.');
+      } finally {
+        setSyncing(false);
+      }
+    }
+  }, [youtubeCollections, setYoutubeCollections, currentYoutubeCollectionId, setCurrentYoutubeCollection]);
+
+  // Handle color selection - saves to cloud
+  const handleColorSelect = useCallback(async (e, collectionId, color) => {
     e.stopPropagation();
-    updateCollectionColor(collectionId, color);
+    try {
+      await youtubeApi.updateCollection(collectionId, { color });
+      setYoutubeCollections(youtubeCollections.map(c =>
+        (c._id || c.id) === collectionId ? { ...c, color } : c
+      ));
+    } catch (err) {
+      console.error('Failed to update collection color:', err);
+    }
     setShowColorPickerFor(null);
-  }, [updateCollectionColor]);
+  }, [youtubeCollections, setYoutubeCollections]);
 
   // Handle rollout assignment
   const handleAssignToRollout = useCallback((e, collectionId, rolloutId, sectionId) => {
@@ -244,7 +405,7 @@ function YouTubePlanner() {
     });
   }, [compressImage]);
 
-  // Handle file upload from input or drop
+  // Handle file upload from input or drop - saves to cloud
   const handleFileUpload = useCallback(async (e) => {
     const files = e.target?.files || e.dataTransfer?.files;
     if (!files || files.length === 0) return;
@@ -252,9 +413,16 @@ function YouTubePlanner() {
     const imageFiles = Array.from(files).filter((f) => f.type.startsWith('image/'));
     if (imageFiles.length === 0) return;
 
+    // Make sure we have a collection to add to
+    if (!currentYoutubeCollectionId) {
+      setError('Please create a collection first before uploading thumbnails.');
+      return;
+    }
+
     setUploading(true);
     setUploadProgress({ current: 0, total: imageFiles.length });
 
+    const newVideos = [];
     for (let i = 0; i < imageFiles.length; i++) {
       const file = imageFiles[i];
       setUploadProgress({ current: i + 1, total: imageFiles.length });
@@ -266,16 +434,28 @@ function YouTubePlanner() {
           .replace(/[-_]/g, ' ') // Replace dashes/underscores with spaces
           .replace(/\b\w/g, (c) => c.toUpperCase()); // Capitalize words
 
-        addYoutubeVideo({
-          thumbnail,
-          title: title.slice(0, 100), // YouTube title limit
+        // Save to cloud
+        const data = await youtubeApi.createVideo({
+          title: title.slice(0, 100),
           description: '',
+          thumbnail,
+          collectionId: currentYoutubeCollectionId,
           status: 'draft',
-          scheduledDate: null,
         });
+
+        const newVideo = {
+          ...data.video,
+          id: data.video._id,
+        };
+        newVideos.push(newVideo);
       } catch (err) {
-        console.error('Failed to process file:', file.name, err);
+        console.error('Failed to upload video:', file.name, err);
       }
+    }
+
+    // Update local state with all new videos
+    if (newVideos.length > 0) {
+      setYoutubeVideos([...youtubeVideos, ...newVideos]);
     }
 
     setUploading(false);
@@ -285,7 +465,7 @@ function YouTubePlanner() {
     if (e.target?.value) {
       e.target.value = '';
     }
-  }, [addYoutubeVideo, processImageFile]);
+  }, [processImageFile, currentYoutubeCollectionId, youtubeVideos, setYoutubeVideos]);
 
   // Handle thumbnail replacement for existing video
   const handleThumbnailUpload = useCallback(async (file, videoId) => {
@@ -295,14 +475,23 @@ function YouTubePlanner() {
     setEditingVideoId(videoId);
   }, [processImageFile]);
 
-  // Save edited thumbnail
-  const handleSaveThumbnail = useCallback((croppedThumbnail) => {
+  // Save edited thumbnail - saves to cloud
+  const handleSaveThumbnail = useCallback(async (croppedThumbnail) => {
     if (editingVideoId) {
-      updateYoutubeVideo(editingVideoId, { thumbnail: croppedThumbnail });
+      try {
+        await youtubeApi.updateVideo(editingVideoId, { thumbnail: croppedThumbnail });
+        // Update local state
+        setYoutubeVideos(youtubeVideos.map(v =>
+          (v._id || v.id) === editingVideoId ? { ...v, thumbnail: croppedThumbnail } : v
+        ));
+      } catch (err) {
+        console.error('Failed to save thumbnail:', err);
+        setError('Failed to save thumbnail.');
+      }
     }
     setEditingThumbnail(null);
     setEditingVideoId(null);
-  }, [editingVideoId, updateYoutubeVideo]);
+  }, [editingVideoId, youtubeVideos, setYoutubeVideos]);
 
   // Drag & drop handlers
   const handleDragOver = useCallback((e) => {
@@ -358,7 +547,9 @@ function YouTubePlanner() {
           <div className="text-center">
             <ImagePlus className="w-16 h-16 text-red-500 mx-auto mb-4" />
             <p className="text-xl font-semibold text-dark-100 mb-2">Drop thumbnails here</p>
-            <p className="text-dark-400">Release to add to your YouTube grid</p>
+            <p className="text-dark-400">
+              Adding to <span className="text-red-400 font-medium">{currentCollection.name}</span>
+            </p>
           </div>
         </div>
       )}
@@ -371,6 +562,9 @@ function YouTubePlanner() {
             <p className="text-lg font-semibold text-dark-100 mb-2">
               Uploading {uploadProgress.current} of {uploadProgress.total}
             </p>
+            <p className="text-sm text-dark-400 mb-3">
+              to <span className="text-red-400">{currentCollection.name}</span>
+            </p>
             <div className="w-64 h-2 bg-dark-700 rounded-full overflow-hidden">
               <div
                 className="h-full bg-red-500 transition-all duration-300"
@@ -378,6 +572,35 @@ function YouTubePlanner() {
               />
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Loading Overlay */}
+      {loading && (
+        <div className="absolute inset-0 z-40 bg-dark-900/80 backdrop-blur-sm flex items-center justify-center rounded-2xl">
+          <div className="text-center">
+            <Loader2 className="w-10 h-10 text-red-500 mx-auto mb-3 animate-spin" />
+            <p className="text-dark-200">Loading collections from cloud...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error Banner */}
+      {error && (
+        <div className="absolute top-4 left-4 right-4 z-40 bg-red-900/90 border border-red-700 rounded-lg px-4 py-3 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+          <span className="text-red-200 flex-1">{error}</span>
+          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-200">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Syncing Indicator */}
+      {syncing && (
+        <div className="absolute top-4 right-4 z-40 bg-dark-800 border border-dark-600 rounded-lg px-3 py-2 flex items-center gap-2">
+          <Loader2 className="w-4 h-4 text-red-500 animate-spin" />
+          <span className="text-sm text-dark-300">Syncing...</span>
         </div>
       )}
 
@@ -407,22 +630,22 @@ function YouTubePlanner() {
                       const rolloutInfo = getCollectionRolloutInfo(collection);
                       return (
                         <div
-                          key={collection.id}
+                          key={collection._id || collection.id}
                           className={`relative ${
-                            collection.id === currentYoutubeCollectionId
+                            (collection._id || collection.id) === currentYoutubeCollectionId
                               ? 'bg-red-500/20'
                               : 'hover:bg-dark-700'
                           }`}
                         >
                           <div
-                            onClick={() => handleSwitchCollection(collection.id)}
+                            onClick={() => handleSwitchCollection(collection._id || collection.id)}
                             className={`flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors ${
-                              collection.id === currentYoutubeCollectionId
+                              (collection._id || collection.id) === currentYoutubeCollectionId
                                 ? 'text-red-400'
                                 : 'text-dark-200'
                             }`}
                           >
-                            {editingCollectionId === collection.id ? (
+                            {editingCollectionId === (collection._id || collection.id) ? (
                               <div className="flex-1 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                                 <input
                                   type="text"
@@ -452,13 +675,13 @@ function YouTubePlanner() {
                                 <FolderOpen className="w-4 h-4 flex-shrink-0" />
                                 <span className="flex-1 text-sm truncate">{collection.name}</span>
                                 <span className="text-xs text-dark-500">
-                                  {collection.id === currentYoutubeCollectionId ? youtubeVideos.length : (youtubeVideosByCollection?.[collection.id]?.length || 0)}
+                                  {(collection._id || collection.id) === currentYoutubeCollectionId ? youtubeVideos.length : (youtubeVideosByCollection?.[collection.id]?.length || 0)}
                                 </span>
                                 {/* Color picker button */}
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setShowColorPickerFor(showColorPickerFor === collection.id ? null : collection.id);
+                                    setShowColorPickerFor(showColorPickerFor === (collection._id || collection.id) ? null : collection.id);
                                     setShowRolloutPickerFor(null);
                                   }}
                                   className="p-1 text-dark-500 hover:text-dark-200 hover:bg-dark-600 rounded"
@@ -470,7 +693,7 @@ function YouTubePlanner() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setShowRolloutPickerFor(showRolloutPickerFor === collection.id ? null : collection.id);
+                                    setShowRolloutPickerFor(showRolloutPickerFor === (collection._id || collection.id) ? null : collection.id);
                                     setShowColorPickerFor(null);
                                   }}
                                   className={`p-1 hover:bg-dark-600 rounded ${
@@ -521,7 +744,7 @@ function YouTubePlanner() {
                           )}
 
                           {/* Color Picker Dropdown */}
-                          {showColorPickerFor === collection.id && (
+                          {showColorPickerFor === (collection._id || collection.id) && (
                             <div className="absolute left-full top-0 ml-1 w-36 bg-dark-900 border border-dark-600 rounded-lg shadow-xl z-50 p-2" onClick={(e) => e.stopPropagation()}>
                               <p className="text-xs text-dark-400 mb-2 px-1">Select Color</p>
                               <div className="grid grid-cols-5 gap-1">
@@ -547,7 +770,7 @@ function YouTubePlanner() {
                           )}
 
                           {/* Rollout Picker Dropdown */}
-                          {showRolloutPickerFor === collection.id && (
+                          {showRolloutPickerFor === (collection._id || collection.id) && (
                             <div className="absolute left-full top-0 ml-1 w-56 bg-dark-900 border border-dark-600 rounded-lg shadow-xl z-50 p-2 max-h-64 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                               <p className="text-xs text-dark-400 mb-2 px-1">Assign to Phase</p>
                               {rollouts.length === 0 ? (
@@ -583,7 +806,7 @@ function YouTubePlanner() {
                               )}
                               {collection.rolloutId && (
                                 <button
-                                  onClick={(e) => handleUnassignFromRollout(e, collection.id)}
+                                  onClick={(e) => handleUnassignFromRollout(e, collection._id || collection.id)}
                                   className="w-full mt-2 px-2 py-1.5 text-xs text-red-400 hover:bg-red-500/20 rounded flex items-center gap-2"
                                 >
                                   <Unlink className="w-3 h-3" />
@@ -617,6 +840,16 @@ function YouTubePlanner() {
                 {youtubeVideos.length} Videos
               </span>
             </div>
+
+            {/* Refresh Button */}
+            <button
+              onClick={fetchCollections}
+              disabled={loading || syncing}
+              className="p-2 bg-dark-800 hover:bg-dark-700 rounded-lg transition-colors disabled:opacity-50"
+              title="Refresh from cloud"
+            >
+              <RefreshCw className={`w-4 h-4 text-dark-400 ${loading ? 'animate-spin' : ''}`} />
+            </button>
 
             {/* View Mode Toggle */}
             <div className="flex items-center gap-1 p-1 bg-dark-800 rounded-lg">
@@ -716,6 +949,10 @@ function YouTubePlanner() {
           <span>{youtubeVideos.filter((v) => v.status === 'scheduled').length} scheduled</span>
           <span className="text-red-400">
             {isLocked ? 'Grid locked' : 'Drag to reorder'}
+          </span>
+          <span className="ml-auto text-green-500 flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+            Cloud synced
           </span>
         </div>
       </div>

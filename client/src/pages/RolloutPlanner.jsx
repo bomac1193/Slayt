@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, ChevronDown, Trash2, Edit3, Check, X, GripVertical, Folder, Search, Tag, Palette, Youtube, Instagram, LayoutGrid, Film, Loader2 } from 'lucide-react';
+import { Plus, ChevronDown, Trash2, Edit3, Check, X, GripVertical, Folder, Search, Tag, Palette, Youtube, Instagram, LayoutGrid, Film, Loader2, Calendar, Flag, Target, Clock } from 'lucide-react';
 import { useAppStore } from '../stores/useAppStore';
 import { gridApi, reelCollectionApi, rolloutApi } from '../lib/api';
 
@@ -25,6 +25,144 @@ const SECTION_COLORS = [
   { id: 'red', value: '#ef4444', name: 'Red' },
   { id: 'cyan', value: '#06b6d4', name: 'Cyan' },
 ];
+
+// Helper to format date for input
+const formatDateForInput = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  return d.toISOString().split('T')[0];
+};
+
+// Helper to calculate days until deadline
+const getDaysUntil = (date) => {
+  if (!date) return null;
+  const now = new Date();
+  const target = new Date(date);
+  const diff = Math.ceil((target - now) / (1000 * 60 * 60 * 24));
+  return diff;
+};
+
+// Rollout Scheduling Panel Component
+function RolloutSchedulingPanel({ rollout, onSchedule, saving }) {
+  const [startDate, setStartDate] = useState(formatDateForInput(rollout.startDate));
+  const [endDate, setEndDate] = useState(formatDateForInput(rollout.endDate));
+  const [isExpanded, setIsExpanded] = useState(!!rollout.startDate || !!rollout.endDate);
+
+  // Update local state when rollout changes
+  useEffect(() => {
+    setStartDate(formatDateForInput(rollout.startDate));
+    setEndDate(formatDateForInput(rollout.endDate));
+  }, [rollout.startDate, rollout.endDate]);
+
+  const handleSave = () => {
+    onSchedule({
+      startDate: startDate ? new Date(startDate).toISOString() : null,
+      endDate: endDate ? new Date(endDate).toISOString() : null,
+    });
+  };
+
+  const hasChanges =
+    formatDateForInput(rollout.startDate) !== startDate ||
+    formatDateForInput(rollout.endDate) !== endDate;
+
+  const daysUntilStart = getDaysUntil(rollout.startDate);
+  const daysUntilEnd = getDaysUntil(rollout.endDate);
+
+  return (
+    <div className="bg-dark-800 border border-dark-700 rounded-xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-dark-750 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <Calendar className="w-5 h-5 text-accent-purple" />
+          <span className="font-medium text-white">Rollout Schedule</span>
+          {(rollout.startDate || rollout.endDate) && (
+            <div className="flex items-center gap-2 text-sm">
+              {rollout.startDate && (
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-green-500/20 text-green-400 rounded">
+                  <Flag className="w-3 h-3" />
+                  {new Date(rollout.startDate).toLocaleDateString()}
+                  {daysUntilStart !== null && daysUntilStart >= 0 && (
+                    <span className="text-xs opacity-75">({daysUntilStart}d)</span>
+                  )}
+                </span>
+              )}
+              {rollout.endDate && (
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded">
+                  <Target className="w-3 h-3" />
+                  {new Date(rollout.endDate).toLocaleDateString()}
+                  {daysUntilEnd !== null && (
+                    <span className={`text-xs opacity-75 ${daysUntilEnd < 0 ? 'text-red-400' : ''}`}>
+                      ({daysUntilEnd < 0 ? 'overdue' : `${daysUntilEnd}d`})
+                    </span>
+                  )}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+        <ChevronDown className={`w-5 h-5 text-dark-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isExpanded && (
+        <div className="px-4 py-4 border-t border-dark-700">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-dark-300 mb-2">
+                <Flag className="w-4 h-4 inline mr-1" />
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white focus:outline-none focus:border-accent-purple"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-dark-300 mb-2">
+                <Target className="w-4 h-4 inline mr-1" />
+                Deadline
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                min={startDate || undefined}
+                className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white focus:outline-none focus:border-accent-purple"
+              />
+            </div>
+          </div>
+
+          {hasChanges && (
+            <div className="flex justify-end mt-4">
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="flex items-center gap-2 px-4 py-2 bg-accent-purple text-white rounded-lg hover:bg-accent-purple/90 disabled:opacity-50"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Save Schedule
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function RolloutPlanner() {
   const rollouts = useAppStore((state) => state.rollouts);
@@ -515,6 +653,30 @@ function RolloutPlanner() {
         )}
       </div>
 
+      {/* Rollout Scheduling Panel */}
+      {currentRollout && (
+        <RolloutSchedulingPanel
+          rollout={currentRollout}
+          onSchedule={async (scheduleData) => {
+            try {
+              setSavingRollout(true);
+              const data = await rolloutApi.scheduleRollout(currentRolloutId, scheduleData);
+              setRollouts(rollouts.map(r =>
+                (r._id || r.id) === currentRolloutId
+                  ? { ...data.rollout, id: data.rollout._id }
+                  : r
+              ));
+            } catch (err) {
+              console.error('Failed to schedule rollout:', err);
+              alert('Failed to schedule rollout');
+            } finally {
+              setSavingRollout(false);
+            }
+          }}
+          saving={savingRollout}
+        />
+      )}
+
       {/* Content */}
       {!currentRollout ? (
         <div className="flex flex-col items-center justify-center py-20">
@@ -556,6 +718,19 @@ function RolloutPlanner() {
                 onUpdateSection={handleUpdateSection}
                 onDeleteSection={handleDeleteSection}
                 onRemoveCollection={handleRemoveCollectionFromSection}
+                onSetDeadline={async (sectionId, deadlineData) => {
+                  try {
+                    const data = await rolloutApi.setSectionDeadline(currentRolloutId, sectionId, deadlineData);
+                    setRollouts(rollouts.map(r =>
+                      (r._id || r.id) === currentRolloutId
+                        ? { ...data.rollout, id: data.rollout._id }
+                        : r
+                    ));
+                  } catch (err) {
+                    console.error('Failed to set section deadline:', err);
+                    alert('Failed to set section deadline');
+                  }
+                }}
               />
             ))}
 
@@ -599,10 +774,30 @@ function RolloutSection({
   onUpdateSection,
   onDeleteSection,
   onRemoveCollection,
+  onSetDeadline,
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(section.name);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [sectionStartDate, setSectionStartDate] = useState(formatDateForInput(section.startDate));
+  const [sectionDeadline, setSectionDeadline] = useState(formatDateForInput(section.deadline));
+
+  // Update local state when section changes
+  useEffect(() => {
+    setSectionStartDate(formatDateForInput(section.startDate));
+    setSectionDeadline(formatDateForInput(section.deadline));
+  }, [section.startDate, section.deadline]);
+
+  const handleSaveDates = () => {
+    onSetDeadline(section.id, {
+      startDate: sectionStartDate ? new Date(sectionStartDate).toISOString() : null,
+      deadline: sectionDeadline ? new Date(sectionDeadline).toISOString() : null,
+    });
+    setShowDatePicker(false);
+  };
+
+  const daysUntilDeadline = getDaysUntil(section.deadline);
 
   const handleSaveName = () => {
     if (!editedName.trim()) return;
@@ -649,6 +844,35 @@ function RolloutSection({
           Phase {index + 1}
         </span>
 
+        {/* Section dates display */}
+        {(section.startDate || section.deadline) && (
+          <div className="flex items-center gap-2 text-xs">
+            {section.startDate && (
+              <span className="flex items-center gap-1 px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded">
+                <Flag className="w-3 h-3" />
+                {new Date(section.startDate).toLocaleDateString()}
+              </span>
+            )}
+            {section.deadline && (
+              <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${
+                daysUntilDeadline !== null && daysUntilDeadline < 0
+                  ? 'bg-red-500/20 text-red-400'
+                  : daysUntilDeadline !== null && daysUntilDeadline <= 3
+                  ? 'bg-orange-500/20 text-orange-400'
+                  : 'bg-blue-500/20 text-blue-400'
+              }`}>
+                <Target className="w-3 h-3" />
+                {new Date(section.deadline).toLocaleDateString()}
+                {daysUntilDeadline !== null && (
+                  <span className="opacity-75">
+                    ({daysUntilDeadline < 0 ? 'overdue' : `${daysUntilDeadline}d`})
+                  </span>
+                )}
+              </span>
+            )}
+          </div>
+        )}
+
         {isEditing ? (
           <div className="flex-1 flex items-center gap-2">
             <input
@@ -674,6 +898,68 @@ function RolloutSection({
         )}
 
         <div className="flex items-center gap-1">
+          {/* Date picker button */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowDatePicker(!showDatePicker)}
+              className={`p-1.5 hover:bg-dark-700 rounded transition-colors ${
+                section.startDate || section.deadline ? 'text-accent-purple' : 'text-dark-400 hover:text-white'
+              }`}
+              title="Set dates"
+            >
+              <Calendar className="w-4 h-4" />
+            </button>
+            {showDatePicker && (
+              <div className="absolute top-full right-0 mt-1 w-64 bg-dark-900 border border-dark-600 rounded-lg shadow-xl z-50 p-3">
+                <p className="text-xs text-dark-400 mb-3">Section Schedule</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-dark-400 mb-1">
+                      <Flag className="w-3 h-3 inline mr-1" />
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={sectionStartDate}
+                      onChange={(e) => setSectionStartDate(e.target.value)}
+                      className="w-full px-2 py-1.5 bg-dark-700 border border-dark-600 rounded text-sm text-white focus:outline-none focus:border-accent-purple"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-dark-400 mb-1">
+                      <Target className="w-3 h-3 inline mr-1" />
+                      Deadline
+                    </label>
+                    <input
+                      type="date"
+                      value={sectionDeadline}
+                      onChange={(e) => setSectionDeadline(e.target.value)}
+                      min={sectionStartDate || undefined}
+                      className="w-full px-2 py-1.5 bg-dark-700 border border-dark-600 rounded text-sm text-white focus:outline-none focus:border-accent-purple"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowDatePicker(false)}
+                      className="flex-1 px-3 py-1.5 text-xs text-dark-400 hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveDates}
+                      className="flex-1 px-3 py-1.5 text-xs bg-accent-purple text-white rounded hover:bg-accent-purple/90"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Color picker button */}
           <div className="relative">
             <button
@@ -946,7 +1232,7 @@ function CollectionPicker({ collections, selectedIds, onSelect, onClose }) {
   const handleCreate = () => {
     if (!newName.trim()) return;
     const tags = newTags.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
-    // Note: addYoutubeCollection in Postpanda takes just a name string
+    // Note: addYoutubeCollection in Slayt takes just a name string
     // We need to check if it supports tags
     addYoutubeCollection(newName.trim());
     setNewName('');

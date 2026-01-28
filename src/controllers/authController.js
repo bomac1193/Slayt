@@ -166,7 +166,7 @@ exports.uploadAvatar = async (req, res) => {
       // Upload to Cloudinary - no transformation for non-destructive editing
       // Zoom/position transforms are applied on frontend
       const uploadResult = await cloudinaryService.uploadBuffer(req.file.buffer, {
-        folder: 'postpanda/avatars',
+        folder: 'slayt/avatars',
         resourceType: 'image'
       });
       avatarUrl = uploadResult.secure_url;
@@ -217,7 +217,7 @@ exports.uploadHighlightCover = async (req, res) => {
     if (useCloudStorage()) {
       // Upload to Cloudinary
       const uploadResult = await cloudinaryService.uploadBuffer(req.file.buffer, {
-        folder: 'postpanda/highlights',
+        folder: 'slayt/highlights',
         resourceType: 'image',
         transformation: [
           { width: 300, height: 300, crop: 'fill' }

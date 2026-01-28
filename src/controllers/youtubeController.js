@@ -1,6 +1,47 @@
 const YoutubeCollection = require('../models/YoutubeCollection');
 const YoutubeVideo = require('../models/YoutubeVideo');
 const { validateObjectId } = require('../utils/validators');
+const cloudinaryService = require('../services/cloudinaryService');
+
+/**
+ * Upload base64 thumbnail to Cloudinary
+ * @param {string} base64Data - Base64 encoded image data
+ * @param {string} userId - User ID for folder organization
+ * @returns {Promise<string>} Cloudinary URL
+ */
+const uploadThumbnailToCloudinary = async (base64Data, userId) => {
+  if (!base64Data || !base64Data.startsWith('data:')) {
+    return base64Data; // Return as-is if not base64 (might already be a URL)
+  }
+
+  if (!cloudinaryService.isConfigured()) {
+    console.warn('Cloudinary not configured, storing thumbnail as base64');
+    return base64Data;
+  }
+
+  try {
+    // Convert base64 to buffer
+    const base64Content = base64Data.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Content, 'base64');
+
+    // Upload to Cloudinary
+    // Use 'limit' crop to resize only if larger, maintaining aspect ratio
+    // YouTube recommends 1280x720 but we'll accept up to 1920x1080
+    const result = await cloudinaryService.uploadBuffer(buffer, {
+      folder: `slayt/youtube/${userId}`,
+      resource_type: 'image',
+      transformation: [
+        { width: 1920, height: 1080, crop: 'limit', quality: 'auto:best' }
+      ]
+    });
+
+    return result.secure_url;
+  } catch (error) {
+    console.error('Failed to upload thumbnail to Cloudinary:', error);
+    // Fall back to base64 if upload fails
+    return base64Data;
+  }
+};
 
 /**
  * YouTube Collection Controllers
@@ -214,11 +255,17 @@ exports.createVideo = async (req, res) => {
       videoPosition = lastVideo ? lastVideo.position + 1 : 0;
     }
 
+    // Upload thumbnail to Cloudinary if it's base64
+    let thumbnailUrl = thumbnail || '';
+    if (thumbnail && thumbnail.startsWith('data:')) {
+      thumbnailUrl = await uploadThumbnailToCloudinary(thumbnail, req.user._id.toString());
+    }
+
     const video = new YoutubeVideo({
       userId: req.user._id,
       title: title.trim(),
       description: description || '',
-      thumbnail: thumbnail || '',
+      thumbnail: thumbnailUrl,
       collectionId: collectionId || null,
       status: status || 'draft',
       scheduledDate: scheduledDate || null,
@@ -330,6 +377,11 @@ exports.updateVideo = async (req, res) => {
       if (!collection) {
         return res.status(404).json({ error: 'Collection not found' });
       }
+    }
+
+    // Upload new thumbnail to Cloudinary if it's base64
+    if (updates.thumbnail && updates.thumbnail.startsWith('data:')) {
+      updates.thumbnail = await uploadThumbnailToCloudinary(updates.thumbnail, req.user._id.toString());
     }
 
     // Update allowed fields

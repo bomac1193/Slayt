@@ -7,6 +7,13 @@ const rolloutController = require('../controllers/rolloutController');
 router.use(authenticate);
 
 /**
+ * Scheduling Routes (must be before /:id to avoid conflicts)
+ */
+
+// Get scheduled rollouts for calendar
+router.get('/calendar/scheduled', rolloutController.getScheduledRollouts);
+
+/**
  * Rollout CRUD Routes
  */
 
@@ -50,5 +57,11 @@ router.post('/:id/sections/:sectionId/collections', rolloutController.addCollect
 
 // Remove collection from section
 router.delete('/:id/sections/:sectionId/collections/:collectionId', rolloutController.removeCollectionFromSection);
+
+// Schedule a rollout (set dates and platforms)
+router.put('/:id/schedule', rolloutController.scheduleRollout);
+
+// Set section deadline/dates
+router.put('/:id/sections/:sectionId/deadline', rolloutController.setSectionDeadline);
 
 module.exports = router;

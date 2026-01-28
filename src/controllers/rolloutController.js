@@ -105,7 +105,7 @@ exports.updateRollout = async (req, res) => {
     }
 
     // Update allowed fields
-    const allowedUpdates = ['name', 'description', 'status', 'sections'];
+    const allowedUpdates = ['name', 'description', 'status', 'sections', 'startDate', 'endDate', 'targetPlatforms'];
 
     allowedUpdates.forEach(field => {
       if (updates[field] !== undefined) {
@@ -363,6 +363,181 @@ exports.removeCollectionFromSection = async (req, res) => {
   } catch (error) {
     console.error('Remove collection from section error:', error);
     res.status(500).json({ error: 'Failed to remove collection from section' });
+  }
+};
+
+/**
+ * Scheduling Controllers
+ */
+
+// Schedule a rollout (set start/end dates and platforms)
+exports.scheduleRollout = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { startDate, endDate, targetPlatforms, activate } = req.body;
+
+    if (!validateObjectId(id)) {
+      return res.status(400).json({ error: 'Invalid rollout ID' });
+    }
+
+    const rollout = await Rollout.findOne({
+      _id: id,
+      userId: req.user._id
+    });
+
+    if (!rollout) {
+      return res.status(404).json({ error: 'Rollout not found' });
+    }
+
+    // Update scheduling fields
+    if (startDate !== undefined) rollout.startDate = startDate;
+    if (endDate !== undefined) rollout.endDate = endDate;
+    if (targetPlatforms !== undefined) rollout.targetPlatforms = targetPlatforms;
+
+    // Optionally activate the rollout
+    if (activate) {
+      rollout.status = 'active';
+    }
+
+    await rollout.save();
+
+    res.json({
+      message: 'Rollout scheduled successfully',
+      rollout
+    });
+  } catch (error) {
+    console.error('Schedule rollout error:', error);
+    res.status(500).json({ error: 'Failed to schedule rollout' });
+  }
+};
+
+// Set section deadline/dates
+exports.setSectionDeadline = async (req, res) => {
+  try {
+    const { id, sectionId } = req.params;
+    const { startDate, deadline, status } = req.body;
+
+    if (!validateObjectId(id)) {
+      return res.status(400).json({ error: 'Invalid rollout ID' });
+    }
+
+    const rollout = await Rollout.findOne({
+      _id: id,
+      userId: req.user._id
+    });
+
+    if (!rollout) {
+      return res.status(404).json({ error: 'Rollout not found' });
+    }
+
+    const section = rollout.sections.find(s => s.id === sectionId);
+    if (!section) {
+      return res.status(404).json({ error: 'Section not found' });
+    }
+
+    // Update section scheduling
+    const updates = {};
+    if (startDate !== undefined) updates.startDate = startDate;
+    if (deadline !== undefined) updates.deadline = deadline;
+    if (status !== undefined) updates.status = status;
+
+    await rollout.updateSection(sectionId, updates);
+
+    res.json({
+      message: 'Section deadline set successfully',
+      rollout
+    });
+  } catch (error) {
+    console.error('Set section deadline error:', error);
+    res.status(500).json({ error: 'Failed to set section deadline' });
+  }
+};
+
+// Get scheduled rollouts for calendar
+exports.getScheduledRollouts = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    let rollouts;
+    if (startDate && endDate) {
+      rollouts = await Rollout.findInDateRange(
+        req.user._id,
+        new Date(startDate),
+        new Date(endDate)
+      );
+    } else {
+      rollouts = await Rollout.findScheduled(req.user._id);
+    }
+
+    // Transform to calendar events format
+    const events = [];
+
+    rollouts.forEach(rollout => {
+      // Rollout start date
+      if (rollout.startDate) {
+        events.push({
+          id: `rollout-start-${rollout._id}`,
+          type: 'rollout-start',
+          date: rollout.startDate,
+          rolloutId: rollout._id,
+          rolloutName: rollout.name,
+          title: `${rollout.name} (Start)`,
+          color: rollout.sections[0]?.color || '#8b5cf6'
+        });
+      }
+
+      // Rollout end date (deadline)
+      if (rollout.endDate) {
+        events.push({
+          id: `rollout-end-${rollout._id}`,
+          type: 'rollout-deadline',
+          date: rollout.endDate,
+          rolloutId: rollout._id,
+          rolloutName: rollout.name,
+          title: `${rollout.name} (Deadline)`,
+          color: rollout.sections[0]?.color || '#8b5cf6'
+        });
+      }
+
+      // Section dates
+      rollout.sections.forEach(section => {
+        if (section.startDate) {
+          events.push({
+            id: `section-start-${section.id}`,
+            type: 'section-start',
+            date: section.startDate,
+            rolloutId: rollout._id,
+            sectionId: section.id,
+            sectionName: section.name,
+            rolloutName: rollout.name,
+            title: `${section.name} (Start)`,
+            color: section.color || '#6366f1'
+          });
+        }
+
+        if (section.deadline) {
+          events.push({
+            id: `section-deadline-${section.id}`,
+            type: 'section-deadline',
+            date: section.deadline,
+            rolloutId: rollout._id,
+            sectionId: section.id,
+            sectionName: section.name,
+            rolloutName: rollout.name,
+            title: `${section.name} (Deadline)`,
+            color: section.color || '#6366f1'
+          });
+        }
+      });
+    });
+
+    res.json({
+      events,
+      rollouts
+    });
+  } catch (error) {
+    console.error('Get scheduled rollouts error:', error);
+    res.status(500).json({ error: 'Failed to fetch scheduled rollouts' });
   }
 };
 

@@ -295,7 +295,7 @@ function QuickEditor() {
 
     // Download
     const link = document.createElement('a');
-    link.download = `postpanda-${Date.now()}.png`;
+    link.download = `slayt-${Date.now()}.png`;
     link.href = dataUrl;
     link.click();
   }, []);

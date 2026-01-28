@@ -1,6 +1,6 @@
-# Contributing to Postpanda
+# Contributing to Slayt
 
-Thank you for your interest in contributing to Postpanda! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to Slayt! This document provides guidelines and instructions for contributing.
 
 ## Code of Conduct
 
@@ -26,7 +26,7 @@ Example:
 Title: "Upload fails for videos larger than 50MB"
 
 Steps to reproduce:
-1. Login to Postpanda
+1. Login to Slayt
 2. Click "Upload Content"
 3. Select a video file > 50MB
 4. Click upload
@@ -307,4 +307,4 @@ By contributing, you agree that your contributions will be licensed under the MI
 
 ---
 
-Thank you for contributing to Postpanda! 🚀
+Thank you for contributing to Slayt! 🚀

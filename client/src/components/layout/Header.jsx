@@ -31,7 +31,7 @@ function Header() {
   const toggleTheme = useAppStore((state) => state.toggleTheme);
   const user = useAppStore((state) => state.user);
 
-  const title = pageTitles[location.pathname] || 'Postpanda';
+  const title = pageTitles[location.pathname] || 'Slayt';
 
   return (
     <header className="h-16 bg-dark-800/80 backdrop-blur-sm border-b border-dark-700 flex items-center justify-between px-6 sticky top-0 z-30">

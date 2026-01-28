@@ -25,6 +25,19 @@ const rolloutSchema = new mongoose.Schema({
     enum: ['draft', 'active', 'completed'],
     default: 'draft'
   },
+  // Rollout-level scheduling
+  startDate: {
+    type: Date,
+    default: null
+  },
+  endDate: {
+    type: Date,
+    default: null
+  },
+  targetPlatforms: [{
+    type: String,
+    enum: ['instagram', 'tiktok', 'youtube', 'twitter', 'facebook']
+  }],
   sections: [{
     id: {
       type: String,
@@ -45,7 +58,21 @@ const rolloutSchema = new mongoose.Schema({
     },
     collectionIds: [{
       type: String // Can be YouTube collection IDs or Grid IDs
-    }]
+    }],
+    // Section-level scheduling
+    startDate: {
+      type: Date,
+      default: null
+    },
+    deadline: {
+      type: Date,
+      default: null
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'active', 'completed'],
+      default: 'pending'
+    }
   }],
   createdAt: {
     type: Date,
@@ -75,7 +102,10 @@ rolloutSchema.methods.addSection = function(name, color) {
     name: name || `Section ${order + 1}`,
     order,
     color: color || '#6366f1',
-    collectionIds: []
+    collectionIds: [],
+    startDate: null,
+    deadline: null,
+    status: 'pending'
   });
   return this.save();
 };
@@ -88,6 +118,9 @@ rolloutSchema.methods.updateSection = function(sectionId, updates) {
     if (updates.order !== undefined) section.order = updates.order;
     if (updates.color !== undefined) section.color = updates.color;
     if (updates.collectionIds !== undefined) section.collectionIds = updates.collectionIds;
+    if (updates.startDate !== undefined) section.startDate = updates.startDate;
+    if (updates.deadline !== undefined) section.deadline = updates.deadline;
+    if (updates.status !== undefined) section.status = updates.status;
   }
   return this.save();
 };
@@ -145,6 +178,32 @@ rolloutSchema.statics.findActive = function(userId) {
     userId,
     status: 'active'
   }).sort({ updatedAt: -1 });
+};
+
+// Static method to find scheduled rollouts (with start/end dates)
+rolloutSchema.statics.findScheduled = function(userId) {
+  return this.find({
+    userId,
+    $or: [
+      { startDate: { $ne: null } },
+      { endDate: { $ne: null } },
+      { 'sections.startDate': { $ne: null } },
+      { 'sections.deadline': { $ne: null } }
+    ]
+  }).sort({ startDate: 1 });
+};
+
+// Static method to find rollouts in a date range (for calendar)
+rolloutSchema.statics.findInDateRange = function(userId, startDate, endDate) {
+  return this.find({
+    userId,
+    $or: [
+      { startDate: { $gte: startDate, $lte: endDate } },
+      { endDate: { $gte: startDate, $lte: endDate } },
+      { 'sections.startDate': { $gte: startDate, $lte: endDate } },
+      { 'sections.deadline': { $gte: startDate, $lte: endDate } }
+    ]
+  }).sort({ startDate: 1 });
 };
 
 // Enable virtuals in JSON

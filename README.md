@@ -1,4 +1,4 @@
-# Postpanda
+# Slayt
 
 **The Visual-First Content Operating System for Creators**
 
@@ -55,14 +55,14 @@ Tools promise "AI-powered everything" but deliver generic captions and irrelevan
 
 ## Part II: Guiding Policy — Our Competitive Position
 
-### What Postpanda Is
+### What Slayt Is
 
-Postpanda is a **visual-first content operating system** — not a scheduler, not an analytics dashboard, not a link-in-bio tool. It's the command center where creators see their entire content universe, plan campaigns months ahead, and execute with platform-native precision.
+Slayt is a **visual-first content operating system** — not a scheduler, not an analytics dashboard, not a link-in-bio tool. It's the command center where creators see their entire content universe, plan campaigns months ahead, and execute with platform-native precision.
 
 ### Our Three Unfair Advantages
 
 **1. Grid-Native Architecture**
-We don't bolt grid planning onto a scheduler. Our core data model IS the grid. Every feature — reels, rollouts, brand kit — is designed around visual preview. When you plan in Postpanda, you see exactly what your audience will see.
+We don't bolt grid planning onto a scheduler. Our core data model IS the grid. Every feature — reels, rollouts, brand kit — is designed around visual preview. When you plan in Slayt, you see exactly what your audience will see.
 
 **2. Platform-Specific, Not Platform-Agnostic**
 We build separate, optimized experiences for Instagram, TikTok, and YouTube. Same account, different interfaces tuned for each platform's unique requirements. Generic tools can't compete with native precision.
@@ -173,8 +173,8 @@ While competitors focus on individual posts, we focus on rollouts — coordinate
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/postpanda.git
-cd postpanda
+git clone https://github.com/your-org/slayt.git
+cd slayt
 
 # Install backend dependencies
 npm install
@@ -195,7 +195,7 @@ cd client && npm run dev  # Frontend on :5173
 
 ```env
 # Required
-MONGODB_URI=mongodb://localhost:27017/postpanda
+MONGODB_URI=mongodb://localhost:27017/slayt
 JWT_SECRET=your-secret-key
 CLOUDINARY_CLOUD_NAME=your-cloud-name
 CLOUDINARY_API_KEY=your-api-key
@@ -215,7 +215,7 @@ GOOGLE_CLIENT_SECRET=xxx
 ## Architecture
 
 ```
-postpanda/
+slayt/
 ├── src/                    # Backend (Express + MongoDB)
 │   ├── controllers/        # Request handlers
 │   ├── models/            # Mongoose schemas

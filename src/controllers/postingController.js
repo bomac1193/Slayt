@@ -245,9 +245,12 @@ exports.refreshInstagramToken = async (req, res) => {
  */
 exports.schedulePost = async (req, res) => {
   try {
-    const { contentId, scheduledTime, platform, autoPost } = req.body;
+    // Support both frontend naming (platforms, scheduledAt) and original naming (platform, scheduledTime)
+    const { contentId, scheduledTime, scheduledAt, platform, platforms, autoPost } = req.body;
+    const resolvedScheduledTime = scheduledTime || scheduledAt;
+    const resolvedPlatform = platform || (Array.isArray(platforms) ? platforms[0] : platforms) || 'instagram';
 
-    if (!contentId || !scheduledTime) {
+    if (!contentId || !resolvedScheduledTime) {
       return res.status(400).json({ error: 'Content ID and scheduled time are required' });
     }
 
@@ -261,8 +264,8 @@ exports.schedulePost = async (req, res) => {
     }
 
     // Update content with scheduling info
-    content.scheduledTime = new Date(scheduledTime);
-    content.scheduledPlatform = platform || 'instagram';
+    content.scheduledTime = new Date(resolvedScheduledTime);
+    content.scheduledPlatform = resolvedPlatform;
     content.autoPost = autoPost || false;
     content.status = 'scheduled';
 
@@ -298,16 +301,22 @@ exports.getScheduledPosts = async (req, res) => {
       scheduledTime: { $exists: true }
     }).sort({ scheduledTime: 1 });
 
+    const mappedPosts = scheduledPosts.map(post => ({
+      id: post._id,
+      caption: post.caption,
+      mediaUrl: post.mediaUrl,
+      image: post.mediaUrl,
+      scheduledTime: post.scheduledTime,
+      scheduledAt: post.scheduledTime, // Alias for frontend compatibility
+      platform: post.scheduledPlatform,
+      autoPost: post.autoPost,
+      status: post.status
+    }));
+
     res.json({
-      scheduledPosts: scheduledPosts.map(post => ({
-        id: post._id,
-        caption: post.caption,
-        mediaUrl: post.mediaUrl,
-        scheduledTime: post.scheduledTime,
-        platform: post.scheduledPlatform,
-        autoPost: post.autoPost,
-        status: post.status
-      }))
+      scheduledPosts: mappedPosts,
+      posts: mappedPosts, // Alias for frontend compatibility
+      scheduled: mappedPosts // Another alias for frontend compatibility
     });
   } catch (error) {
     console.error('Get scheduled posts error:', error);

@@ -25,7 +25,7 @@ exports.createContent = async (req, res) => {
       const isVideo = req.file.mimetype.startsWith('video/');
 
       const uploadResult = await cloudinaryService.uploadBuffer(req.file.buffer, {
-        folder: isVideo ? 'postpanda/videos' : 'postpanda/images',
+        folder: isVideo ? 'slayt/videos' : 'slayt/images',
         resourceType: isVideo ? 'video' : 'image',
       });
 
@@ -134,7 +134,7 @@ exports.createReel = async (req, res) => {
     if (useCloudStorage()) {
       // Upload video to Cloudinary
       const videoUploadResult = await cloudinaryService.uploadBuffer(videoFile.buffer, {
-        folder: 'postpanda/videos',
+        folder: 'slayt/videos',
         resourceType: 'video',
       });
 
@@ -144,7 +144,7 @@ exports.createReel = async (req, res) => {
       // Upload thumbnail to Cloudinary if provided
       if (thumbnailFile) {
         const thumbUploadResult = await cloudinaryService.uploadBuffer(thumbnailFile.buffer, {
-          folder: 'postpanda/thumbnails',
+          folder: 'slayt/thumbnails',
           resourceType: 'image',
         });
         thumbnailUrl = thumbUploadResult.secure_url;
@@ -335,7 +335,7 @@ exports.updateThumbnail = async (req, res) => {
 
       // Upload new thumbnail to Cloudinary
       const uploadResult = await cloudinaryService.uploadBuffer(thumbnailFile.buffer, {
-        folder: 'postpanda/thumbnails',
+        folder: 'slayt/thumbnails',
         resourceType: 'image',
       });
 
@@ -404,7 +404,7 @@ exports.updateMedia = async (req, res) => {
       // Upload new media to Cloudinary
       const isImage = mediaFile.mimetype.startsWith('image/');
       const uploadResult = await cloudinaryService.uploadBuffer(mediaFile.buffer, {
-        folder: isImage ? 'postpanda/images' : 'postpanda/videos',
+        folder: isImage ? 'slayt/images' : 'slayt/videos',
         resourceType: isImage ? 'image' : 'video',
       });
 

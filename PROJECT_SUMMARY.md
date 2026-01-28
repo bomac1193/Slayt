@@ -1,8 +1,8 @@
-# Postpanda - Project Summary
+# Slayt - Project Summary
 
 ## 🎯 Project Overview
 
-**Postpanda** is a full-stack Node.js application for social media content planning and scheduling with advanced AI-powered analytics and recommendations.
+**Slayt** is a full-stack Node.js application for social media content planning and scheduling with advanced AI-powered analytics and recommendations.
 
 ### Key Features Implemented
 
@@ -44,7 +44,7 @@
 ## 📁 Complete File Structure
 
 ```
-postpanda/
+slayt/
 ├── src/
 │   ├── config/
 │   │   └── database.js              # MongoDB connection config

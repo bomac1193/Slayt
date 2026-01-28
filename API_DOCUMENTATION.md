@@ -1,4 +1,4 @@
-# Postpanda API Documentation
+# Slayt API Documentation
 
 ## Base URL
 ```

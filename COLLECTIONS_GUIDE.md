@@ -1,6 +1,6 @@
-# Postpanda Collections - Complete Guide
+# Slayt Collections - Complete Guide
 
-Collections are the heart of Postpanda's automated posting system. Create, schedule, and auto-post entire grid layouts to Instagram and TikTok.
+Collections are the heart of Slayt's automated posting system. Create, schedule, and auto-post entire grid layouts to Instagram and TikTok.
 
 ## Table of Contents
 
@@ -46,7 +46,7 @@ sudo systemctl start mongod
 # 2. Configure your .env file with API keys
 nano .env
 
-# 3. Start Postpanda
+# 3. Start Slayt
 npm run dev
 
 # 4. Navigate to http://localhost:3000
@@ -95,7 +95,7 @@ INSTAGRAM_REDIRECT_URI=http://localhost:3000/api/auth/instagram/callback
 
 #### 6. Connect Account
 
-1. In Postpanda, go to Settings
+1. In Slayt, go to Settings
 2. Click "Connect Instagram"
 3. Authorize the app
 4. Your Instagram is now connected!
@@ -147,7 +147,7 @@ TIKTOK_REDIRECT_URI=http://localhost:3000/api/auth/tiktok/callback
 
 #### 6. Connect Account
 
-1. In Postpanda, go to Settings
+1. In Slayt, go to Settings
 2. Click "Connect TikTok"
 3. Authorize the app
 4. Your TikTok is now connected!
