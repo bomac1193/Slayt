@@ -219,6 +219,9 @@ function GridPlanner() {
       const gridList = Array.isArray(data) ? data : data.grids || [];
       console.log('[GridPlanner] Parsed gridList:', gridList.length, 'grids');
 
+      // Save grids to state
+      setGrids(gridList);
+
       // If we have grids, select the first one (or active one)
       if (gridList.length > 0) {
         const activeGrid = gridList.find(g => g.isActive) || gridList[0];
