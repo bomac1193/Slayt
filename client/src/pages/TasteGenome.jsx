@@ -7,13 +7,61 @@ import {
   Flame,
   Target,
   ChevronRight,
-  Award,
   Zap,
   Lock,
   CheckCircle2,
+  Star,
+  TrendingUp,
+  Award,
+  Layers,
+  Eye,
+  Compass,
+  Shield,
+  Lightbulb,
+  Heart,
+  Hexagon,
+  Circle,
+  Square,
+  Triangle,
+  Aperture,
 } from 'lucide-react';
 
+// Map archetype designations to icons
+const ARCHETYPE_ICONS = {
+  'T-1': Layers,
+  'V-2': Eye,
+  'L-3': Compass,
+  'C-4': Shield,
+  'N-5': Heart,
+  'H-6': TrendingUp,
+  'P-7': Star,
+  'D-8': Zap,
+  'F-9': Lightbulb,
+  'R-10': Target,
+  'S-0': Hexagon,
+  'NULL': Aperture,
+};
+
+// Map achievement IDs to icons
+const ACHIEVEMENT_ICONS = {
+  'first-score': Eye,
+  'ten-scores': Target,
+  'fifty-scores': Award,
+  'first-publish': Zap,
+  'ten-published': TrendingUp,
+  'first-hook': Lightbulb,
+  'hook-master': Star,
+  'streak-3': Flame,
+  'streak-7': Flame,
+  'streak-30': Trophy,
+  'style-explorer': Compass,
+  'hook-explorer': Layers,
+  'glyph-revealed': Dna,
+};
+
 function ArchetypeCard({ archetype, isActive, confidence }) {
+  const IconComponent = ARCHETYPE_ICONS[archetype.designation] || Hexagon;
+
   return (
     <div
       className={`relative rounded-xl p-4 border transition-all ${
@@ -23,18 +71,23 @@ function ArchetypeCard({ archetype, isActive, confidence }) {
       }`}
     >
       {isActive && (
-        <div className="absolute -top-2 -right-2 px-2 py-0.5 bg-accent-purple text-white text-xs rounded-full">
-          {Math.round(confidence * 100)}% match
+        <div className="absolute -top-2 -right-2 px-2 py-0.5 bg-accent-purple text-white text-xs rounded-full font-medium">
+          {Math.round(confidence * 100)}%
         </div>
       )}
       <div className="flex items-center gap-3 mb-3">
-        <span className="text-3xl">{archetype.glyph}</span>
+        <div
+          className="w-10 h-10 rounded-lg flex items-center justify-center"
+          style={{ backgroundColor: archetype.color || '#8b5cf6' }}
+        >
+          <IconComponent className="w-5 h-5 text-white" />
+        </div>
         <div>
           <h3 className="font-semibold text-white">{archetype.title}</h3>
-          <p className="text-xs text-dark-400">{archetype.designation}</p>
+          <p className="text-xs text-dark-400 font-mono">{archetype.designation}</p>
         </div>
       </div>
-      <p className="text-sm text-dark-300 mb-3">{archetype.essence}</p>
+      <p className="text-sm text-dark-300 mb-3 line-clamp-2">{archetype.essence}</p>
       <div className="flex flex-wrap gap-1">
         <span className="px-2 py-0.5 bg-dark-600 rounded text-xs text-dark-300">
           {archetype.creativeMode}
@@ -45,24 +98,28 @@ function ArchetypeCard({ archetype, isActive, confidence }) {
 }
 
 function AchievementBadge({ achievement, unlocked }) {
+  const IconComponent = ACHIEVEMENT_ICONS[achievement.id] || Award;
+
   return (
     <div
-      className={`relative p-3 rounded-xl border transition-all ${
+      className={`relative p-3 rounded-lg border transition-all ${
         unlocked
-          ? 'bg-dark-700 border-yellow-500/30'
+          ? 'bg-dark-700 border-accent-purple/30'
           : 'bg-dark-800 border-dark-700 opacity-50'
       }`}
     >
       <div className="flex items-center gap-3">
-        <span className="text-2xl">{achievement.icon}</span>
-        <div>
-          <h4 className="font-medium text-white text-sm">{achievement.name}</h4>
-          <p className="text-xs text-dark-400">{achievement.description}</p>
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${unlocked ? 'bg-accent-purple/20' : 'bg-dark-700'}`}>
+          <IconComponent className={`w-4 h-4 ${unlocked ? 'text-accent-purple' : 'text-dark-500'}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h4 className="font-medium text-white text-sm truncate">{achievement.name}</h4>
+          <p className="text-xs text-dark-400 truncate">{achievement.description}</p>
         </div>
         {unlocked ? (
-          <CheckCircle2 className="w-5 h-5 text-green-400 ml-auto" />
+          <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
         ) : (
-          <Lock className="w-4 h-4 text-dark-500 ml-auto" />
+          <Lock className="w-4 h-4 text-dark-500 flex-shrink-0" />
         )}
       </div>
     </div>
@@ -165,7 +222,7 @@ function TasteGenome() {
       const result = await genomeApi.submitQuiz(responses);
       setGenome(result.summary?.genome || genome);
       setShowQuiz(false);
-      loadGenome(); // Refresh
+      loadGenome();
     } catch (error) {
       console.error('Failed to submit quiz:', error);
     } finally {
@@ -204,8 +261,8 @@ function TasteGenome() {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-xl font-bold text-white">Discover Your Archetype</h1>
-            <span className="text-sm text-dark-400">
-              {currentQuestion + 1} of {quizQuestions.length}
+            <span className="text-sm text-dark-400 font-mono">
+              {currentQuestion + 1}/{quizQuestions.length}
             </span>
           </div>
           <div className="h-1 bg-dark-700 rounded-full overflow-hidden">
@@ -236,7 +293,7 @@ function TasteGenome() {
               disabled={!allAnswered || submittingQuiz}
               className="px-6 py-2 bg-accent-purple text-white rounded-lg hover:bg-accent-purple/80 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              {submittingQuiz ? 'Analyzing...' : 'Reveal My Archetype'}
+              {submittingQuiz ? 'Analyzing...' : 'Reveal Archetype'}
               <Sparkles className="w-4 h-4" />
             </button>
           ) : (
@@ -264,7 +321,7 @@ function TasteGenome() {
             <Dna className="w-7 h-7 text-accent-purple" />
             Taste Genome
           </h1>
-          <p className="text-dark-400 mt-1">Your unique creative DNA profile</p>
+          <p className="text-dark-400 mt-1">Your creative DNA profile</p>
         </div>
         <button
           onClick={startQuiz}
@@ -299,11 +356,19 @@ function TasteGenome() {
             {genome.archetype?.primary && (
               <div className="bg-dark-800 rounded-xl p-6 border border-dark-700">
                 <div className="flex items-center gap-4 mb-4">
-                  <span className="text-5xl">{genome.archetype.primary.glyph}</span>
+                  <div
+                    className="w-16 h-16 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: genome.archetype.primary.color || '#8b5cf6' }}
+                  >
+                    {(() => {
+                      const IconComponent = ARCHETYPE_ICONS[genome.archetype.primary.designation] || Hexagon;
+                      return <IconComponent className="w-8 h-8 text-white" />;
+                    })()}
+                  </div>
                   <div>
-                    <p className="text-sm text-accent-purple font-medium">Your Primary Archetype</p>
+                    <p className="text-sm text-accent-purple font-medium">Primary Archetype</p>
                     <h2 className="text-2xl font-bold text-white">{genome.archetype.primary.title}</h2>
-                    <p className="text-dark-400">{genome.archetype.primary.designation}</p>
+                    <p className="text-dark-400 font-mono text-sm">{genome.archetype.primary.designation}</p>
                   </div>
                   <div className="ml-auto text-right">
                     <p className="text-3xl font-bold text-white">
@@ -331,7 +396,15 @@ function TasteGenome() {
               <div className="bg-dark-800 rounded-xl p-4 border border-dark-700">
                 <p className="text-sm text-dark-400 mb-2">Secondary Influence</p>
                 <div className="flex items-center gap-3">
-                  <span className="text-3xl">{genome.archetype.secondary.glyph}</span>
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: genome.archetype.secondary.color || '#6366f1' }}
+                  >
+                    {(() => {
+                      const IconComponent = ARCHETYPE_ICONS[genome.archetype.secondary.designation] || Hexagon;
+                      return <IconComponent className="w-5 h-5 text-white" />;
+                    })()}
+                  </div>
                   <div>
                     <h3 className="font-semibold text-white">{genome.archetype.secondary.title}</h3>
                     <p className="text-sm text-dark-400">
@@ -364,33 +437,30 @@ function TasteGenome() {
             {gamification && (
               <div className="bg-dark-800 rounded-xl p-4 border border-dark-700">
                 <div className="flex items-center gap-3 mb-4">
-                  <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-2xl"
-                    style={{ backgroundColor: gamification.tier?.color || '#8b5cf6' }}
-                  >
-                    {gamification.tier?.icon || '✨'}
+                  <div className="w-12 h-12 rounded-xl bg-accent-purple/20 flex items-center justify-center">
+                    <Award className="w-6 h-6 text-accent-purple" />
                   </div>
                   <div>
                     <p className="text-sm text-dark-400">Current Tier</p>
-                    <h3 className="font-semibold text-white">{gamification.tier?.name || 'Novice'}</h3>
+                    <h3 className="font-semibold text-white">{gamification.tier?.name || 'Nascent'}</h3>
                   </div>
                 </div>
 
                 <div className="mb-4">
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-dark-400">XP</span>
-                    <span className="text-white">{gamification.xp || 0}</span>
+                    <span className="text-white font-mono">{gamification.xp || 0}</span>
                   </div>
                   <div className="h-2 bg-dark-700 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-accent-purple transition-all"
-                      style={{ width: `${Math.min(100, (gamification.xp || 0) / 10)}%` }}
+                      style={{ width: `${Math.min(100, (gamification.xp || 0) / 20)}%` }}
                     />
                   </div>
                 </div>
 
                 <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-1 text-orange-400">
+                  <div className="flex items-center gap-1.5 text-orange-400">
                     <Flame className="w-4 h-4" />
                     <span>{gamification.streak || 0} day streak</span>
                   </div>
@@ -401,7 +471,7 @@ function TasteGenome() {
             {/* Achievements */}
             <div className="bg-dark-800 rounded-xl p-4 border border-dark-700">
               <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-yellow-500" />
+                <Trophy className="w-5 h-5 text-accent-purple" />
                 Achievements
               </h3>
               <div className="space-y-2">

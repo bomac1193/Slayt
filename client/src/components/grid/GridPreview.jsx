@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { User, Upload, ZoomIn, ZoomOut, X, Check, Camera, RotateCcw, Save, GripVertical, Replace, Layers, Trash2, Eye, EyeOff, Play, ChevronDown, FolderPlus, Pencil, LayoutGrid, Loader2, CalendarPlus, ChevronRight, Heart, MessageCircle, Bookmark, Send, Share2, MoreHorizontal, Plus } from 'lucide-react';
+import { User, Upload, ZoomIn, ZoomOut, X, Check, Camera, RotateCcw, Save, GripVertical, Replace, Layers, Trash2, Eye, EyeOff, Play, ChevronDown, FolderPlus, Pencil, LayoutGrid, Loader2, CalendarPlus, ChevronRight, Heart, MessageCircle, Bookmark, Send, Share2, MoreHorizontal, Plus, Sparkles } from 'lucide-react';
+import PostAIGenerator from './PostAIGenerator';
 import { setInternalDragActive } from '../../utils/dragState';
 import { generateVideoThumbnail, formatDuration } from '../../utils/videoUtils';
 import { contentApi, gridApi, reelCollectionApi, rolloutApi } from '../../lib/api';
@@ -627,6 +628,7 @@ function PostPreviewModal({ post, onClose, onSave }) {
   const [caption, setCaption] = useState(post?.caption || '');
   const [hashtags, setHashtags] = useState(post?.hashtags?.join(' ') || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [showAIGenerator, setShowAIGenerator] = useState(false);
 
   // Carousel state
   const initialImages = post?.images || (post?.image ? [post.image] : []);
@@ -1194,32 +1196,50 @@ function PostPreviewModal({ post, onClose, onSave }) {
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-dark-700 flex items-center justify-end gap-3">
+        <div className="px-4 py-3 border-t border-dark-700 flex items-center justify-between">
           <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm text-dark-300 hover:text-white hover:bg-dark-700 rounded-lg transition-colors"
+            onClick={() => setShowAIGenerator(true)}
+            className="px-4 py-2 text-sm bg-dark-700 text-white rounded-lg hover:bg-dark-600 transition-colors flex items-center gap-2"
           >
-            Cancel
+            <Sparkles className="w-4 h-4 text-accent-purple" />
+            AI Generate
           </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="px-4 py-2 text-sm bg-accent-purple text-white rounded-lg hover:bg-accent-purple/80 transition-colors disabled:opacity-50 flex items-center gap-2"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Check className="w-4 h-4" />
-                Save Changes
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm text-dark-300 hover:text-white hover:bg-dark-700 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="px-4 py-2 text-sm bg-accent-purple text-white rounded-lg hover:bg-accent-purple/80 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  Save Changes
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* AI Generator Modal */}
+      {showAIGenerator && (
+        <PostAIGenerator
+          post={post}
+          onClose={() => setShowAIGenerator(false)}
+          onApplyCaption={(newCaption) => setCaption(newCaption)}
+        />
+      )}
     </div>
   );
 }
