@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { intelligenceApi, genomeApi } from '../lib/api';
+import folioApi, { folioAuth, isFolioConnected, getFolioUser } from '../lib/folioApi';
 import {
   Sparkles,
   Zap,
@@ -10,6 +11,10 @@ import {
   Target,
   Lightbulb,
   RefreshCw,
+  Link2,
+  LogOut,
+  ExternalLink,
+  Dna,
 } from 'lucide-react';
 
 function ScoreRing({ score, size = 60, strokeWidth = 4 }) {
@@ -113,8 +118,19 @@ function ContentStudio() {
   // Taste Profile
   const [tasteProfile, setTasteProfile] = useState(null);
 
+  // Folio integration
+  const [folioConnected, setFolioConnected] = useState(false);
+  const [folioUser, setFolioUser] = useState(null);
+  const [folioEmail, setFolioEmail] = useState('');
+  const [folioPassword, setFolioPassword] = useState('');
+  const [folioLoggingIn, setFolioLoggingIn] = useState(false);
+  const [folioError, setFolioError] = useState('');
+  const [folioTasteProfile, setFolioTasteProfile] = useState(null);
+  const [useFolioForGeneration, setUseFolioForGeneration] = useState(false);
+
   useEffect(() => {
     loadTasteProfile();
+    checkFolioConnection();
   }, []);
 
   const loadTasteProfile = async () => {
@@ -128,11 +144,80 @@ function ContentStudio() {
     }
   };
 
+  const checkFolioConnection = async () => {
+    if (isFolioConnected()) {
+      setFolioConnected(true);
+      setFolioUser(getFolioUser());
+      // Try to load Folio taste profile
+      try {
+        const session = await folioAuth.getSession();
+        if (session) {
+          const profile = await folioApi.tasteProfile.get();
+          setFolioTasteProfile(profile);
+        }
+      } catch (error) {
+        console.error('Failed to load Folio profile:', error);
+      }
+    }
+  };
+
+  const handleFolioLogin = async (e) => {
+    e.preventDefault();
+    setFolioLoggingIn(true);
+    setFolioError('');
+    try {
+      const result = await folioAuth.login(folioEmail, folioPassword);
+      setFolioConnected(true);
+      setFolioUser(result.user);
+      setFolioEmail('');
+      setFolioPassword('');
+      // Load Folio taste profile
+      try {
+        const profile = await folioApi.tasteProfile.get();
+        setFolioTasteProfile(profile);
+      } catch (err) {
+        console.error('Failed to load Folio profile:', err);
+      }
+    } catch (error) {
+      setFolioError(error.message || 'Failed to connect to Folio');
+    } finally {
+      setFolioLoggingIn(false);
+    }
+  };
+
+  const handleFolioLogout = () => {
+    folioAuth.logout();
+    setFolioConnected(false);
+    setFolioUser(null);
+    setFolioTasteProfile(null);
+    setUseFolioForGeneration(false);
+  };
+
   const handleGenerate = async () => {
     if (!topic.trim()) return;
     setGenerating(true);
     try {
-      const result = await intelligenceApi.generate(topic, { platform, count: 5 });
+      let result;
+      if (useFolioForGeneration && folioConnected) {
+        // Use Folio's AI generation
+        const platformMap = {
+          instagram: 'INSTAGRAM_REEL',
+          tiktok: 'TIKTOK',
+          youtube: 'YOUTUBE_SHORT',
+          linkedin: 'LINKEDIN',
+        };
+        result = await folioApi.generate.variants(
+          topic,
+          platformMap[platform] || 'INSTAGRAM_REEL',
+          5,
+          [],
+          'generate',
+          'English'
+        );
+      } else {
+        // Use local Slayt AI generation
+        result = await intelligenceApi.generate(topic, { platform, count: 5 });
+      }
       setVariants(result.variants || []);
     } catch (error) {
       console.error('Generate error:', error);
@@ -189,6 +274,7 @@ function ContentStudio() {
           { id: 'generate', label: 'Generate', icon: Sparkles },
           { id: 'score', label: 'Score', icon: BarChart3 },
           { id: 'trending', label: 'Trending', icon: TrendingUp },
+          { id: 'folio', label: 'Folio', icon: Link2 },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -208,6 +294,20 @@ function ContentStudio() {
       {/* Generate Tab */}
       {activeTab === 'generate' && (
         <div className="space-y-6">
+          {/* Folio Mode Indicator */}
+          {useFolioForGeneration && folioConnected && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-accent-purple/10 border border-accent-purple/30 rounded-lg">
+              <Link2 className="w-4 h-4 text-accent-purple" />
+              <span className="text-sm text-accent-purple">Using Folio's AI for generation</span>
+              <button
+                onClick={() => setUseFolioForGeneration(false)}
+                className="ml-auto text-xs text-dark-400 hover:text-white"
+              >
+                Switch to local
+              </button>
+            </div>
+          )}
+
           {/* Input */}
           <div className="bg-dark-800 rounded-xl p-4 border border-dark-700">
             <label className="block text-sm text-dark-300 mb-2">What do you want to create content about?</label>
@@ -421,6 +521,185 @@ function ContentStudio() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Folio Tab */}
+      {activeTab === 'folio' && (
+        <div className="space-y-6">
+          {/* Connection Status */}
+          <div className="bg-dark-800 rounded-xl p-6 border border-dark-700">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                folioConnected ? 'bg-green-500/20' : 'bg-dark-700'
+              }`}>
+                <Link2 className={`w-5 h-5 ${folioConnected ? 'text-green-400' : 'text-dark-400'}`} />
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-white">Folio Connection</h3>
+                <p className="text-sm text-dark-400">
+                  {folioConnected
+                    ? `Connected as ${folioUser?.name || folioUser?.email}`
+                    : 'Connect to Folio for enhanced AI generation'}
+                </p>
+              </div>
+              {folioConnected && (
+                <button
+                  onClick={handleFolioLogout}
+                  className="ml-auto flex items-center gap-2 px-4 py-2 bg-dark-700 hover:bg-dark-600 text-dark-300 hover:text-white rounded-lg transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Disconnect
+                </button>
+              )}
+            </div>
+
+            {!folioConnected ? (
+              <form onSubmit={handleFolioLogin} className="space-y-4">
+                <p className="text-sm text-dark-300">
+                  Connect your Folio account to use your collections, taste profile, and enhanced AI generation.
+                </p>
+                {folioError && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+                    {folioError}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-dark-300 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={folioEmail}
+                      onChange={(e) => setFolioEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      className="w-full px-4 py-2.5 bg-dark-700 border border-dark-600 rounded-lg text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-dark-300 mb-1">Password</label>
+                    <input
+                      type="password"
+                      value={folioPassword}
+                      onChange={(e) => setFolioPassword(e.target.value)}
+                      placeholder="Enter password"
+                      className="w-full px-4 py-2.5 bg-dark-700 border border-dark-600 rounded-lg text-white"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <button
+                    type="submit"
+                    disabled={folioLoggingIn}
+                    className="px-6 py-2.5 bg-accent-purple text-white rounded-lg hover:bg-accent-purple/80 transition-colors disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {folioLoggingIn ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Link2 className="w-4 h-4" />
+                    )}
+                    Connect to Folio
+                  </button>
+                  <a
+                    href="https://folio.subtaste.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-dark-400 hover:text-accent-purple flex items-center gap-1"
+                  >
+                    Don't have an account? <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                {/* Folio Taste Profile */}
+                {folioTasteProfile && (
+                  <div className="p-4 bg-dark-700 rounded-lg">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Dna className="w-4 h-4 text-accent-purple" />
+                      <h4 className="text-sm font-medium text-white">Folio Taste Profile</h4>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                      {folioTasteProfile.dominantTones && (
+                        <div>
+                          <p className="text-xs text-dark-400 mb-1">Dominant Tones</p>
+                          <div className="flex flex-wrap gap-1">
+                            {folioTasteProfile.dominantTones.slice(0, 3).map((tone, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-dark-600 rounded text-dark-200 text-xs">
+                                {tone}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {folioTasteProfile.preferredHooks && (
+                        <div>
+                          <p className="text-xs text-dark-400 mb-1">Preferred Hooks</p>
+                          <div className="flex flex-wrap gap-1">
+                            {folioTasteProfile.preferredHooks.slice(0, 3).map((hook, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-dark-600 rounded text-dark-200 text-xs">
+                                {hook}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {folioTasteProfile.confidence && (
+                        <div>
+                          <p className="text-xs text-dark-400 mb-1">Profile Confidence</p>
+                          <span className="text-white">{Math.round(folioTasteProfile.confidence * 100)}%</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Use Folio Toggle */}
+                <div className="flex items-center justify-between p-4 bg-dark-700 rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium text-white">Use Folio for Generation</p>
+                    <p className="text-xs text-dark-400">When enabled, Generate tab will use Folio's AI</p>
+                  </div>
+                  <button
+                    onClick={() => setUseFolioForGeneration(!useFolioForGeneration)}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                      useFolioForGeneration ? 'bg-accent-purple' : 'bg-dark-600'
+                    }`}
+                  >
+                    <div
+                      className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                        useFolioForGeneration ? 'translate-x-7' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* What is Folio */}
+          <div className="bg-dark-800 rounded-xl p-6 border border-dark-700">
+            <h3 className="text-lg font-medium text-white mb-3">What is Folio?</h3>
+            <p className="text-sm text-dark-300 mb-4">
+              Folio is a creative intelligence platform that learns your unique content style from the videos and posts you save.
+              It builds a personalized taste profile that helps generate content that matches your aesthetic.
+            </p>
+            <ul className="space-y-2 text-sm text-dark-300">
+              <li className="flex items-start gap-2">
+                <Dna className="w-4 h-4 text-accent-purple flex-shrink-0 mt-0.5" />
+                <span>Personal taste profile built from your saved content</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-accent-purple flex-shrink-0 mt-0.5" />
+                <span>AI-powered content generation matching your style</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Target className="w-4 h-4 text-accent-purple flex-shrink-0 mt-0.5" />
+                <span>Content DNA analysis for hooks, tones, and formats</span>
+              </li>
+            </ul>
+          </div>
         </div>
       )}
     </div>

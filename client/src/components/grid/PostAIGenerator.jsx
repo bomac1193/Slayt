@@ -114,8 +114,20 @@ function PostAIGenerator({ post, onClose, onApplyCaption }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-dark-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4"
+      onClick={(e) => {
+        e.stopPropagation();
+        // Only close if clicking the backdrop itself
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        className="bg-dark-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-dark-700">
           <div className="flex items-center gap-3">
