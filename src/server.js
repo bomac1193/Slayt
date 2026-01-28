@@ -26,6 +26,7 @@ const youtubeRoutes = require('./routes/youtube');
 const rolloutRoutes = require('./routes/rollout');
 const reelCollectionRoutes = require('./routes/reelCollection');
 const profileRoutes = require('./routes/profile');
+const intelligenceRoutes = require('./routes/intelligence');
 const schedulingService = require('./services/schedulingService');
 
 // Connect to MongoDB
@@ -98,6 +99,7 @@ app.use('/api/youtube', youtubeRoutes);
 app.use('/api/rollout', rolloutRoutes);
 app.use('/api/reel-collections', reelCollectionRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/intelligence', intelligenceRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

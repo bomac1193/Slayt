@@ -618,4 +618,63 @@ export const reelCollectionApi = {
   },
 };
 
+// Intelligence API - AI content scoring and generation
+export const intelligenceApi = {
+  // Analyze content and extract DNA patterns
+  async analyze(content) {
+    const { data } = await api.post('/api/intelligence/analyze', content);
+    return data;
+  },
+
+  // Score content against taste profile
+  async score(content, profileId = null) {
+    const { data } = await api.post('/api/intelligence/score', { content, profileId });
+    return data;
+  },
+
+  // Generate content variants in creator's voice
+  async generate(topic, options = {}) {
+    const { data } = await api.post('/api/intelligence/generate', { topic, ...options });
+    return data;
+  },
+
+  // Get user's taste profile
+  async getProfile(profileId = null) {
+    const params = profileId ? `?profileId=${profileId}` : '';
+    const { data } = await api.get(`/api/intelligence/profile${params}`);
+    return data;
+  },
+
+  // Update taste profile with performance data
+  async updateProfile(contentId, actualMetrics, profileId = null) {
+    const { data } = await api.post('/api/intelligence/profile/update', {
+      contentId,
+      actualMetrics,
+      profileId
+    });
+    return data;
+  },
+
+  // Analyze why content performed well or poorly
+  async analyzePerformance(contentId, actualMetrics) {
+    const { data } = await api.post('/api/intelligence/performance', {
+      contentId,
+      actualMetrics
+    });
+    return data;
+  },
+
+  // Get trending topics in niche
+  async getTrending(niche = 'general', platform = 'instagram') {
+    const { data } = await api.get(`/api/intelligence/trending?niche=${niche}&platform=${platform}`);
+    return data;
+  },
+
+  // Batch score multiple content items
+  async batchScore(contentIds, profileId = null) {
+    const { data } = await api.post('/api/intelligence/batch-score', { contentIds, profileId });
+    return data;
+  }
+};
+
 export default api;

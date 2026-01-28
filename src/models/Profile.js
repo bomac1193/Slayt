@@ -110,6 +110,30 @@ const profileSchema = new mongoose.Schema({
     default: '#8b5cf6' // Purple
   },
 
+  // AI Taste Profile - learned patterns specific to this profile
+  tasteProfile: {
+    performancePatterns: {
+      hooks: [{ type: String }],
+      sentiment: [{ type: String }],
+      structure: [{ type: String }],
+      keywords: [{ type: String }]
+    },
+    aestheticPatterns: {
+      dominantTones: [{ type: String }],
+      avoidTones: [{ type: String }],
+      voice: { type: String, default: 'conversational' },
+      complexity: { type: String, default: 'moderate' }
+    },
+    voiceSignature: {
+      sentencePatterns: [{ type: String }],
+      rhetoricalDevices: [{ type: String }],
+      vocabularyLevel: { type: String }
+    },
+    confidence: { type: Number, default: 0 },
+    itemCount: { type: Number, default: 0 },
+    lastUpdated: { type: Date }
+  },
+
   createdAt: {
     type: Date,
     default: Date.now

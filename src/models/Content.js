@@ -153,6 +153,51 @@ const contentSchema = new mongoose.Schema({
   mentions: [String],
   location: String,
   audioTrack: String, // For reels - song or audio name
+
+  // Content DNA Analysis (from Intelligence Service)
+  analysis: {
+    performanceDNA: {
+      hooks: [{ type: String }],
+      structure: { type: String },
+      keywords: [{ type: String }],
+      sentiment: { type: String },
+      predictedScore: { type: Number },
+      format: { type: String },
+      niche: { type: String },
+      targetAudience: { type: String }
+    },
+    aestheticDNA: {
+      tone: [{ type: String }],
+      voice: { type: String },
+      complexity: { type: String },
+      style: [{ type: String }],
+      tasteScore: { type: Number },
+      emotionalTriggers: [{ type: String }],
+      pacing: { type: String }
+    },
+    analyzedAt: { type: Date }
+  },
+
+  // Performance Analysis (post-publish comparison)
+  performanceAnalysis: {
+    predicted: { type: Number },
+    actual: {
+      views: { type: Number },
+      likes: { type: Number },
+      comments: { type: Number },
+      shares: { type: Number },
+      saves: { type: Number },
+      engagementRate: { type: Number }
+    },
+    gap: { type: Number },
+    insights: [{
+      type: { type: String },
+      message: { type: String },
+      learnings: [{ type: String }]
+    }],
+    analyzedAt: { type: Date }
+  },
+
   createdAt: {
     type: Date,
     default: Date.now
