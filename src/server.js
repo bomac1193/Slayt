@@ -15,6 +15,7 @@ const gridRoutes = require('./routes/grid');
 const aiRoutes = require('./routes/ai');
 const alchemyRoutes = require('./routes/alchemy');
 const collectionRoutes = require('./routes/collection');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 const haloRoutes = require('./routes/halo');
 const postingRoutes = require('./routes/posting');
 const linkInBioRoutes = require('./routes/linkinbio');
@@ -41,6 +42,7 @@ setTimeout(() => {
 
 const app = express();
 const PORT = process.env.PORT || 3002;
+const FOLIO_API_URL = process.env.FOLIO_API_URL || 'http://localhost:3001';
 
 // Security middleware
 app.use(helmet({
@@ -104,6 +106,18 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/intelligence', intelligenceRoutes);
 app.use('/api/genome', genomeRoutes);
 app.use('/api/characters', characterRoutes);
+
+// Proxy to Folio API to avoid CORS pain locally
+app.use('/folio', createProxyMiddleware({
+  target: FOLIO_API_URL,
+  changeOrigin: true,
+  secure: false,
+  pathRewrite: { '^/folio': '' },
+  onProxyRes: (proxyRes) => {
+    proxyRes.headers['Access-Control-Allow-Origin'] = process.env.FRONTEND_URL || 'http://localhost:5173';
+    proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
+  }
+}));
 
 // Health check
 app.get('/api/health', (req, res) => {
