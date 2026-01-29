@@ -81,7 +81,7 @@ const navItems = [
     children: [
       { path: '/genome', icon: Dna, label: 'Taste Genome' },
       { path: '/training', icon: Zap, label: 'Training' },
-      { path: '/studio', icon: Sparkles, label: 'Content Studio' },
+      { path: '/studio', icon: Sparkles, label: 'Flio' },
     ],
   },
   { path: '/characters', icon: UserCircle2, label: 'Characters' },
