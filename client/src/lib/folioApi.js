@@ -3,7 +3,10 @@
  * Connects Slayt to Folio's creative intelligence platform
  */
 
-const FOLIO_API_URL = import.meta.env.VITE_FOLIO_API_URL || 'http://localhost:3001';
+const defaultFolioBase = typeof window !== 'undefined'
+  ? `${window.location.origin.replace(/\/$/, '')}/folio`
+  : 'http://localhost:3002/folio';
+const FOLIO_API_URL = import.meta.env.VITE_FOLIO_API_URL || defaultFolioBase;
 
 // Store Folio session token
 let folioToken = localStorage.getItem('folio_token') || null;
