@@ -863,15 +863,15 @@ function generateFallbackYouTubeContent(topic, count, tasteProfile, directives =
       reasoning: `${directiveLine}`
     },
     {
-      title: `Skip the filler: ${shortTopic} in 90 seconds`,
-      description: `Fast, surgical take on ${shortTopic}. ${styleLine || 'Direct, glyph-driven tone'}.`,
-      tags: [keyWord.toLowerCase(), 'short', 'no fluff', 'guide', 'fast'],
+      title: `${shortTopic}: 2 lines, one big hook`,
+      description: `Lead with the punchline: ${styleLine || 'glyph voice'} applied to ${shortTopic}. First line = hook. Second = why it matters.`,
+      tags: [keyWord.toLowerCase(), 'hook', 'direct', 'fast', 'no fluff'],
       hookType: hooks[1] || 'how-to',
       tone: tones[1] || 'punchy',
-      thumbnailIdea: `Timer icon + bold title; glyph accent`,
-      performanceScore: 72 + Math.floor(Math.random() * 12),
-      tasteScore: 68 + Math.floor(Math.random() * 14),
-      reasoning: 'Tight promise with time constraint'
+      thumbnailIdea: `Two-line typography, brutalist block, glyph accent`,
+      performanceScore: 73 + Math.floor(Math.random() * 10),
+      tasteScore: 71 + Math.floor(Math.random() * 12),
+      reasoning: 'Ultra-compact, no intro language'
     },
     {
       title: `${shortTopic} — what actually works`,
@@ -885,8 +885,8 @@ function generateFallbackYouTubeContent(topic, count, tasteProfile, directives =
       reasoning: directiveLine
     },
     {
-      title: `${shortTopic}: the ruthless checklist`,
-      description: `A concise checklist for ${shortTopic}. ${styleLine || 'Brutalist, no-adjective tone'}.`,
+      title: `${shortTopic}: ruthless checklist`,
+      description: `Concise checklist for ${shortTopic}. ${styleLine || 'Brutalist, no-adjective tone'}.`,
       tags: [keyWord.toLowerCase(), 'checklist', 'ruthless', 'lean'],
       hookType: 'list',
       tone: 'clinical',
@@ -894,6 +894,17 @@ function generateFallbackYouTubeContent(topic, count, tasteProfile, directives =
       performanceScore: 71 + Math.floor(Math.random() * 10),
       tasteScore: 70 + Math.floor(Math.random() * 10),
       reasoning: 'Checklist format with decisive tone'
+    },
+    {
+      title: `${shortTopic}: zero intro, all signal`,
+      description: `Opens cold with the answer. ${styleLine || 'Glyph voice'} applied to ${shortTopic}. No “welcome back”, no “here’s why”, just the directive.`,
+      tags: [keyWord.toLowerCase(), 'direct', 'answer first', 'no intro'],
+      hookType: 'statement',
+      tone: 'brutalist',
+      thumbnailIdea: `Single word overlay (answer) with stark contrast and glyph mark`,
+      performanceScore: 74 + Math.floor(Math.random() * 8),
+      tasteScore: 72 + Math.floor(Math.random() * 10),
+      reasoning: 'Eliminates filler and forces a distinctive open'
     }
   ];
 
