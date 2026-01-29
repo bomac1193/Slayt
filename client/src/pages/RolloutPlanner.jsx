@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, ChevronDown, Trash2, Edit3, Check, X, GripVertical, Folder, Search, Tag, Palette, Youtube, Instagram, LayoutGrid, Film, Loader2, Calendar, Flag, Target, Clock } from 'lucide-react';
+import { Plus, ChevronDown, Trash2, Edit3, Check, X, GripVertical, Folder, Search, Tag, Palette, Youtube, Instagram, LayoutGrid, Film, Loader2, Calendar, Flag, Target, Clock, Sparkles } from 'lucide-react';
 import { useAppStore } from '../stores/useAppStore';
 import { gridApi, reelCollectionApi, rolloutApi } from '../lib/api';
 
@@ -41,6 +41,58 @@ const getDaysUntil = (date) => {
   const diff = Math.ceil((target - now) / (1000 * 60 * 60 * 24));
   return diff;
 };
+
+const ROLLOUT_TEMPLATES = [
+  {
+    id: 'core-album',
+    name: 'Core Album Blueprint',
+    tag: 'Core',
+    description: 'Five-phase launch: Tease → Announce → Drip → Drop → Sustain.',
+    phases: [
+      { name: 'Tease', color: '#8b5cf6', notes: 'Mood teasers, cryptic hints, visual motifs.' },
+      { name: 'Announce', color: '#3b82f6', notes: 'Title, date, cover. Pre-save CTA.' },
+      { name: 'Drip', color: '#10b981', notes: 'Singles/snippets weekly, behind-the-scenes.' },
+      { name: 'Drop', color: '#f97316', notes: 'Launch day blitz, live stream, press hits.' },
+      { name: 'Sustain', color: '#ec4899', notes: 'Remixes, UGC campaigns, tour tie-ins.' },
+    ],
+  },
+  {
+    id: 'core-product',
+    name: 'Core Product Blueprint',
+    tag: 'Core',
+    description: 'Awareness → Authority → Conversion → Retention.',
+    phases: [
+      { name: 'Awareness', color: '#06b6d4', notes: 'Problem agitation, story ads, hooks.' },
+      { name: 'Authority', color: '#6366f1', notes: 'Proof, testimonials, case drops.' },
+      { name: 'Conversion', color: '#22c55e', notes: 'Offer windows, demos, live Q&A.' },
+      { name: 'Retention', color: '#f59e0b', notes: 'Onboarding, community challenges, upsell.' },
+    ],
+  },
+  {
+    id: 'chromakopia-inspired',
+    name: 'Inspired: Chromakopia',
+    tag: 'Inspired',
+    description: 'High-visual, lore-driven rollout with color-coded chapters.',
+    phases: [
+      { name: 'Lore Seeds', color: '#a855f7', notes: 'Cryptic posts, visual glyphs.' },
+      { name: 'Chapter Reveals', color: '#0ea5e9', notes: 'Drop chapters with distinct palettes.' },
+      { name: 'Hero Drop', color: '#f43f5e', notes: 'Full project, live moment, merch tie-in.' },
+      { name: 'Afterglow', color: '#22c55e', notes: 'Remixes, fan edits, alt covers.' },
+    ],
+  },
+  {
+    id: 'charli-velocity',
+    name: 'Inspired: Charli Velocity',
+    tag: 'Inspired',
+    description: 'Fast-cadence social blitz with short hooks and rapid iterations.',
+    phases: [
+      { name: 'Hook Storm', color: '#ec4899', notes: 'Daily hooks/snippets, meme edges.' },
+      { name: 'Pre-Save Surge', color: '#f59e0b', notes: 'Countdowns, share-to-unlock moments.' },
+      { name: 'Drop Day', color: '#3b82f6', notes: 'Live room, collab stitches, platform takeovers.' },
+      { name: 'Iterate', color: '#10b981', notes: 'Alt cuts, sped/slowed, fan feature loop.' },
+    ],
+  },
+];
 
 // Rollout Scheduling Panel Component
 function RolloutSchedulingPanel({ rollout, onSchedule, saving }) {
@@ -339,6 +391,38 @@ function RolloutPlanner() {
       }
     }
   };
+
+  // Apply template: create rollout, add phases as sections
+  const [templateApplying, setTemplateApplying] = useState(null);
+  const handleApplyTemplate = useCallback(async (template) => {
+    try {
+      setTemplateApplying(template.id);
+      // Create rollout
+      const created = await rolloutApi.create({ name: template.name, status: 'draft', description: template.description, tag: template.tag });
+      let newRollout = { ...created.rollout, id: created.rollout?._id || created.rollout?.id };
+      // Add sections sequentially
+      for (let i = 0; i < template.phases.length; i++) {
+        const phase = template.phases[i];
+        const res = await rolloutApi.addSection(newRollout.id, {
+          name: phase.name,
+          order: i,
+          color: phase.color,
+          notes: phase.notes,
+        });
+        newRollout = { ...res.rollout, id: res.rollout?._id || res.rollout?.id };
+      }
+      // Refresh rollouts list by fetching or injecting
+      const fetched = await rolloutApi.getAll();
+      const transformed = (fetched.rollouts || []).map(r => ({ ...r, id: r._id || r.id }));
+      setRollouts(transformed);
+      setCurrentRollout(newRollout.id);
+    } catch (err) {
+      console.error('Failed to apply template:', err);
+      alert('Failed to apply template');
+    } finally {
+      setTemplateApplying(null);
+    }
+  }, [setRollouts, setCurrentRollout]);
 
   const handleStartEditName = () => {
     if (!currentRollout) return;
@@ -651,6 +735,50 @@ function RolloutPlanner() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Rollout Templates */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="w-5 h-5 text-accent-purple" />
+          <h2 className="text-lg font-semibold text-white">Rollout Templates</h2>
+          <span className="text-xs text-dark-500">Core blueprints + inspired overlays</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {ROLLOUT_TEMPLATES.map((tpl) => (
+            <div key={tpl.id} className="border border-dark-700 bg-dark-900 rounded-lg p-4 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-white">{tpl.name}</p>
+                  <p className="text-xs text-dark-400">{tpl.description}</p>
+                </div>
+                <span className={`text-[11px] px-2 py-0.5 rounded-full border ${tpl.tag === 'Inspired' ? 'border-pink-500/50 text-pink-300' : 'border-accent-purple/50 text-accent-purple'}`}>
+                  {tpl.tag}
+                </span>
+              </div>
+              <div className="text-xs text-dark-400">
+                {tpl.phases.map(p => p.name).join(' · ')}
+              </div>
+              <button
+                onClick={() => handleApplyTemplate(tpl)}
+                disabled={!!templateApplying}
+                className="mt-2 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md border border-dark-600 text-sm text-white hover:border-accent-purple disabled:opacity-50"
+              >
+                {templateApplying === tpl.id ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Applying...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Apply Template
+                  </>
+                )}
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Rollout Scheduling Panel */}
