@@ -37,6 +37,8 @@ function YouTubeVideoDetails({ video, onThumbnailUpload }) {
   const activeFolioId = useAppStore((state) => state.activeFolioId);
   const activeProjectId = useAppStore((state) => state.activeProjectId);
 
+  const videoId = video?.id || video?._id;
+
   const [title, setTitle] = useState(video?.title || '');
   const [description, setDescription] = useState(video?.description || '');
   const [status, setStatus] = useState(video?.status || 'draft');
@@ -53,7 +55,6 @@ function YouTubeVideoDetails({ video, onThumbnailUpload }) {
   const [aiVariants, setAiVariants] = useState([]);
 
   const fileInputRef = useRef(null);
-  const videoId = video?.id || video?._id;
   const autosaveTimer = useRef(null);
   const lastSavedRef = useRef({
     title: video?.title || '',
@@ -125,8 +126,6 @@ function YouTubeVideoDetails({ video, onThumbnailUpload }) {
       </div>
     );
   }
-
-  const videoId = video.id || video._id;
 
   // Persist updates to the backend and keep local state in sync
   const persistVideoUpdates = async (updates) => {
