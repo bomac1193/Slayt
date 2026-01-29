@@ -11,6 +11,7 @@ const Profile = require('../models/Profile');
 const Content = require('../models/Content');
 const ContentRating = require('../models/ContentRating');
 const intelligenceService = require('../services/intelligenceService');
+const avantService = require('../services/avantService');
 
 /**
  * POST /api/intelligence/analyze
@@ -84,7 +85,7 @@ router.post('/score', auth, async (req, res) => {
  */
 router.post('/generate', auth, async (req, res) => {
   try {
-    const { topic, platform, count, language, profileId } = req.body;
+    const { topic, platform, count, language, profileId, avant = false, directives = [], tasteContext } = req.body;
 
     if (!topic) {
       return res.status(400).json({ error: 'Topic required' });
@@ -103,11 +104,26 @@ router.post('/generate', auth, async (req, res) => {
       tasteProfile = user?.tasteProfile;
     }
 
-    const result = await intelligenceService.generateVariants(topic, tasteProfile, {
-      platform: platform || 'instagram',
-      count: count || 5,
-      language: language || 'en'
-    });
+    let result;
+
+    if (avant && avantService.hasAvantModels()) {
+      result = await avantService.generateAvantYoutube(
+        topic,
+        tasteProfile,
+        {
+          videoType: platform || 'instagram',
+          count: count || 5,
+          tasteContext,
+          directives,
+        }
+      );
+    } else {
+      result = await intelligenceService.generateVariants(topic, tasteProfile, {
+        platform: platform || 'instagram',
+        count: count || 5,
+        language: language || 'en'
+      });
+    }
 
     res.json({
       success: true,
@@ -503,6 +519,7 @@ router.post('/generate-youtube', auth, async (req, res) => {
       characterId,
       tasteContext,
       directives = [],
+      avant = false,
     } = req.body;
 
     if (!topic) {
@@ -541,13 +558,24 @@ ${character.samplePosts?.length > 0 ? `Sample style: "${character.samplePosts[0]
       }
     }
 
-    const result = await intelligenceService.generateYouTubeContent(topic, tasteProfile, {
-      videoType: videoType || 'standard',
-      count: count || 5,
-      language: language || 'en',
-      tasteContext,
-      directives,
-    });
+    let result;
+
+    if (avant && avantService.hasAvantModels()) {
+      result = await avantService.generateAvantYoutube(topic, tasteProfile, {
+        videoType: videoType || 'standard',
+        count: count || 5,
+        tasteContext,
+        directives,
+      });
+    } else {
+      result = await intelligenceService.generateYouTubeContent(topic, tasteProfile, {
+        videoType: videoType || 'standard',
+        count: count || 5,
+        language: language || 'en',
+        tasteContext,
+        directives,
+      });
+    }
 
     res.json({
       success: true,

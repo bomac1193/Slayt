@@ -287,6 +287,7 @@ function YouTubeVideoDetails({ video, onThumbnailUpload }) {
               'Descriptions should be vivid, concise, and reflect saved collections taste',
             ]
           : undefined,
+        avant: highSignal, // use avant stack for dice/high-signal runs
       });
       const variants = result.variants || [];
       setAiVariants(variants);
