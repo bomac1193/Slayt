@@ -19,9 +19,10 @@ import {
   Star,
   ThumbsUp,
   ThumbsDown,
-  Youtube,
   LogIn,
+  Folder,
 } from 'lucide-react';
+import FolioCollections from './FolioCollections';
 
 function ScoreRing({ score, size = 60, strokeWidth = 4 }) {
   const radius = (size - strokeWidth) / 2;
@@ -293,11 +294,7 @@ function ContentStudio() {
   const [folioProfileStats, setFolioProfileStats] = useState(null);
   const [folioCollectionsList, setFolioCollectionsList] = useState([]);
   const [folioLoadingCollections, setFolioLoadingCollections] = useState(false);
-
-  // YouTube generation
-  const [youtubeVideoType, setYoutubeVideoType] = useState('standard');
-  const [youtubeVariants, setYoutubeVariants] = useState([]);
-  const [generatingYoutube, setGeneratingYoutube] = useState(false);
+  const [collectionFilter, setCollectionFilter] = useState('all');
   const currentProfileId = useAppStore((state) => state.currentProfileId);
   const activeFolioId = useAppStore((state) => state.activeFolioId);
   const activeProjectId = useAppStore((state) => state.activeProjectId);
@@ -439,40 +436,6 @@ function ContentStudio() {
     }
   };
 
-  // Generate YouTube content
-  const handleGenerateYouTube = async () => {
-    if (!topic.trim()) return;
-    setGeneratingYoutube(true);
-    try {
-      let result;
-      if (useFolioForGeneration && folioConnected) {
-        // Use Folio for YouTube
-        result = await folioApi.generate.variants(
-          topic,
-          'YOUTUBE_SHORT',
-          5,
-          [],
-          'generate',
-          'English'
-        );
-      } else {
-        // Use local YouTube generation
-        result = await intelligenceApi.generateYouTube(topic, {
-          videoType: youtubeVideoType,
-          count: 5,
-          profileId: currentProfileId || undefined,
-          folioId: activeFolioId || undefined,
-          projectId: activeProjectId || undefined,
-        });
-      }
-      setYoutubeVariants(result.variants || []);
-    } catch (error) {
-      console.error('YouTube generate error:', error);
-    } finally {
-      setGeneratingYoutube(false);
-    }
-  };
-
   const handleGenerate = async () => {
     if (!topic.trim()) return;
     setGenerating(true);
@@ -580,7 +543,7 @@ function ContentStudio() {
       <div className="flex gap-1 mb-6 bg-dark-900 rounded-lg p-1 w-fit border border-dark-700">
         {[
           { id: 'generate', label: 'Generate', icon: Sparkles },
-          { id: 'youtube', label: 'YouTube', icon: Youtube },
+          { id: 'collections', label: 'Collections', icon: Folder },
           { id: 'score', label: 'Score', icon: BarChart3 },
           { id: 'trending', label: 'Trending', icon: TrendingUp },
           { id: 'folio', label: 'Folio', icon: Link2 },
@@ -710,140 +673,141 @@ function ContentStudio() {
         </div>
       )}
 
-      {/* YouTube Tab */}
-      {activeTab === 'youtube' && (
-        <div className="space-y-6">
-          {/* Folio Mode Indicator */}
-          {useFolioForGeneration && folioConnected && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-accent-purple/10 border border-accent-purple/30 rounded-lg">
-              <Link2 className="w-4 h-4 text-accent-purple" />
-              <span className="text-sm text-accent-purple">Using Folio's AI for YouTube generation</span>
-              <button
-                onClick={() => setUseFolioForGeneration(false)}
-                className="ml-auto text-xs text-dark-400 hover:text-white"
-              >
-                Switch to local
-              </button>
+      {/* Collections Tab */}
+      {activeTab === 'collections' && (
+        <div className="space-y-4">
+          <div className="bg-dark-800 rounded-xl border border-dark-700 p-4 flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-dark-700 flex items-center justify-center">
+              <Folder className="w-5 h-5 text-accent-purple" />
             </div>
-          )}
-
-          {/* Input */}
-          <div className="bg-dark-800 rounded-xl p-4 border border-dark-700">
-            <label className="block text-sm text-dark-300 mb-2">What's your YouTube video about?</label>
-            <div className="flex gap-3">
-              <input
-                type="text"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                placeholder="Enter your video topic or idea..."
-                className="flex-1 px-4 py-3 bg-dark-700 border border-dark-600 rounded-lg text-white text-lg"
-                onKeyDown={(e) => e.key === 'Enter' && handleGenerateYouTube()}
-              />
-              <select
-                value={youtubeVideoType}
-                onChange={(e) => setYoutubeVideoType(e.target.value)}
-                className="px-4 py-3 bg-dark-700 border border-dark-600 rounded-lg text-white"
-              >
-                <option value="short">YouTube Short</option>
-                <option value="standard">Standard (8-15 min)</option>
-                <option value="long">Long-form (20+ min)</option>
-                <option value="tutorial">Tutorial</option>
-                <option value="vlog">Vlog</option>
-              </select>
-              <button
-                onClick={handleGenerateYouTube}
-                disabled={generatingYoutube || !topic.trim()}
-                className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2 font-medium"
-              >
-                {generatingYoutube ? (
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Youtube className="w-5 h-5" />
-                )}
-                Generate
-              </button>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-white">Folio Collections</h3>
+              <p className="text-sm text-dark-400">
+                Saved videos from Folio that inform generation and scoring.
+              </p>
+              {folioConnected && (
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-dark-300">
+                  <span className="px-2 py-1 rounded bg-dark-700 border border-dark-600">
+                    {folioCollectionsList?.length ?? 0} collections{folioLoadingCollections ? '…' : ''}
+                  </span>
+                  {folioProfileStats?.confidence && (
+                    <span className="px-2 py-1 rounded bg-dark-700 border border-dark-600">
+                      Confidence: {folioProfileStats.confidence}%
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {folioConnected && (
+                <select
+                  value={collectionFilter}
+                  onChange={(e) => setCollectionFilter(e.target.value)}
+                  className="px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white text-sm"
+                >
+                  <option value="all">All platforms</option>
+                  {[...new Set((folioCollectionsList || []).map((c) => c.platform).filter(Boolean))].map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              )}
+              {folioConnected ? (
+                <button
+                  onClick={loadFolioCollections}
+                  disabled={folioLoadingCollections}
+                  className="px-3 py-2 bg-dark-700 text-white rounded-lg hover:bg-dark-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {folioLoadingCollections ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  Refresh
+                </button>
+              ) : (
+                <button
+                  onClick={() => setActiveTab('folio')}
+                  className="px-3 py-2 bg-accent-purple text-white rounded-lg hover:bg-accent-purple/80 transition-colors"
+                >
+                  Connect Folio
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Results */}
-          {youtubeVariants.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-lg font-medium text-white flex items-center gap-2">
-                <Youtube className="w-5 h-5 text-red-500" />
-                Generated YouTube Content
-              </h3>
-              {youtubeVariants.map((v, i) => (
-                <div key={i} className="bg-dark-700 rounded-xl p-4 hover:bg-dark-600/50 transition-colors">
-                  {/* Title */}
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <h4 className="text-white font-medium text-lg">{v.title}</h4>
-                    <button
-                      onClick={() => copyToClipboard(v.title, `yt-title-${i}`)}
-                      className="p-2 text-dark-400 hover:text-white rounded-lg flex-shrink-0 transition-colors"
-                    >
-                      {copied === `yt-title-${i}` ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-
-                  {/* Description */}
-                  <p className="text-dark-300 text-sm mb-3">{v.description}</p>
-
-                  {/* Tags */}
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {v.tags?.map((tag, ti) => (
-                      <span key={ti} className="px-2 py-0.5 bg-dark-600 text-dark-400 rounded text-xs">
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Thumbnail Idea */}
-                  {v.thumbnailIdea && (
-                    <div className="p-2 bg-dark-800 rounded-lg mb-3">
-                      <p className="text-xs text-dark-400">
-                        <span className="text-dark-300 font-medium">Thumbnail idea:</span> {v.thumbnailIdea}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Metadata */}
-                  <div className="flex items-center gap-3">
-                    <span className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs font-medium">
-                      {v.hookType}
-                    </span>
-                    <span className="px-2 py-1 bg-dark-600 text-dark-300 rounded text-xs">
-                      {v.tone}
-                    </span>
-                    <div className="flex items-center gap-4 ml-auto text-xs text-dark-400">
-                      <span className="flex items-center gap-1">
-                        <TrendingUp className="w-3 h-3" />
-                        {v.performanceScore}%
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Target className="w-3 h-3" />
-                        {v.tasteScore}%
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Rating */}
-                  <div className="mt-3 pt-3 border-t border-dark-600 flex items-center gap-3">
-                    <span className="text-xs text-dark-400">Rate this:</span>
-                    <StarRating
-                      rating={0}
-                      onRate={async (rating) => {
-                        await handleRate(v, rating, {}, 'youtube');
-                      }}
-                      size="sm"
-                    />
-                  </div>
-
-                  {v.reasoning && (
-                    <p className="mt-2 text-xs text-dark-400 italic">{v.reasoning}</p>
-                  )}
-                </div>
-              ))}
+          {!folioConnected ? (
+            <div className="bg-dark-800 border border-dark-700 rounded-xl p-4 text-dark-300">
+              Connect your Folio account in the Folio tab to sync collections.
             </div>
+          ) : (
+            <>
+              {folioCollectionsList.length === 0 && !folioLoadingCollections && (
+                <div className="bg-dark-800 border border-dark-700 rounded-xl p-4 text-dark-300">
+                  No collections yet. Save videos in Folio to see them here.
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {(collectionFilter === 'all'
+                  ? folioCollectionsList
+                  : folioCollectionsList.filter((c) => c.platform === collectionFilter)
+                ).map((c) => {
+                  const thumbnail =
+                    c.thumbnail ||
+                    c.coverImage ||
+                    c.image ||
+                    c.poster ||
+                    (c.items && c.items[0] && (c.items[0].thumbnail || c.items[0].image || c.items[0].preview));
+
+                  return (
+                    <div key={c.id || c._id} className="p-3 bg-dark-800 border border-dark-700 rounded-lg">
+                      <div className="relative w-full aspect-video rounded-lg bg-dark-900 border border-dark-700 overflow-hidden mb-2">
+                        {thumbnail ? (
+                          <img
+                            src={thumbnail}
+                            alt={c.title || c.name || 'Collection'}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs text-dark-500">
+                            No preview
+                          </div>
+                        )}
+                        <div className="absolute top-2 left-2 px-2 py-1 rounded bg-black/60 text-[11px] text-white">
+                          {c.platform || 'Collection'}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-dark-400 uppercase tracking-wide">
+                          {c.platform || 'Collection'}
+                        </span>
+                        {c.tags?.length > 0 && (
+                          <span className="text-[11px] text-dark-500 truncate max-w-[120px]">
+                            {c.tags.slice(0, 3).join(', ')}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-white font-medium text-sm line-clamp-2">
+                        {c.title || c.name || 'Untitled'}
+                      </div>
+                      {c.url && (
+                        <a
+                          href={c.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-accent-purple hover:underline flex items-center gap-1 mt-1"
+                        >
+                          Open source <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                      {c.items?.length ? (
+                        <div className="text-[11px] text-dark-400 mt-2">
+                          {c.items.length} saved items
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+              {folioLoadingCollections && (
+                <div className="text-sm text-dark-400">Loading collections…</div>
+              )}
+            </>
           )}
         </div>
       )}
