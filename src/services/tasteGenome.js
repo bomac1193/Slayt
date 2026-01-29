@@ -746,5 +746,6 @@ module.exports = {
   getCurrentTier,
   getGenomeSummary,
   updateGamification,
-  checkAchievements
+  checkAchievements,
+  updateArchetypeFromSignals
 };

@@ -10,6 +10,14 @@ const User = require('../models/User');
 const Profile = require('../models/Profile');
 const tasteGenome = require('../services/tasteGenome');
 
+async function getTarget(profileId, userId) {
+  if (profileId) {
+    const profile = await Profile.findOne({ _id: profileId, userId });
+    if (profile) return profile;
+  }
+  return await User.findById(userId);
+}
+
 /**
  * GET /api/genome
  * Get user's taste genome
@@ -19,15 +27,8 @@ router.get('/', auth, async (req, res) => {
     const { profileId } = req.query;
     let genome = null;
 
-    if (profileId) {
-      const profile = await Profile.findOne({ _id: profileId, userId: req.userId });
-      genome = profile?.tasteGenome;
-    }
-
-    if (!genome) {
-      const user = await User.findById(req.userId);
-      genome = user?.tasteGenome;
-    }
+    const target = await getTarget(profileId, req.userId);
+    genome = target?.tasteGenome;
 
     if (!genome) {
       return res.json({
@@ -61,19 +62,11 @@ router.post('/signal', auth, async (req, res) => {
       return res.status(400).json({ error: 'Signal type required' });
     }
 
-    let target, genome;
-
-    if (profileId) {
-      target = await Profile.findOne({ _id: profileId, userId: req.userId });
-      if (target) {
-        genome = target.tasteGenome || tasteGenome.createGenome(req.userId);
-      }
-    }
-
+    let target = await getTarget(profileId, req.userId);
     if (!target) {
-      target = await User.findById(req.userId);
-      genome = target.tasteGenome || tasteGenome.createGenome(req.userId);
+      return res.status(404).json({ error: 'Profile not found' });
     }
+    let genome = target.tasteGenome || tasteGenome.createGenome(req.userId);
 
     // Record signal and evolve genome
     const evolvedGenome = tasteGenome.recordSignal(genome, {
@@ -115,13 +108,9 @@ router.post('/quiz', auth, async (req, res) => {
       return res.status(400).json({ error: 'Quiz responses required' });
     }
 
-    let target;
-
-    if (profileId) {
-      target = await Profile.findOne({ _id: profileId, userId: req.userId });
-    }
+    let target = await getTarget(profileId, req.userId);
     if (!target) {
-      target = await User.findById(req.userId);
+      return res.status(404).json({ error: 'Profile not found' });
     }
 
     let genome = target.tasteGenome || tasteGenome.createGenome(req.userId);
@@ -336,6 +325,78 @@ router.get('/archetypes', (req, res) => {
     success: true,
     archetypes: tasteGenome.ARCHETYPES
   });
+});
+
+/**
+ * GET /api/genome/raw
+ * Full genome object for diagnostics/admin
+ */
+router.get('/raw', auth, async (req, res) => {
+  try {
+    const { profileId } = req.query;
+    const target = await getTarget(profileId, req.userId);
+    if (!target || !target.tasteGenome) {
+      return res.status(404).json({ error: 'Genome not found' });
+    }
+    res.json({
+      success: true,
+      genome: target.tasteGenome,
+      distribution: target.tasteGenome.archetype?.distribution || {},
+      signals: target.tasteGenome.signals?.length || 0
+    });
+  } catch (error) {
+    console.error('[Genome] Raw error:', error);
+    res.status(500).json({ error: 'Failed to load genome' });
+  }
+});
+
+/**
+ * GET /api/genome/signals
+ * Recent signals for diagnostics/admin
+ */
+router.get('/signals', auth, async (req, res) => {
+  try {
+    const { profileId, limit = 20 } = req.query;
+    const target = await getTarget(profileId, req.userId);
+    if (!target || !target.tasteGenome) {
+      return res.status(404).json({ error: 'Genome not found' });
+    }
+    const signals = target.tasteGenome.signals || [];
+    const slice = signals.slice(-Number(limit)).reverse();
+    res.json({ success: true, signals: slice });
+  } catch (error) {
+    console.error('[Genome] Signals error:', error);
+    res.status(500).json({ error: 'Failed to load signals' });
+  }
+});
+
+/**
+ * POST /api/genome/recompute
+ * Recompute archetype distribution from stored signals
+ */
+router.post('/recompute', auth, async (req, res) => {
+  try {
+    const { profileId } = req.body;
+    const target = await getTarget(profileId, req.userId);
+    if (!target) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+    let genome = target.tasteGenome || tasteGenome.createGenome(req.userId);
+    tasteGenome.updateArchetypeFromSignals(genome);
+    genome.confidence = tasteGenome.calculateConfidence(genome);
+    genome.lastUpdated = new Date();
+    target.tasteGenome = genome;
+    await target.save();
+    res.json({
+      success: true,
+      archetype: genome.archetype,
+      distribution: genome.archetype.distribution,
+      confidence: genome.confidence
+    });
+  } catch (error) {
+    console.error('[Genome] Recompute error:', error);
+    res.status(500).json({ error: 'Failed to recompute genome' });
+  }
 });
 
 module.exports = router;
