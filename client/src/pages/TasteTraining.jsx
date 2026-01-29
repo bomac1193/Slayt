@@ -21,6 +21,10 @@ const LIKERT_POOL = [
   { id: 'mentor', prompt: 'I like calm, mentor energy more than hype or edge.', archetypeHint: 'L-3' },
   { id: 'lineage', prompt: 'I value references to lineage, influence, and history.', archetypeHint: 'P-7' },
   { id: 'speed', prompt: 'I prize speed to publish over perfect polish.', archetypeHint: 'F-9' },
+  { id: 'austerity', prompt: 'I prefer austere, brutalist visuals to colourful maximalism.', archetypeHint: 'C-4' },
+  { id: 'experiments', prompt: 'I will try odd formats if the idea feels alive, even if it may flop.', archetypeHint: 'V-2' },
+  { id: 'precision', prompt: 'I want language to be precise and sharp, not conversational and loose.', archetypeHint: 'S-0' },
+  { id: 'community', prompt: 'I value community reaction and discourse as part of the work.', archetypeHint: 'H-6' },
 ];
 
 const BASE_TASTE_POOL = [
@@ -59,6 +63,18 @@ const BASE_TASTE_POOL = [
     label: 'Content angle',
     a: 'Genre purist: stay in one niche',
     b: 'Cross-pollinate: mix odd combos',
+  },
+  {
+    id: 'austerity-vs-flare',
+    label: 'Visual palette',
+    a: 'Monochrome, brutalist, negative space',
+    b: 'Colourful, layered, maximalist',
+  },
+  {
+    id: 'narrative-vs-system',
+    label: 'Structure bias',
+    a: 'Story-led arcs and characters',
+    b: 'Frameworks and playbooks',
   },
 ];
 
@@ -128,17 +144,18 @@ function TasteTraining() {
   const [rawGenome, setRawGenome] = useState(null);
   const [recentSignals, setRecentSignals] = useState([]);
   const [adminBusy, setAdminBusy] = useState(false);
+  const [askedIds, setAskedIds] = useState(new Set());
 
   const trainingPool = useMemo(() => {
     // Build a mixed pool of pairs and likert items
-    const pairs = buildTastePairs(genome);
-    const likerts = shuffleArray(LIKERT_POOL);
+    const pairs = buildTastePairs(genome).map((p) => ({ type: 'pair', data: p }));
+    const likerts = shuffleArray(LIKERT_POOL).map((l) => ({ type: 'likert', data: l }));
     // interleave pairs and likerts
     const mixed = [];
     const maxLen = Math.max(pairs.length, likerts.length);
     for (let i = 0; i < maxLen; i++) {
-      if (pairs[i]) mixed.push({ type: 'pair', data: pairs[i] });
-      if (likerts[i]) mixed.push({ type: 'likert', data: likerts[i] });
+      if (pairs[i]) mixed.push(pairs[i]);
+      if (likerts[i]) mixed.push(likerts[i]);
     }
     return mixed;
   }, [genome]);
@@ -153,6 +170,7 @@ function TasteTraining() {
       const result = await genomeApi.get(currentProfileId || null);
       if (result.hasGenome) {
         setGenome(result.genome);
+        setAskedIds(new Set());
         setQueue(buildNextQueue(result.genome));
         if (ADMIN_MODE) {
           fetchRaw();
@@ -166,8 +184,26 @@ function TasteTraining() {
   };
 
   const buildNextQueue = (g) => {
-    const mixed = trainingPool.length > 0 ? trainingPool : buildTastePairs(g).map((p) => ({ type: 'pair', data: p }));
-    // take first 4 items to keep UI compact
+    const poolPairs = buildTastePairs(g).map((p) => ({ type: 'pair', data: p }));
+    const poolLikerts = shuffleArray(LIKERT_POOL).map((l) => ({ type: 'likert', data: l }));
+
+    // filter items already answered in this session
+    const filteredPairs = poolPairs.filter((item) => !askedIds.has(item.data.id));
+    const filteredLikerts = poolLikerts.filter((item) => !askedIds.has(item.data.id));
+
+    let mixed = [];
+    const maxLen = Math.max(filteredPairs.length, filteredLikerts.length);
+    for (let i = 0; i < maxLen; i++) {
+      if (filteredPairs[i]) mixed.push(filteredPairs[i]);
+      if (filteredLikerts[i]) mixed.push(filteredLikerts[i]);
+    }
+
+    // If everything is exhausted, reset asked set and surface a fresh slice
+    if (mixed.length === 0) {
+      setAskedIds(new Set());
+      mixed = poolPairs.slice(0, 2).concat(poolLikerts.slice(0, 2));
+    }
+
     return mixed.slice(0, 4);
   };
 
@@ -185,6 +221,11 @@ function TasteTraining() {
       );
       setTrainMessage(`Logged: "${chosen}" → genome updated.`);
       await loadGenome();
+      setAskedIds((prev) => {
+        const next = new Set(prev);
+        next.add(pair.id);
+        return next;
+      });
       setQueue(buildNextQueue(genome));
     } catch (error) {
       console.error('Failed to log taste choice:', error);
@@ -212,6 +253,11 @@ function TasteTraining() {
       );
       setTrainMessage(`Logged: "${item.prompt}" (${score}/5) → genome updated.`);
       await loadGenome();
+      setAskedIds((prev) => {
+        const next = new Set(prev);
+        next.add(item.id);
+        return next;
+      });
       setQueue(buildNextQueue(genome));
     } catch (error) {
       console.error('Failed to log likert signal:', error);
