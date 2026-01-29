@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../../stores/useAppStore';
 import { useNavigate } from 'react-router-dom';
-import { aiApi, postingApi } from '../../lib/api';
+import { aiApi, postingApi, intelligenceApi } from '../../lib/api';
 import {
   Image,
   Type,
@@ -35,6 +35,7 @@ import {
   Save,
   SunMedium,
   Contrast,
+  Dice5,
 } from 'lucide-react';
 
 // Crop aspect ratio presets
@@ -92,6 +93,9 @@ function PostDetails({ post }) {
   const navigate = useNavigate();
   const updatePost = useAppStore((state) => state.updatePost);
   const user = useAppStore((state) => state.user);
+  const currentProfileId = useAppStore((state) => state.currentProfileId);
+  const activeFolioId = useAppStore((state) => state.activeFolioId);
+  const activeProjectId = useAppStore((state) => state.activeProjectId);
   const [caption, setCaption] = useState(post?.caption || '');
   const [hashtags, setHashtags] = useState(post?.hashtags?.join(' ') || '');
   const [activeTab, setActiveTab] = useState('details');
@@ -304,6 +308,33 @@ function PostDetails({ post }) {
       if (postId) {
         updatePost(postId, { caption: newCaption });
       }
+    } finally {
+      setGeneratingCaption(false);
+    }
+  };
+
+  // Taste-aligned roll (uses taste genome + Folio context)
+  const handleTasteRoll = async () => {
+    setGeneratingCaption(true);
+    try {
+      const topic = caption || post?.title || 'taste-aligned social post';
+      const { variants = [] } = await intelligenceApi.generate(topic, {
+        platform: selectedPlatforms[0] || 'instagram',
+        count: 3,
+        profileId: currentProfileId || undefined,
+        folioId: activeFolioId || undefined,
+        projectId: activeProjectId || undefined,
+      });
+      const pick = variants[0];
+      if (pick) {
+        const newCaption = pick.caption || pick.variant || pick.title || caption;
+        setCaption(newCaption);
+        if (postId) {
+          updatePost(postId, { caption: newCaption });
+        }
+      }
+    } catch (error) {
+      console.error('Taste-aligned generation failed:', error);
     } finally {
       setGeneratingCaption(false);
     }
@@ -1460,10 +1491,21 @@ function PostDetails({ post }) {
       <div className="flex-1 overflow-auto p-4 space-y-4">
         {/* Caption */}
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-dark-200 mb-2">
-            <Type className="w-4 h-4" />
-            Caption
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-dark-200">
+              <Type className="w-4 h-4" />
+              Caption
+            </label>
+            <button
+              onClick={handleTasteRoll}
+              disabled={generatingCaption}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-dark-700 text-white hover:bg-dark-600 disabled:opacity-50"
+              title="Taste-aligned roll for caption"
+            >
+              {generatingCaption ? <Loader2 className="w-3 h-3 animate-spin" /> : <Dice5 className="w-3 h-3" />}
+              <span>Dice</span>
+            </button>
+          </div>
           <textarea
             value={caption}
             onChange={(e) => handleCaptionChange(e.target.value)}

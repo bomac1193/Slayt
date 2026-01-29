@@ -307,13 +307,28 @@ function YouTubeVideoDetails({ video, onThumbnailUpload }) {
       {/* Header */}
       <div className="px-4 py-3 border-b border-dark-700 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-dark-100">Video Details</h2>
-        <button
-          onClick={() => setShowDeleteConfirm(true)}
-          className="p-1.5 text-dark-400 hover:text-red-400 hover:bg-dark-700 rounded-lg transition-colors"
-          title="Delete video"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setShowAIPanel(true);
+              if (!generating) {
+                handleGenerateAI('taste-aligned refresh');
+              }
+            }}
+            disabled={generating}
+            className="p-1.5 text-dark-300 hover:text-red-400 hover:bg-dark-700 rounded-lg transition-colors disabled:opacity-50"
+            title="Taste-aligned roll for title & description"
+          >
+            <Dice5 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="p-1.5 text-dark-400 hover:text-red-400 hover:bg-dark-700 rounded-lg transition-colors"
+            title="Delete video"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Content */}
