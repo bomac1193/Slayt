@@ -1540,13 +1540,15 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
 
   // Handle item selection - in locked mode, open preview modal instead
   const handleSelectItem = useCallback((postId) => {
-    const post = posts.find(p => (p.id || p._id) === postId);
+    // Support both grid posts and reels when previewing
+    const allItems = [...posts, ...collectionReels];
+    const post = allItems.find(p => (p.id || p._id) === postId);
     const nextId = post ? postId : null;
     setSelectedItemId(prev => (prev === nextId ? null : nextId));
     selectPost(nextId || null);
     setPreviewPost(post || null);
     setShowPostPreview(false); // keep editing in side panel instead of modal
-  }, [posts, selectPost]);
+  }, [posts, collectionReels, selectPost]);
 
   // Handle delete request (from trash icon or keyboard)
   const handleDeleteRequest = useCallback((postId) => {

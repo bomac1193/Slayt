@@ -366,19 +366,14 @@ Respond with ONLY a number.`;
         return this.heuristicHashtags(content, count);
       }
 
-      const prompt = `Generate ${count} highly relevant and trending hashtags for this social media content:
-
-Platform: ${content.platform}
-Caption: ${content.caption || 'No caption provided'}
-Media Type: ${content.mediaType}
-
-Requirements:
-- Mix of popular and niche hashtags
-- Relevant to the content
-- Platform-appropriate
-- Include trending tags when relevant
-
-Respond with ONLY hashtags separated by commas (without # symbol).`;
+      const prompt = `Return exactly ${count} Instagram-ready hashtags (no sentences, no preamble, no explanation, no code fences).
+Use # with each tag. Do NOT add any other text.
+Base it on:
+- Platform: ${content.platform || 'instagram'}
+- Caption/Title: ${content.caption || content.title || 'n/a'}
+- Media Type: ${content.mediaType || 'image'}
+- If details are sparse, default to high-signal creative/fashion/music culture, but stay concise.
+Output format: #tag1 #tag2 #tag3 ... #tag${count}`;
 
       const response = await this.callOpenAI(prompt);
       const hashtags = response.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
