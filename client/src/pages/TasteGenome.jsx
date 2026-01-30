@@ -179,6 +179,14 @@ function TasteGenome() {
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [prefMessage, setPrefMessage] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [signals, setSignals] = useState([]);
+  const [govMetrics, setGovMetrics] = useState({
+    onBrand: 0,
+    offBrand: 0,
+    recent: 0,
+    velocityScore: 0,
+    trustScore: 0,
+  });
 
   useEffect(() => {
     loadGenome();
@@ -191,6 +199,8 @@ function TasteGenome() {
       if (result.hasGenome) {
         setGenome(result.genome);
         setTastePairs(buildTastePairs(result.genome));
+        // Governance metrics depend on signals + genome
+        await loadSignals(result.genome);
       }
       const gamResult = await genomeApi.getGamification(currentProfileId || null);
       setGamification(gamResult);
@@ -202,6 +212,52 @@ function TasteGenome() {
     }
   };
 
+  // Governance metrics from signals (recent, on-brand, off-brand)
+  const computeGovernance = (signalsList, g) => {
+    if (!g) return;
+    const primary = g?.archetype?.primary?.designation;
+    const now = Date.now();
+    const horizon = 14 * 24 * 60 * 60 * 1000; // 14 days
+    const recentSignals = (signalsList || []).filter((s) => {
+      if (!s.timestamp) return false;
+      const ts = new Date(s.timestamp).getTime();
+      return now - ts <= horizon;
+    });
+
+    const onBrand = recentSignals.filter((s) => s.data?.archetypeHint && s.data.archetypeHint === primary).length;
+    const offBrand = recentSignals.filter((s) => s.data?.archetypeHint && s.data.archetypeHint !== primary).length;
+    const total = recentSignals.length || 1;
+
+    // Velocity: blend confidence with signal cadence (cap at 1) then scale to a 5-point headline metric
+    const signalsPerDay = total / 14;
+    const cadence = Math.min(1, signalsPerDay / 5); // 5 signals/day → cap
+    const confidence = g?.archetype?.confidence || 0;
+    const velocityScore = Math.round((confidence * 0.6 + cadence * 0.4) * 5 * 10) / 10; // e.g., up to ~5.0
+
+    // Trust: blend confidence with on-brand ratio
+    const onBrandRatio = onBrand / (onBrand + offBrand || 1);
+    const trustScore = Math.round(((confidence * 0.5 + onBrandRatio * 0.5) * 100));
+
+    setGovMetrics({
+      onBrand,
+      offBrand,
+      recent: total === 1 ? 0 : total, // if only filler, show 0
+      velocityScore,
+      trustScore,
+    });
+  };
+
+  const loadSignals = async (gOverride = null) => {
+    try {
+      const res = await genomeApi.getSignals(currentProfileId || null, 100);
+      const sigs = res.signals || [];
+      setSignals(sigs);
+      computeGovernance(sigs, gOverride || genome);
+    } catch (error) {
+      console.error('Failed to load signals:', error);
+    }
+  };
+
   // Lightweight refresh without global loading overlay
   const refreshGenomeQuietly = async () => {
     try {
@@ -209,6 +265,7 @@ function TasteGenome() {
       if (result.hasGenome) {
         setGenome(result.genome);
         setTastePairs(buildTastePairs(result.genome));
+        await loadSignals(result.genome);
       }
       const gamResult = await genomeApi.getGamification(currentProfileId || null);
       setGamification(gamResult);
@@ -422,6 +479,36 @@ function TasteGenome() {
           <Sparkles className="w-4 h-4" />
           {genome ? 'Retake Quiz' : 'Discover Archetype'}
         </button>
+      </div>
+
+      {/* Governance & Velocity */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+        <div className="p-4 bg-dark-900 border border-dark-700 rounded-lg">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-dark-400 uppercase tracking-[0.14em]">Resonance Velocity</span>
+            <Zap className="w-4 h-4 text-accent-purple" />
+          </div>
+          <p className="text-2xl font-bold text-white">{govMetrics.velocityScore.toFixed(1)}</p>
+          <p className="text-xs text-dark-400">Confidence × recent signal cadence (last 14d)</p>
+        </div>
+        <div className="p-4 bg-dark-900 border border-dark-700 rounded-lg">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-dark-400 uppercase tracking-[0.14em]">Trust / On-Brand</span>
+            <Shield className="w-4 h-4 text-accent-purple" />
+          </div>
+          <p className="text-2xl font-bold text-white">{govMetrics.trustScore}%</p>
+          <p className="text-xs text-dark-400">
+            On-brand ratio ({govMetrics.onBrand} vs {govMetrics.offBrand} off-brand hints)
+          </p>
+        </div>
+        <div className="p-4 bg-dark-900 border border-dark-700 rounded-lg">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-dark-400 uppercase tracking-[0.14em]">Recent Signals</span>
+            <Activity className="w-4 h-4 text-accent-purple" />
+          </div>
+          <p className="text-2xl font-bold text-white">{govMetrics.recent || 0}</p>
+          <p className="text-xs text-dark-400">Last 14 days logged (choice/likert)</p>
+        </div>
       </div>
 
       {/* Subtaste inputs only (training moved to /training) */}
