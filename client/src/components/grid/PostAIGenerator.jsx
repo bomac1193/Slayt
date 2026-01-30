@@ -133,14 +133,16 @@ function PostAIGenerator({ post, onClose, onApplyCaption }) {
         });
       }
 
-      const cleaned = (result.variants || []).map(v => ({
-        ...v,
-        variant: (v.variant || '')
-          .replace(/```json/gi, '')
-          .replace(/```/g, '')
-          .replace(/^\s*"|\s*"$/g, '')
-          .trim(),
-      }));
+      const cleaned = (result.variants || [])
+        .map(v => ({
+          ...v,
+          variant: (v.variant || v.caption || '')
+            .replace(/```json/gi, '')
+            .replace(/```/g, '')
+            .replace(/^\s*"|\s*"$/g, '')
+            .trim(),
+        }))
+        .filter(v => v.variant && v.variant.length > 0);
       setVariants(cleaned);
     } catch (error) {
       console.error('Generate error:', error);

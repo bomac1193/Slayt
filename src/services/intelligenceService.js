@@ -306,7 +306,9 @@ Return ONLY valid JSON array:
       }]
     });
 
-    const jsonMatch = response.content[0].text.match(/\[[\s\S]*\]/);
+    // Strip code fences if present
+    const rawText = response.content[0].text.replace(/```json/gi, '').replace(/```/g, '');
+    const jsonMatch = rawText.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       return {
         variants: JSON.parse(jsonMatch[0]),
