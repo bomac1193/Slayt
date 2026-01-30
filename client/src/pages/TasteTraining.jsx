@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Dna, Target, Activity, ListChecks } from 'lucide-react';
 import { useAppStore } from '../stores/useAppStore';
 import { genomeApi } from '../lib/api';
-import { Dna, Target, Activity, ListChecks } from 'lucide-react';
+import '../styles/subtaste-training.css';
 
 const shuffleArray = (arr) => {
   const copy = [...arr];
@@ -13,46 +14,54 @@ const shuffleArray = (arr) => {
 };
 
 const BEST_WORST_POOL = [
-  { id: 'bw-opening-thesis', topic: 'opening', prompt: 'Open with a hard thesis. No preamble.', archetypeHint: 'R-10' },
-  { id: 'bw-opening-scene', topic: 'opening', prompt: 'Open with a scene and let the idea surface.', archetypeHint: 'D-8' },
-  { id: 'bw-payoff-fast', topic: 'payoff', prompt: 'Immediate payoff. Zero suspense.', archetypeHint: 'F-9' },
-  { id: 'bw-payoff-slow', topic: 'payoff', prompt: 'Slow burn with a decisive reveal.', archetypeHint: 'D-8' },
-  { id: 'bw-hook-contrarian', topic: 'hook', prompt: 'Contrarian hook that polarizes.', archetypeHint: 'R-10' },
-  { id: 'bw-hook-curiosity', topic: 'hook', prompt: 'Curiosity hook that pulls me forward.', archetypeHint: 'N-5' },
-  { id: 'bw-evidence', topic: 'evidence', prompt: 'Receipts, data, and sources make it land.', archetypeHint: 'T-1' },
-  { id: 'bw-constraints', topic: 'constraints', prompt: 'I want to see the constraints or rules behind it.', archetypeHint: 'T-1' },
-  { id: 'bw-framework', topic: 'framework', prompt: 'Give me a clear model or system.', archetypeHint: 'T-1' },
-  { id: 'bw-narrative', topic: 'narrative', prompt: 'Mythic storytelling and mood over analysis.', archetypeHint: 'D-8' },
-  { id: 'bw-structure', topic: 'structure', prompt: 'Frameworks over story arcs.', archetypeHint: 'T-1' },
-  { id: 'bw-voice-lived', topic: 'authority', prompt: 'Speak from lived experience.', archetypeHint: 'L-3' },
+  { id: 'bw-opening-thesis', topic: 'opening', prompt: 'Open with a blade: state the thesis in one line.', archetypeHint: 'R-10' },
+  { id: 'bw-opening-scene', topic: 'opening', prompt: 'Open with a scene; let the idea surface later.', archetypeHint: 'D-8' },
+  { id: 'bw-payoff-fast', topic: 'payoff', prompt: 'Payoff now. No suspense, no detours.', archetypeHint: 'F-9' },
+  { id: 'bw-payoff-slow', topic: 'payoff', prompt: 'Slow burn; land the reveal at the end.', archetypeHint: 'D-8' },
+  { id: 'bw-hook-contrarian', topic: 'hook', prompt: 'Start with a heresy that splits the room.', archetypeHint: 'R-10' },
+  { id: 'bw-hook-curiosity', topic: 'hook', prompt: 'Start with a half-told question that pulls me in.', archetypeHint: 'N-5' },
+  { id: 'bw-hook-transmission', topic: 'hook', prompt: 'Open like an intercepted transmission: fragment first, meaning later.', archetypeHint: 'D-8' },
+  { id: 'bw-evidence', topic: 'evidence', prompt: 'Show receipts and sources; make it undeniable.', archetypeHint: 'T-1' },
+  { id: 'bw-casefile', topic: 'casefile', prompt: 'Present it like evidence in a case file.', archetypeHint: 'T-1' },
+  { id: 'bw-constraints', topic: 'constraints', prompt: 'Show the constraints up front before the content.', archetypeHint: 'T-1' },
+  { id: 'bw-framework', topic: 'framework', prompt: 'Give me a clean model I can reuse.', archetypeHint: 'T-1' },
+  { id: 'bw-narrative', topic: 'narrative', prompt: 'Myth, mood, and symbols over analysis.', archetypeHint: 'D-8' },
+  { id: 'bw-symbol-anchor', topic: 'symbol', prompt: 'Use one object as the symbol for the entire idea.', archetypeHint: 'D-8' },
+  { id: 'bw-ritual-steps', topic: 'ritual', prompt: 'Write it as a ritual instruction: steps, not commentary.', archetypeHint: 'T-1' },
+  { id: 'bw-structure', topic: 'structure', prompt: 'Systems and playbooks over story arcs.', archetypeHint: 'T-1' },
+  { id: 'bw-voice-lived', topic: 'authority', prompt: 'Speak from scars and lived experience.', archetypeHint: 'L-3' },
   { id: 'bw-voice-research', topic: 'authority', prompt: 'Speak from research and synthesis.', archetypeHint: 'T-1' },
-  { id: 'bw-audience-insider', topic: 'audience', prompt: 'Talk to insiders with shared context.', archetypeHint: 'P-7' },
-  { id: 'bw-audience-bridge', topic: 'audience', prompt: 'Translate for first-timers and outsiders.', archetypeHint: 'L-3' },
-  { id: 'bw-risk', topic: 'risk', prompt: 'Make a sharp bet and commit.', archetypeHint: 'R-10' },
-  { id: 'bw-nuance', topic: 'nuance', prompt: 'Hold nuance and bridge perspectives.', archetypeHint: 'L-3' },
-  { id: 'bw-energy', topic: 'energy', prompt: 'High-voltage, kinetic delivery.', archetypeHint: 'F-9' },
-  { id: 'bw-calm', topic: 'energy', prompt: 'Composed, low-velocity delivery.', archetypeHint: 'L-3' },
-  { id: 'bw-visual-polish', topic: 'visual', prompt: 'Cinematic, high-design polish.', archetypeHint: 'S-0' },
-  { id: 'bw-visual-utility', topic: 'visual', prompt: 'Plain, utilitarian clarity.', archetypeHint: 'T-1' },
-  { id: 'bw-format-short', topic: 'format', prompt: 'Shorts, carousels, tight modules.', archetypeHint: 'F-9' },
-  { id: 'bw-format-long', topic: 'format', prompt: 'Longform essays and deep dives.', archetypeHint: 'T-1' },
-  { id: 'bw-novel-framing', topic: 'novelty', prompt: 'New framing on known ideas.', archetypeHint: 'N-5' },
-  { id: 'bw-new-facts', topic: 'novelty', prompt: 'New facts even if framing is familiar.', archetypeHint: 'T-1' },
-  { id: 'bw-texture-analog', topic: 'texture', prompt: 'Analog grit and tactile texture.', archetypeHint: 'P-7' },
+  { id: 'bw-audience-insider', topic: 'audience', prompt: 'Write for insiders who already get it.', archetypeHint: 'P-7' },
+  { id: 'bw-audience-bridge', topic: 'audience', prompt: 'Bridge the gap for outsiders and first-timers.', archetypeHint: 'L-3' },
+  { id: 'bw-private-memo', topic: 'intimacy', prompt: 'Make it feel like a private memo, not a broadcast.', archetypeHint: 'L-3' },
+  { id: 'bw-risk', topic: 'risk', prompt: 'Make a sharp bet. No hedging.', archetypeHint: 'R-10' },
+  { id: 'bw-nuance', topic: 'nuance', prompt: 'Hold nuance; show both sides.', archetypeHint: 'L-3' },
+  { id: 'bw-energy', topic: 'energy', prompt: 'High-energy delivery with short, charged sentences.', archetypeHint: 'F-9' },
+  { id: 'bw-calm', topic: 'energy', prompt: 'Low-velocity calm; controlled and steady.', archetypeHint: 'L-3' },
+  { id: 'bw-visual-polish', topic: 'visual', prompt: 'Cinematic polish; every frame designed.', archetypeHint: 'S-0' },
+  { id: 'bw-visual-utility', topic: 'visual', prompt: 'Utilitarian clarity; function over flair.', archetypeHint: 'T-1' },
+  { id: 'bw-format-short', topic: 'format', prompt: 'Tight modules: shorts, carousels, snippets.', archetypeHint: 'F-9' },
+  { id: 'bw-format-long', topic: 'format', prompt: 'Longform essays; depth over speed.', archetypeHint: 'T-1' },
+  { id: 'bw-novel-framing', topic: 'novelty', prompt: 'Reframe the familiar; shift the lens.', archetypeHint: 'N-5' },
+  { id: 'bw-new-facts', topic: 'novelty', prompt: 'Bring new facts, even if the frame is plain.', archetypeHint: 'T-1' },
+  { id: 'bw-archive-label', topic: 'artifact', prompt: 'Treat it like an archive label: title, origin, purpose.', archetypeHint: 'P-7' },
+  { id: 'bw-texture-analog', topic: 'texture', prompt: 'Analog grit, texture, imperfection.', archetypeHint: 'P-7' },
   { id: 'bw-texture-digital', topic: 'texture', prompt: 'Clean, precise, digital surfaces.', archetypeHint: 'S-0' },
-  { id: 'bw-cadence-serial', topic: 'cadence', prompt: 'Serialized drops and ongoing threads.', archetypeHint: 'H-6' },
-  { id: 'bw-cadence-single', topic: 'cadence', prompt: 'Standalone, self-contained posts.', archetypeHint: 'S-0' },
-  { id: 'bw-signal-subtle', topic: 'signal', prompt: 'Subtle, coded, insider signals.', archetypeHint: 'P-7' },
+  { id: 'bw-silence', topic: 'silence', prompt: 'Use fewer words than feels safe; let silence carry weight.', archetypeHint: 'C-4' },
+  { id: 'bw-contradiction', topic: 'contrast', prompt: 'Let the visual contradict the copy on purpose.', archetypeHint: 'N-5' },
+  { id: 'bw-cadence-serial', topic: 'cadence', prompt: 'Serialized drops with ongoing threads.', archetypeHint: 'H-6' },
+  { id: 'bw-cadence-single', topic: 'cadence', prompt: 'Standalone posts; each one complete.', archetypeHint: 'S-0' },
+  { id: 'bw-signal-subtle', topic: 'signal', prompt: 'Coded, subtle signals for insiders.', archetypeHint: 'P-7' },
   { id: 'bw-signal-explicit', topic: 'signal', prompt: 'Direct, explicit, broad reach.', archetypeHint: 'H-6' },
   { id: 'bw-purpose-utility', topic: 'purpose', prompt: 'Change behavior with practical utility.', archetypeHint: 'F-9' },
-  { id: 'bw-purpose-shift', topic: 'purpose', prompt: 'Change perception with worldview shifts.', archetypeHint: 'N-5' },
-  { id: 'bw-ambiguity', topic: 'ambiguity', prompt: 'A bit of ambiguity keeps me engaged longer.', archetypeHint: 'D-8' },
-  { id: 'bw-precision', topic: 'precision', prompt: 'Precision and naming are half the signal.', archetypeHint: 'S-0' },
-  { id: 'bw-lineage', topic: 'lineage', prompt: 'Lineage and provenance deepen my trust.', archetypeHint: 'P-7' },
-  { id: 'bw-futurism', topic: 'futurism', prompt: 'Future-facing, speculative ideas.', archetypeHint: 'V-2' },
+  { id: 'bw-purpose-shift', topic: 'purpose', prompt: 'Change perception with a worldview shift.', archetypeHint: 'N-5' },
+  { id: 'bw-ambiguity', topic: 'ambiguity', prompt: 'Leave edges ambiguous; let it linger.', archetypeHint: 'D-8' },
+  { id: 'bw-precision', topic: 'precision', prompt: 'Exact wording and naming matter more than the idea.', archetypeHint: 'S-0' },
+  { id: 'bw-lineage', topic: 'lineage', prompt: 'Show lineage and provenance; earn trust.', archetypeHint: 'P-7' },
+  { id: 'bw-futurism', topic: 'futurism', prompt: 'Speculative, future-facing ideas.', archetypeHint: 'V-2' },
   { id: 'bw-community', topic: 'community', prompt: 'Community reaction is part of the work.', archetypeHint: 'H-6' },
-  { id: 'bw-humor', topic: 'humor', prompt: 'Humor is a strong delivery mechanism.', archetypeHint: 'N-5' },
-  { id: 'bw-vulnerability', topic: 'vulnerability', prompt: 'Vulnerability connects more than authority.', archetypeHint: 'L-3' },
+  { id: 'bw-humor', topic: 'humor', prompt: 'Humor is the delivery vehicle, not a garnish.', archetypeHint: 'N-5' },
+  { id: 'bw-vulnerability', topic: 'vulnerability', prompt: 'Vulnerability beats authority.', archetypeHint: 'L-3' },
 ];
 
 const slugify = (value) => String(value || '')
@@ -65,20 +74,20 @@ const buildDynamicOptions = (g) => {
   const options = [];
   const tones = Object.entries(g.keywords?.content?.tone || {})
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
+    .slice(0, 4)
     .map(([tone]) => tone);
   tones.forEach((tone) => {
     const slug = slugify(tone);
     options.push({
       id: `bw-tone-${slug}`,
       topic: `tone-${slug}`,
-      prompt: `Lean into ${tone} tone.`,
+      prompt: `Set the room to ${tone} tone.`,
       archetypeHint: null,
     });
   });
   const hooks = Object.entries(g.keywords?.content?.hooks || {})
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
+    .slice(0, 4)
     .map(([hook]) => hook);
   hooks.forEach((hook) => {
     const slug = slugify(hook);
@@ -86,6 +95,19 @@ const buildDynamicOptions = (g) => {
       id: `bw-hook-${slug}`,
       topic: `hook-${slug}`,
       prompt: `Open with a ${hook} hook.`,
+      archetypeHint: null,
+    });
+  });
+  const formats = Object.entries(g.keywords?.content?.format || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([format]) => format);
+  formats.forEach((format) => {
+    const slug = slugify(format);
+    options.push({
+      id: `bw-format-${slug}`,
+      topic: `format-${slug}`,
+      prompt: `Deliver it as a ${format}.`,
       archetypeHint: null,
     });
   });
@@ -204,7 +226,7 @@ function TasteTraining() {
       const pickIds = new Set(picks.map((item) => item.id));
       remaining = remaining.filter((item) => !pickIds.has(item.id));
       queueItems.push({
-        id: `bw-${picks.map((item) => item.id).join('-')}`,
+        id: `bw-${picks.map((item) => item.id).join('-')}-${Math.random().toString(36).slice(2, 7)}`,
         options: picks,
       });
     }
@@ -237,7 +259,7 @@ function TasteTraining() {
     if (!bestOption || !worstOption) return;
 
     setBusy(true);
-    setTrainMessage('Locking in your signal…');
+    setTrainMessage('Locking in your signal...');
     try {
       await genomeApi.signal(
         'likert',
@@ -300,7 +322,7 @@ function TasteTraining() {
   const handleSkipCard = async (card) => {
     if (busy) return;
     setBusy(true);
-    setTrainMessage('Skipping this card…');
+    setTrainMessage('Skipping this card...');
     try {
       await genomeApi.signal(
         'pass',
@@ -392,34 +414,38 @@ function TasteTraining() {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-2 border-accent-purple border-t-transparent rounded-full" />
+      <div className="subtaste-training">
+        <div className="training-container">
+          <div className="training-loading">
+            <div className="training-spinner" />
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="px-6 py-10">
-      <div className="mx-auto max-w-3xl">
-        <div className="flex items-start justify-between mb-8">
+    <div className="subtaste-training">
+      <div className="training-container">
+        <div className="training-header">
           <div>
-            <h1 className="text-xl sm:text-2xl font-semibold text-white flex items-center gap-3 tracking-[0.08em]">
-              <Dna className="w-6 h-6 text-accent-purple" />
-              Subtaste · Training
+            <h1 className="training-title">
+              <Dna className="training-icon" />
+              Subtaste / Training
             </h1>
-            <p className="text-sm text-dark-400 mt-2 max-w-xl">
+            <p className="training-subtitle">
               High-signal inputs to sharpen your profile. Short, focused, and reaction-forward.
             </p>
             {genome?.archetype?.primary && (
-              <div className="mt-3 flex items-center gap-3">
-                <span className="px-3 py-1 bg-dark-950/60 border border-dark-800 rounded-sm text-[11px] text-dark-100 font-mono tracking-[0.28em] uppercase">
+              <div className="training-archetype">
+                <span className="training-designation">
                   {genome.archetype.primary.designation}
                 </span>
-                <span className="text-lg text-white font-black uppercase tracking-[0.12em]">
+                <span className="training-glyph">
                   {genome.archetype.primary.glyph}
                 </span>
                 {genome.archetype.primary.sigil && (
-                  <span className="text-[11px] text-dark-400 font-mono uppercase tracking-[0.14em]">
+                  <span className="training-sigil">
                     {genome.archetype.primary.sigil}
                   </span>
                 )}
@@ -428,65 +454,51 @@ function TasteTraining() {
           </div>
         </div>
 
-        {/* Unified Training Stack */}
-        <div className="relative overflow-hidden rounded-2xl border border-dark-800 bg-dark-950/70 p-5 mb-8">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-purple/40 to-transparent" />
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-semibold text-white uppercase tracking-[0.18em] flex items-center gap-2">
-              <Target className="w-4 h-4 text-accent-purple" />
+        <section className="training-stack">
+          <div className="training-stack__header">
+            <h3 className="training-stack__title">
+              <Target className="training-icon" />
               Training Stack
             </h3>
-            <span className="text-[10px] text-dark-500 font-mono uppercase tracking-[0.18em]">Best / Worst</span>
+            <span className="training-stack__hint">Best / Worst</span>
           </div>
-          <p className="text-sm text-dark-300 mb-4">
+          <p className="training-stack__desc">
             One card at a time. Pick one best and one worst, then lock to continue.
           </p>
-          <div className="grid gap-3">
+          <div className="training-cards">
             {queue.map((card, idx) => {
               const selection = selections[card.id] || { best: null, worst: null };
               const isReady = selection.best && selection.worst;
               return (
-                <div key={`${card.id}-${idx}`} className="rounded-xl border border-dark-800 bg-dark-950/80 p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-[10px] text-dark-500 uppercase tracking-[0.18em]">Best / Worst</p>
-                    <p className="text-[10px] text-dark-500 uppercase tracking-[0.18em]">4 Options</p>
+                <div key={`${card.id}-${idx}`} className="training-card">
+                  <div className="training-card__meta">
+                    <span>Best / Worst</span>
+                    <span>4 Options</span>
                   </div>
-                  <div className="space-y-2">
+                  <div className="training-options">
                     {card.options.map((opt) => {
                       const isBest = selection.best === opt.id;
                       const isWorst = selection.worst === opt.id;
                       return (
                         <div
                           key={opt.id}
-                          className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 transition-colors ${
-                            isBest
-                              ? 'border-accent-purple/70 bg-accent-purple/10'
-                              : isWorst
-                                ? 'border-red-500/60 bg-red-500/10'
-                                : 'border-dark-800 bg-dark-950/60'
-                          }`}
+                          className={`training-option${isBest ? ' is-best' : ''}${isWorst ? ' is-worst' : ''}`}
                         >
-                          <span className="text-sm text-dark-100">{opt.prompt}</span>
-                          <div className="flex items-center gap-1">
+                          <span className="training-option__text">{opt.prompt}</span>
+                          <div className="training-option__actions">
                             <button
+                              type="button"
                               onClick={() => handleSelectOption(card.id, opt.id, 'best')}
                               disabled={busy}
-                              className={`px-2 py-1 rounded-md text-[10px] uppercase tracking-[0.12em] border transition-colors ${
-                                isBest
-                                  ? 'border-accent-purple text-white bg-accent-purple/20'
-                                  : 'border-dark-800 text-dark-400 hover:text-white hover:border-accent-purple/70'
-                              }`}
+                              className={`training-tag${isBest ? ' is-best' : ''}`}
                             >
                               Best
                             </button>
                             <button
+                              type="button"
                               onClick={() => handleSelectOption(card.id, opt.id, 'worst')}
                               disabled={busy}
-                              className={`px-2 py-1 rounded-md text-[10px] uppercase tracking-[0.12em] border transition-colors ${
-                                isWorst
-                                  ? 'border-red-500 text-white bg-red-500/20'
-                                  : 'border-dark-800 text-dark-400 hover:text-white hover:border-red-500/70'
-                              }`}
+                              className={`training-tag${isWorst ? ' is-worst' : ''}`}
                             >
                               Worst
                             </button>
@@ -495,22 +507,24 @@ function TasteTraining() {
                       );
                     })}
                   </div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-[10px] text-dark-500 uppercase tracking-[0.14em]">
+                  <div className="training-actions">
+                    <span className="training-status">
                       {isReady ? 'Ready to lock' : 'Select best and worst'}
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="training-actions__buttons">
                       <button
+                        type="button"
                         onClick={() => handleSkipCard(card)}
                         disabled={busy}
-                        className="px-3 py-1.5 rounded-md border border-dark-800 text-[10px] uppercase tracking-[0.12em] text-dark-400 hover:text-white hover:border-dark-600 hover:bg-dark-900/40 disabled:opacity-40"
+                        className="btn-secondary"
                       >
                         Skip
                       </button>
                       <button
+                        type="button"
                         onClick={() => handleSubmitBestWorst(card)}
                         disabled={!isReady || busy}
-                        className="px-3 py-1.5 rounded-md border border-dark-800 text-[10px] uppercase tracking-[0.12em] text-dark-200 hover:text-white hover:border-accent-purple/70 hover:bg-dark-900/60 disabled:opacity-40"
+                        className="btn-primary"
                       >
                         Lock
                       </button>
@@ -520,53 +534,56 @@ function TasteTraining() {
               );
             })}
           </div>
-          {trainMessage && <p className="text-xs text-dark-300 mt-3">{trainMessage}</p>}
-        </div>
+          {trainMessage && <p className="training-message">{trainMessage}</p>}
+        </section>
 
         {ADMIN_MODE && (
-          <div className="bg-dark-950/70 rounded-2xl border border-dark-800 p-5 space-y-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-semibold text-white uppercase tracking-[0.18em] flex items-center gap-2">
-                <Activity className="w-4 h-4 text-accent-purple" />
+          <section className="training-admin">
+            <div className="training-admin__header">
+              <h3 className="training-admin__title">
+                <Activity className="training-icon" />
                 Admin Diagnostics
               </h3>
-              {adminBusy && <span className="text-xs text-accent-purple">Working…</span>}
+              {adminBusy && <span className="training-stack__hint">Working...</span>}
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="training-admin__grid">
               <button
+                type="button"
                 onClick={handleSeed}
                 disabled={adminBusy}
-                className="px-3 py-2 rounded-lg border border-dark-700 text-sm text-white hover:border-accent-purple/70 hover:bg-dark-900/50"
+                className="btn-secondary"
               >
                 Seed signals
               </button>
               <button
+                type="button"
                 onClick={handleRecompute}
                 disabled={adminBusy}
-                className="px-3 py-2 rounded-lg border border-dark-700 text-sm text-white hover:border-accent-purple/70 hover:bg-dark-900/50"
+                className="btn-secondary"
               >
                 Recompute genome
               </button>
               <button
+                type="button"
                 onClick={fetchRaw}
                 disabled={adminBusy}
-                className="px-3 py-2 rounded-lg border border-dark-700 text-sm text-white hover:border-accent-purple/70 hover:bg-dark-900/50"
+                className="btn-secondary"
               >
                 Refresh raw view
               </button>
             </div>
 
             {rawGenome?.distribution && (
-              <div>
-                <h4 className="text-[11px] text-dark-400 uppercase tracking-[0.18em] mb-2 flex items-center gap-2">
-                  <ListChecks className="w-4 h-4 text-accent-purple" />
+              <div className="training-admin__section">
+                <h4 className="training-admin__title">
+                  <ListChecks className="training-icon" />
                   Archetype Distribution
                 </h4>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <div className="training-distribution">
                   {Object.entries(rawGenome.distribution).map(([designation, prob]) => (
-                    <div key={designation} className="rounded-lg border border-dark-800 p-2 bg-dark-950/80 text-sm text-dark-200 flex items-center justify-between">
-                      <span className="font-mono tracking-[0.12em]">{designation}</span>
-                      <span className="text-white font-semibold">{Math.round(prob * 100)}%</span>
+                    <div key={designation} className="training-distribution__item">
+                      <span className="training-designation">{designation}</span>
+                      <span>{Math.round(prob * 100)}%</span>
                     </div>
                   ))}
                 </div>
@@ -574,25 +591,25 @@ function TasteTraining() {
             )}
 
             {recentSignals?.length > 0 && (
-              <div>
-                <h4 className="text-[11px] text-dark-400 uppercase tracking-[0.18em] mb-2 flex items-center gap-2">
-                  <ListChecks className="w-4 h-4 text-accent-purple" />
+              <div className="training-admin__section">
+                <h4 className="training-admin__title">
+                  <ListChecks className="training-icon" />
                   Recent Signals
                 </h4>
-                <div className="space-y-1 text-sm text-dark-200">
+                <div className="training-signal-log">
                   {recentSignals.map((sig) => (
-                    <div key={sig.id || sig._id || sig.timestamp} className="rounded-lg border border-dark-800 bg-dark-950/80 p-2">
-                      <div className="flex items-center justify-between text-xs text-dark-400">
+                    <div key={sig.id || sig._id || sig.timestamp} className="training-signal-log__item">
+                      <div className="training-signal-log__meta">
                         <span>{sig.type}</span>
                         <span>{sig.timestamp ? new Date(sig.timestamp).toLocaleString() : ''}</span>
                       </div>
-                      <div className="text-dark-100">{sig.data?.prompt || sig.data?.selected || sig.value}</div>
+                      <div className="training-option__text">{sig.data?.prompt || sig.data?.selected || sig.value}</div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-          </div>
+          </section>
         )}
       </div>
     </div>

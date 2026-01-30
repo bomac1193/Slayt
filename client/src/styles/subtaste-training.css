@@ -1,0 +1,505 @@
+.subtaste-training {
+  --font-primary: 'Sohne', 'Inter', -apple-system, sans-serif;
+  --font-display: 'Editorial New', 'Playfair Display', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 2rem;
+  --text-4xl: 3rem;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.05em;
+  --tracking-wider: 0.1em;
+  --tracking-widest: 0.2em;
+
+  --void: #0A0A0B;
+  --void-elevated: #111113;
+  --void-subtle: #18181B;
+
+  --bone: #E8E4DD;
+  --bone-muted: #A8A29E;
+  --bone-faint: #57534E;
+
+  --ember: #C2410C;
+  --ember-dim: #7C2D12;
+
+  --rime: #94A3B8;
+  --rime-bright: #CBD5E1;
+
+  --ichor: #D4AF37;
+  --ichor-dim: #92700C;
+
+  --state-error: #991B1B;
+  --state-success: #166534;
+  --state-warning: #92400E;
+
+  --bg-primary: var(--void);
+  --bg-secondary: var(--void-elevated);
+  --bg-tertiary: var(--void-subtle);
+  --bg-interactive: var(--void-subtle);
+  --bg-interactive-hover: #27272A;
+
+  --text-primary: var(--bone);
+  --text-secondary: var(--bone-muted);
+  --text-tertiary: var(--bone-faint);
+  --text-inverse: var(--void);
+
+  --border-default: #27272A;
+  --border-subtle: #1F1F23;
+  --border-strong: #3F3F46;
+
+  --glyph-text: var(--bone);
+  --sigil-text: var(--rime-bright);
+  --designation-text: var(--bone-faint);
+
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+
+  --radius-none: 0;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-full: 9999px;
+
+  --container-xs: 24rem;
+  --container-sm: 32rem;
+  --container-md: 42rem;
+  --container-lg: 56rem;
+  --container-xl: 72rem;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 0.15s;
+  --duration-normal: 0.3s;
+  --duration-slow: 0.5s;
+
+  font-family: var(--font-primary);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  min-height: 100vh;
+}
+
+.subtaste-training .training-container {
+  max-width: var(--container-sm);
+  margin: 0 auto;
+  padding: var(--space-16) var(--space-6);
+}
+
+.subtaste-training .training-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-12);
+}
+
+.subtaste-training .training-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-2xl);
+  font-weight: 500;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.subtaste-training .training-title .training-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--bone-muted);
+}
+
+.subtaste-training .training-subtitle {
+  margin-top: var(--space-3);
+  max-width: var(--container-sm);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.subtaste-training .training-archetype {
+  margin-top: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.subtaste-training .training-designation {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wider);
+  color: var(--designation-text);
+}
+
+.subtaste-training .training-glyph {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  letter-spacing: var(--tracking-widest);
+  color: var(--glyph-text);
+}
+
+.subtaste-training .training-sigil {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wider);
+  color: var(--sigil-text);
+  text-transform: uppercase;
+}
+
+.subtaste-training .training-stack {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-8);
+  margin-bottom: var(--space-12);
+}
+
+.subtaste-training .training-stack__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.subtaste-training .training-stack__title {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.subtaste-training .training-stack__title .training-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--bone-muted);
+}
+
+.subtaste-training .training-stack__hint {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wider);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+.subtaste-training .training-stack__desc {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-6);
+  line-height: 1.6;
+}
+
+.subtaste-training .training-cards {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.subtaste-training .training-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+}
+
+.subtaste-training .training-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wider);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+.subtaste-training .training-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.subtaste-training .training-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.subtaste-training .training-option:hover {
+  border-color: var(--rime);
+}
+
+.subtaste-training .training-option.is-best {
+  border-color: var(--ichor);
+  background: rgba(212, 175, 55, 0.08);
+}
+
+.subtaste-training .training-option.is-worst {
+  border-color: var(--state-error);
+  background: rgba(153, 27, 27, 0.08);
+}
+
+.subtaste-training .training-option__text {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.subtaste-training .training-option__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.subtaste-training .training-tag {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  background: transparent;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+}
+
+.subtaste-training .training-tag.is-best {
+  border-color: var(--ichor);
+  color: var(--text-primary);
+}
+
+.subtaste-training .training-tag.is-worst {
+  border-color: var(--state-error);
+  color: var(--text-primary);
+}
+
+.subtaste-training .training-actions {
+  margin-top: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.subtaste-training .training-actions__buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.subtaste-training .training-status {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.subtaste-training .training-message {
+  margin-top: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  letter-spacing: var(--tracking-wide);
+}
+
+.subtaste-training .training-admin {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-8);
+  display: grid;
+  gap: var(--space-6);
+}
+
+.subtaste-training .training-admin__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.subtaste-training .training-admin__title {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.subtaste-training .training-admin__section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.subtaste-training .training-admin__title .training-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--bone-muted);
+}
+
+.subtaste-training .training-admin__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.subtaste-training .training-distribution {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+
+.subtaste-training .training-distribution__item {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  background: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.subtaste-training .training-signal-log {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.subtaste-training .training-signal-log__item {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  background: var(--bg-tertiary);
+}
+
+.subtaste-training .training-signal-log__meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-2);
+}
+
+.subtaste-training .btn-primary {
+  background: var(--bone);
+  color: var(--void);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  padding: var(--space-3) var(--space-6);
+  border: none;
+  border-radius: var(--radius-sm);
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.subtaste-training .btn-primary:hover {
+  opacity: 0.85;
+}
+
+.subtaste-training .btn-secondary {
+  background: transparent;
+  color: var(--bone-muted);
+  border: 1px solid var(--border-default);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+}
+
+.subtaste-training .btn-secondary:hover {
+  border-color: var(--border-strong);
+  color: var(--bone);
+}
+
+.subtaste-training .btn-ghost {
+  background: transparent;
+  color: var(--bone-muted);
+  border: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+}
+
+.subtaste-training .training-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(var(--space-20) + var(--space-12));
+}
+
+.subtaste-training .training-spinner {
+  width: var(--space-6);
+  height: var(--space-6);
+  border: 1px solid var(--border-strong);
+  border-top-color: transparent;
+  border-radius: var(--radius-full);
+  animation: training-spin var(--duration-slow) linear infinite;
+}
+
+@keyframes training-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.subtaste-training button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+@media (max-width: 640px) {
+  .subtaste-training .training-container {
+    padding: var(--space-12) var(--space-4);
+  }
+
+  .subtaste-training .training-title {
+    font-size: var(--text-xl);
+  }
+
+  .subtaste-training .training-glyph {
+    font-size: var(--text-2xl);
+  }
+}
