@@ -387,6 +387,11 @@ export const aiApi = {
     const { data } = await api.post('/api/ai/optimal-timing', { platform, contentType });
     return data;
   },
+
+  async upscaleImage(contentId, provider = 'replicate') {
+    const { data } = await api.post('/api/ai/upscale', { contentId, provider });
+    return data;
+  },
 };
 
 // Collection/Scheduling API

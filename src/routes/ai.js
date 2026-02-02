@@ -10,6 +10,9 @@ router.post('/suggest-type', authenticate, aiController.suggestContentType);
 router.post('/generate-hashtags', authenticate, aiController.generateHashtags);
 router.post('/generate-caption', authenticate, aiController.generateCaption);
 
+// Image Processing
+router.post('/upscale', authenticate, aiController.upscaleImage);
+
 // Scoring
 router.post('/score/virality', authenticate, aiController.calculateViralityScore);
 router.post('/score/engagement', authenticate, aiController.calculateEngagementScore);

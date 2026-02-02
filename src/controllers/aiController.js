@@ -1,5 +1,6 @@
 const Content = require('../models/Content');
 const aiService = require('../services/aiService');
+const upscaleService = require('../services/upscaleService');
 
 // Analyze content with AI
 exports.analyzeContent = async (req, res) => {
@@ -184,6 +185,50 @@ exports.generateCaption = async (req, res) => {
   } catch (error) {
     console.error('Generate caption error:', error);
     res.status(500).json({ error: 'Failed to generate caption' });
+  }
+};
+
+// Upscale image
+exports.upscaleImage = async (req, res) => {
+  try {
+    const { contentId, provider = 'replicate' } = req.body;
+
+    if (!['replicate', 'cloudinary'].includes(provider)) {
+      return res.status(400).json({ error: 'Invalid provider. Use "replicate" or "cloudinary".' });
+    }
+
+    const content = await Content.findOne({ _id: contentId, userId: req.userId });
+    if (!content) {
+      return res.status(404).json({ error: 'Content not found' });
+    }
+
+    if (!content.mediaUrl) {
+      return res.status(400).json({ error: 'Content has no media to upscale' });
+    }
+
+    // Preserve original before upscaling
+    if (!content.originalMediaUrl) {
+      content.originalMediaUrl = content.mediaUrl;
+    }
+
+    let upscaledUrl;
+    if (provider === 'replicate') {
+      upscaledUrl = await upscaleService.upscaleWithReplicate(content.mediaUrl);
+    } else {
+      upscaledUrl = await upscaleService.upscaleWithCloudinary(content.mediaUrl);
+    }
+
+    content.mediaUrl = upscaledUrl;
+    await content.save();
+
+    res.json({
+      message: 'Image upscaled successfully',
+      mediaUrl: content.mediaUrl,
+      originalMediaUrl: content.originalMediaUrl,
+    });
+  } catch (error) {
+    console.error('Upscale image error:', error);
+    res.status(500).json({ error: 'Failed to upscale image' });
   }
 };
 

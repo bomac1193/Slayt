@@ -350,6 +350,9 @@ function SortableTikTokRow({ rowId, children, showHandle = true }) {
 function TikTokPreview({ showRowHandles = true }) {
   const user = useAppStore((state) => state.user);
   const setUser = useAppStore((state) => state.setUser);
+  const profiles = useAppStore((state) => state.profiles);
+  const currentProfileId = useAppStore((state) => state.currentProfileId);
+  const currentProfile = profiles?.find(p => (p._id || p.id) === currentProfileId) || null;
 
   // TikTok videos state (reuse reels)
   const reels = useAppStore((state) => state.reels);
@@ -907,8 +910,8 @@ function TikTokPreview({ showRowHandles = true }) {
 
   // Edit profile handlers
   const handleEditProfile = () => {
-    setEditUsername(user?.username || user?.brandName || '');
-    setEditBio(user?.bio || '');
+    setEditUsername(currentProfile?.username || user?.username || user?.brandName || '');
+    setEditBio(currentProfile?.bio || user?.bio || '');
     setShowEditProfile(true);
   };
 
@@ -944,13 +947,13 @@ function TikTokPreview({ showRowHandles = true }) {
 
   // Inline username editing handlers
   const handleUsernameClick = () => {
-    setInlineUsername(user?.username || '');
+    setInlineUsername(currentProfile?.username || user?.username || '');
     setIsEditingUsername(true);
     setTimeout(() => usernameInputRef.current?.focus(), 0);
   };
 
   const handleUsernameBlur = () => {
-    if (inlineUsername !== (user?.username || '')) {
+    if (inlineUsername !== (currentProfile?.username || user?.username || '')) {
       setShowSavePrompt(true);
     } else {
       setIsEditingUsername(false);
@@ -960,7 +963,7 @@ function TikTokPreview({ showRowHandles = true }) {
   const handleUsernameKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (inlineUsername !== (user?.username || '')) {
+      if (inlineUsername !== (currentProfile?.username || user?.username || '')) {
         setShowSavePrompt(true);
       } else {
         setIsEditingUsername(false);
@@ -1037,8 +1040,8 @@ function TikTokPreview({ showRowHandles = true }) {
         <div className="flex justify-center mb-3">
           <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-400 to-pink-500 p-0.5">
             <div className="w-full h-full rounded-full bg-dark-800 flex items-center justify-center overflow-hidden">
-              {user?.profileImage || user?.avatar ? (
-                <img src={user.profileImage || user.avatar} alt="" className="w-full h-full object-cover" />
+              {currentProfile?.avatar || user?.profileImage || user?.avatar ? (
+                <img src={currentProfile?.avatar || user?.profileImage || user?.avatar} alt="" className="w-full h-full object-cover" />
               ) : (
                 <User className="w-10 h-10 text-dark-400" />
               )}
@@ -1048,7 +1051,7 @@ function TikTokPreview({ showRowHandles = true }) {
 
         {/* Screen Name - Centered without @ */}
         <h2 className="text-lg font-bold text-dark-100 text-center">
-          {user?.brandName || user?.name || 'Display Name'}
+          {currentProfile?.name || user?.brandName || user?.name || 'Display Name'}
         </h2>
 
         {/* Username - Centered with @ - Clickable to edit */}
@@ -1074,7 +1077,7 @@ function TikTokPreview({ showRowHandles = true }) {
             className="text-sm text-dark-400 text-center mb-3 cursor-pointer hover:text-cyan-400 transition-colors"
             title="Click to edit username"
           >
-            @{user?.username || 'username'}
+            @{currentProfile?.username || user?.username || 'username'}
           </p>
         )}
 
@@ -1111,8 +1114,8 @@ function TikTokPreview({ showRowHandles = true }) {
         </div>
 
         {/* Bio/Slogan */}
-        {user?.bio && (
-          <p className="text-sm text-dark-300 text-center whitespace-pre-line">{user.bio}</p>
+        {(currentProfile?.bio || user?.bio) && (
+          <p className="text-sm text-dark-300 text-center whitespace-pre-line">{currentProfile?.bio || user?.bio}</p>
         )}
 
         {/* Edit Profile Button (for owner view) */}
@@ -1492,8 +1495,8 @@ function TikTokPreview({ showRowHandles = true }) {
               <div className="flex justify-center">
                 <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-400 to-pink-500 p-0.5">
                   <div className="w-full h-full rounded-full bg-dark-800 flex items-center justify-center overflow-hidden">
-                    {user?.profileImage || user?.avatar ? (
-                      <img src={user.profileImage || user.avatar} alt="" className="w-full h-full object-cover" />
+                    {currentProfile?.avatar || user?.profileImage || user?.avatar ? (
+                      <img src={currentProfile?.avatar || user?.profileImage || user?.avatar} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <User className="w-10 h-10 text-dark-400" />
                     )}

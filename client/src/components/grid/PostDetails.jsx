@@ -36,6 +36,7 @@ import {
   SunMedium,
   Contrast,
   Dice5,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 // Crop aspect ratio presets
@@ -93,7 +94,9 @@ function PostDetails({ post }) {
   const navigate = useNavigate();
   const updatePost = useAppStore((state) => state.updatePost);
   const user = useAppStore((state) => state.user);
+  const profiles = useAppStore((state) => state.profiles);
   const currentProfileId = useAppStore((state) => state.currentProfileId);
+  const currentProfile = profiles?.find(p => (p._id || p.id) === currentProfileId) || null;
   const activeFolioId = useAppStore((state) => state.activeFolioId);
   const activeProjectId = useAppStore((state) => state.activeProjectId);
   const [caption, setCaption] = useState(post?.caption || '');
@@ -101,10 +104,10 @@ function PostDetails({ post }) {
   const [activeTab, setActiveTab] = useState('details');
   const [engagement] = useState(getRandomEngagement);
 
-  // User display info for previews
-  const displayName = user?.name || 'Your Name';
-  const username = user?.name?.toLowerCase().replace(/\s+/g, '_') || 'your_username';
-  const userAvatar = user?.avatar;
+  // User display info for previews — prefer selected profile
+  const displayName = currentProfile?.name || user?.name || 'Your Name';
+  const username = currentProfile?.username || user?.name?.toLowerCase().replace(/\s+/g, '_') || 'your_username';
+  const userAvatar = currentProfile?.avatar || user?.avatar;
 
   // Modal and loading states
   const [generatingCaption, setGeneratingCaption] = useState(false);
@@ -117,6 +120,16 @@ function PostDetails({ post }) {
   const [scheduling, setScheduling] = useState(false);
   const [posting, setPosting] = useState(false);
   const [tasteProfile, setTasteProfile] = useState(null);
+
+  // Upscale state
+  const [upscaling, setUpscaling] = useState(false);
+  const [upscaledImage, setUpscaledImage] = useState(() =>
+    post?.originalImage ? post.image : null
+  );
+  const [showUpscaled, setShowUpscaled] = useState(true);
+  const [compareMode, setCompareMode] = useState(false);
+  const [comparePosition, setComparePosition] = useState(50);
+  const [upscaleError, setUpscaleError] = useState(null);
 
   // Quick Edit state
   const [isQuickEditing, setIsQuickEditing] = useState(false);
@@ -188,6 +201,16 @@ function PostDetails({ post }) {
       window.removeEventListener('keyup', handleKeyUp);
     };
   }, []);
+
+  // Reset upscale state when switching posts
+  useEffect(() => {
+    const hasUpscale = post?.originalImage && post.image !== post.originalImage;
+    setUpscaledImage(hasUpscale ? post.image : null);
+    setShowUpscaled(true);
+    setCompareMode(false);
+    setComparePosition(50);
+    setUpscaleError(null);
+  }, [post?.id, post?._id]);
 
   // Load taste profile once for dice rolls
   useEffect(() => {
@@ -515,6 +538,27 @@ function PostDetails({ post }) {
   };
 
   // Quick Edit Functions
+  const handleUpscale = async (provider) => {
+    const postId = post.id || post._id;
+    setUpscaling(true);
+    setUpscaleError(null);
+    try {
+      const result = await aiApi.upscaleImage(postId, provider);
+      updatePost(postId, {
+        image: result.mediaUrl,
+        originalImage: result.originalMediaUrl,
+      });
+      setUpscaledImage(result.mediaUrl);
+      setShowUpscaled(true);
+    } catch (error) {
+      console.error('Upscale failed:', error);
+      const msg = error?.response?.data?.error || error.message || 'Upscale failed';
+      setUpscaleError(msg);
+    } finally {
+      setUpscaling(false);
+    }
+  };
+
   const startQuickEdit = () => {
     // Always work with the original image for non-destructive editing
     const sourceImage = post.originalImage || post.image;
@@ -961,7 +1005,7 @@ function PostDetails({ post }) {
             ) : null}
           </div>
           <div>
-            <p className="text-white text-sm font-semibold">{username}</p>
+            <p className="text-white text-sm font-semibold">{displayName}</p>
             <p className="text-gray-400 text-xs">Original</p>
           </div>
         </div>
@@ -997,7 +1041,7 @@ function PostDetails({ post }) {
 
         {/* Caption */}
         <p className="text-white text-sm">
-          <span className="font-semibold">{username}</span>{' '}
+          <span className="font-semibold">{displayName}</span>{' '}
           <span className="text-gray-300">{caption || 'Your caption will appear here...'}</span>
         </p>
 
@@ -1075,13 +1119,13 @@ function PostDetails({ post }) {
 
       {/* Bottom Info */}
       <div className="absolute bottom-4 left-3 right-16">
-        <p className="text-white font-semibold text-sm mb-1">@{username}</p>
+        <p className="text-white font-semibold text-sm mb-1">{displayName}</p>
         <p className="text-white text-sm mb-2 line-clamp-2">
           {caption || 'Your caption will appear here...'} {hashtags || '#fyp #viral #trending'}
         </p>
         <div className="flex items-center gap-2">
           <Music className="w-4 h-4 text-white" />
-          <p className="text-white text-xs">Original Sound - {username}</p>
+          <p className="text-white text-xs">Original Sound - {displayName}</p>
         </div>
       </div>
 
@@ -1488,6 +1532,36 @@ function PostDetails({ post }) {
                 </div>
               </div>
 
+              {/* AI Upscale */}
+              <div className="space-y-2 pt-2 border-t border-dark-600">
+                <h4 className="text-xs font-medium text-dark-400 uppercase tracking-wider">AI Upscale</h4>
+                {upscaling ? (
+                  <div className="w-full flex items-center justify-center gap-2 py-2 text-sm text-accent-purple">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Upscaling...
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleUpscale('replicate')}
+                      title="Upscale with Replicate (Best quality)"
+                      className="flex-1 flex items-center justify-center gap-2 py-2 text-sm bg-accent-purple/20 text-accent-purple rounded-lg hover:bg-accent-purple/30 transition-colors"
+                    >
+                      <span className="font-bold">R</span>
+                      <span className="text-accent-purple/70 text-xs">Best</span>
+                    </button>
+                    <button
+                      onClick={() => handleUpscale('cloudinary')}
+                      title="Upscale with Cloudinary (Fast)"
+                      className="flex-1 flex items-center justify-center gap-2 py-2 text-sm bg-accent-purple/20 text-accent-purple rounded-lg hover:bg-accent-purple/30 transition-colors"
+                    >
+                      <span className="font-bold">C</span>
+                      <span className="text-accent-purple/70 text-xs">Fast</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {/* Action Buttons */}
               <div className="space-y-2 pt-2">
                 {/* Restore Original - only show if edits exist */}
@@ -1539,11 +1613,67 @@ function PostDetails({ post }) {
           // Normal View Mode
           <>
             {post.image ? (
-              <img
-                src={post.image}
-                alt={post.caption || 'Post preview'}
-                className="w-full h-full object-cover"
-              />
+              compareMode && upscaledImage ? (
+                <div
+                  className="relative w-full h-full select-none"
+                  onMouseDown={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const updatePos = (clientX) => {
+                      const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+                      setComparePosition((x / rect.width) * 100);
+                    };
+                    updatePos(e.clientX);
+                    const onMove = (ev) => updatePos(ev.clientX);
+                    const onUp = () => {
+                      window.removeEventListener('mousemove', onMove);
+                      window.removeEventListener('mouseup', onUp);
+                    };
+                    window.addEventListener('mousemove', onMove);
+                    window.addEventListener('mouseup', onUp);
+                  }}
+                >
+                  {/* Base layer: original */}
+                  <img
+                    src={post.originalImage || post.image}
+                    alt="Original"
+                    className="w-full h-full object-cover"
+                    draggable={false}
+                  />
+                  {/* Top layer: upscaled, clipped */}
+                  <img
+                    src={upscaledImage}
+                    alt="Upscaled"
+                    className="absolute inset-0 w-full h-full object-cover"
+                    style={{ clipPath: `inset(0 ${100 - comparePosition}% 0 0)` }}
+                    draggable={false}
+                  />
+                  {/* Divider line */}
+                  <div
+                    className="absolute top-0 bottom-0 w-0.5 bg-white pointer-events-none"
+                    style={{ left: `${comparePosition}%` }}
+                  />
+                  {/* Drag handle */}
+                  <div
+                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center pointer-events-none"
+                    style={{ left: `${comparePosition}%` }}
+                  >
+                    <SlidersHorizontal className="w-4 h-4 text-dark-900" />
+                  </div>
+                  {/* Labels */}
+                  <span className="absolute top-3 left-3 px-2 py-0.5 text-xs font-medium bg-black/60 text-white rounded backdrop-blur-sm pointer-events-none">
+                    Original
+                  </span>
+                  <span className="absolute top-3 right-3 px-2 py-0.5 text-xs font-medium bg-black/60 text-white rounded backdrop-blur-sm pointer-events-none">
+                    Upscaled
+                  </span>
+                </div>
+              ) : (
+                <img
+                  src={showUpscaled && upscaledImage ? upscaledImage : (post.originalImage || post.image)}
+                  alt={post.caption || 'Post preview'}
+                  className="w-full h-full object-cover"
+                />
+              )
             ) : (
               <div
                 className="w-full h-full flex items-center justify-center"
@@ -1556,6 +1686,41 @@ function PostDetails({ post }) {
             {/* Edit Overlay */}
             <div className="absolute inset-0 bg-black/0 hover:bg-black/50 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
               <div className="flex flex-col gap-2">
+                {upscaling ? (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                    <Loader2 className="w-4 h-4 text-white animate-spin" />
+                    <span className="text-white font-medium">Upscaling...</span>
+                  </div>
+                ) : (
+                  <>
+                    {upscaleError && (
+                      <div className="px-3 py-1.5 bg-red-500/80 rounded-lg backdrop-blur-sm">
+                        <span className="text-white text-xs">{upscaleError}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 px-2 py-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                        <ZoomIn className="w-4 h-4 text-white" />
+                      </div>
+                      <button
+                        onClick={() => handleUpscale('replicate')}
+                        title="Upscale with Replicate (Best quality)"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors"
+                      >
+                        <span className="text-white font-bold text-sm">R</span>
+                        <span className="text-white/70 text-xs">Best</span>
+                      </button>
+                      <button
+                        onClick={() => handleUpscale('cloudinary')}
+                        title="Upscale with Cloudinary (Fast)"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors"
+                      >
+                        <span className="text-white font-bold text-sm">C</span>
+                        <span className="text-white/70 text-xs">Fast</span>
+                      </button>
+                    </div>
+                  </>
+                )}
                 <button
                   onClick={startQuickEdit}
                   className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors"
@@ -1575,6 +1740,43 @@ function PostDetails({ post }) {
           </>
         )}
       </div>
+
+      {/* Version Toggle Bar */}
+      {upscaledImage && (
+        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-dark-800">
+          <button
+            onClick={() => { setShowUpscaled(false); setCompareMode(false); }}
+            className={`px-2.5 py-1 text-xs font-medium rounded-full transition-colors ${
+              !showUpscaled && !compareMode
+                ? 'bg-white text-dark-900'
+                : 'text-dark-300 hover:text-white hover:bg-dark-700'
+            }`}
+          >
+            Original
+          </button>
+          <button
+            onClick={() => { setShowUpscaled(true); setCompareMode(false); }}
+            className={`px-2.5 py-1 text-xs font-medium rounded-full transition-colors ${
+              showUpscaled && !compareMode
+                ? 'bg-white text-dark-900'
+                : 'text-dark-300 hover:text-white hover:bg-dark-700'
+            }`}
+          >
+            Upscaled
+          </button>
+          <button
+            onClick={() => setCompareMode((v) => !v)}
+            className={`ml-auto p-1 rounded transition-colors ${
+              compareMode
+                ? 'bg-white text-dark-900'
+                : 'text-dark-300 hover:text-white hover:bg-dark-700'
+            }`}
+            title="Compare"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Details */}
       <div className="flex-1 overflow-auto p-4 space-y-4">
