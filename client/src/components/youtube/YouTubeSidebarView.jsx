@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useAppStore } from '../../stores/useAppStore';
+import { youtubeApi } from '../../lib/api';
 import {
   Upload,
   Youtube,
@@ -143,6 +144,7 @@ function YouTubeSidebarView({ isLocked, onUpload }) {
   const selectedYoutubeVideoId = useAppStore((state) => state.selectedYoutubeVideoId);
   const selectYoutubeVideo = useAppStore((state) => state.selectYoutubeVideo);
   const deleteYoutubeVideo = useAppStore((state) => state.deleteYoutubeVideo);
+  const currentYoutubeCollectionId = useAppStore((state) => state.currentYoutubeCollectionId);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -166,8 +168,15 @@ function YouTubeSidebarView({ isLocked, onUpload }) {
     if (oldIndex !== -1 && newIndex !== -1) {
       const newVideos = arrayMove(youtubeVideos, oldIndex, newIndex);
       reorderYoutubeVideos(newVideos);
+      // Persist reorder to backend
+      if (currentYoutubeCollectionId) {
+        const videoIds = newVideos.map(v => v.id || v._id);
+        youtubeApi.reorderVideos(currentYoutubeCollectionId, videoIds).catch(err =>
+          console.error('Failed to persist video reorder:', err)
+        );
+      }
     }
-  }, [isLocked, youtubeVideos, reorderYoutubeVideos]);
+  }, [isLocked, youtubeVideos, reorderYoutubeVideos, currentYoutubeCollectionId]);
 
   const handleDelete = useCallback((id) => {
     if (window.confirm('Are you sure you want to delete this video?')) {

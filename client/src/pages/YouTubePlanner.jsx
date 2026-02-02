@@ -267,13 +267,31 @@ function YouTubePlanner() {
         tags: sourceCollection.tags || [],
       });
 
+      const newCollectionId = data.collection._id;
+
+      // Fetch source videos from backend and duplicate them into the new collection
+      const sourceData = await youtubeApi.getVideos(collectionId);
+      const sourceVideos = sourceData.videos || [];
+
+      for (let i = 0; i < sourceVideos.length; i++) {
+        const v = sourceVideos[i];
+        await youtubeApi.createVideo({
+          title: v.title,
+          description: v.description || '',
+          thumbnail: v.thumbnail || '',
+          collectionId: newCollectionId,
+          status: v.status || 'draft',
+          tags: v.tags || [],
+          position: i,
+        });
+      }
+
       const newCollection = {
         ...data.collection,
-        id: data.collection._id,
-        videoCount: 0,
+        id: newCollectionId,
+        videoCount: sourceVideos.length,
       };
 
-      // TODO: Also copy videos if needed
       setYoutubeCollections([...youtubeCollections, newCollection]);
       setShowCollectionsDropdown(false);
     } catch (err) {

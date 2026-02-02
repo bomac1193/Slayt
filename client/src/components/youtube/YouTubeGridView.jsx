@@ -15,6 +15,7 @@ import {
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useAppStore } from '../../stores/useAppStore';
+import { youtubeApi } from '../../lib/api';
 import YouTubeVideoCard from './YouTubeVideoCard';
 import { Upload, ImagePlus, Youtube, Settings, X, Camera, ZoomIn, ZoomOut, RotateCcw, Save, Pencil } from 'lucide-react';
 
@@ -34,6 +35,9 @@ function YouTubeGridView({ isLocked, onUpload }) {
   // Shared user profile (synced across IG, TikTok, YouTube)
   const user = useAppStore((state) => state.user);
   const setUser = useAppStore((state) => state.setUser);
+  const profiles = useAppStore((state) => state.profiles);
+  const currentProfileId = useAppStore((state) => state.currentProfileId);
+  const currentProfile = profiles?.find(p => (p._id || p.id) === currentProfileId) || null;
 
   // Settings modal state
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -67,6 +71,8 @@ function YouTubeGridView({ isLocked, onUpload }) {
     })
   );
 
+  const currentYoutubeCollectionId = useAppStore((state) => state.currentYoutubeCollectionId);
+
   const handleDragEnd = useCallback((event) => {
     const { active, over } = event;
 
@@ -78,8 +84,15 @@ function YouTubeGridView({ isLocked, onUpload }) {
     if (oldIndex !== -1 && newIndex !== -1) {
       const newVideos = arrayMove(youtubeVideos, oldIndex, newIndex);
       reorderYoutubeVideos(newVideos);
+      // Persist reorder to backend
+      if (currentYoutubeCollectionId) {
+        const videoIds = newVideos.map(v => v.id || v._id);
+        youtubeApi.reorderVideos(currentYoutubeCollectionId, videoIds).catch(err =>
+          console.error('Failed to persist video reorder:', err)
+        );
+      }
     }
-  }, [isLocked, youtubeVideos, reorderYoutubeVideos]);
+  }, [isLocked, youtubeVideos, reorderYoutubeVideos, currentYoutubeCollectionId]);
 
   const handleDelete = useCallback((id) => {
     if (window.confirm('Are you sure you want to delete this video?')) {
@@ -96,10 +109,11 @@ function YouTubeGridView({ isLocked, onUpload }) {
 
   // Open avatar editor with current avatar
   const handleAvatarClick = () => {
-    if (user?.avatar) {
-      setTempImage(user.avatar);
-      setPosition(user.avatarPosition || { x: 0, y: 0 });
-      setZoom(user.avatarZoom || 1);
+    const avatar = displayAvatar;
+    if (avatar) {
+      setTempImage(avatar);
+      setPosition({ x: 0, y: 0 });
+      setZoom(1);
     } else {
       setTempImage(null);
       setPosition({ x: 0, y: 0 });
@@ -259,9 +273,9 @@ function YouTubeGridView({ isLocked, onUpload }) {
     setEditPronouns('');
   };
 
-  // Get display values from shared user profile
-  const displayName = user?.brandName || user?.name || 'Your Channel';
-  const displayAvatar = user?.avatar;
+  // Get display values — prefer selected profile
+  const displayName = currentProfile?.name || user?.brandName || user?.name || 'Your Channel';
+  const displayAvatar = currentProfile?.avatar || user?.avatar;
 
   // Empty state
   if (youtubeVideos.length === 0) {
@@ -306,16 +320,7 @@ function YouTubeGridView({ isLocked, onUpload }) {
             <img
               src={displayAvatar}
               alt="Channel"
-              className="absolute pointer-events-none"
-              style={{
-                width: `${100 * getActualZoom(user?.avatarZoom || 1)}%`,
-                height: `${100 * getActualZoom(user?.avatarZoom || 1)}%`,
-                objectFit: 'cover',
-                left: '50%',
-                top: '50%',
-                transformOrigin: 'center center',
-                transform: `translate(-50%, -50%) translate(${(user?.avatarPosition?.x || 0) * 0.3}px, ${(user?.avatarPosition?.y || 0) * 0.3}px)`,
-              }}
+              className="w-full h-full object-cover"
             />
           ) : null}
           {/* Hover overlay */}
@@ -432,16 +437,7 @@ function YouTubeGridView({ isLocked, onUpload }) {
                       <img
                         src={displayAvatar}
                         alt="Channel"
-                        className="absolute pointer-events-none"
-                        style={{
-                          width: `${100 * getActualZoom(user?.avatarZoom || 1)}%`,
-                          height: `${100 * getActualZoom(user?.avatarZoom || 1)}%`,
-                          objectFit: 'cover',
-                          left: '50%',
-                          top: '50%',
-                          transformOrigin: 'center center',
-                          transform: `translate(-50%, -50%) translate(${(user?.avatarPosition?.x || 0) * 0.3}px, ${(user?.avatarPosition?.y || 0) * 0.3}px)`,
-                        }}
+                        className="w-full h-full object-cover"
                       />
                     ) : null}
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
