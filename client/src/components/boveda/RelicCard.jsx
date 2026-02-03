@@ -16,17 +16,18 @@ export default function RelicCard({ relic }) {
   );
 }
 
-// Generated relic card — data from lcosData on a character
+// Generated relic card — narrative-driven, archetype woven into backstory
 // lcosData.relics is an array like [{ object, origin, era, ... }]
-// lcosData.pseudonym, lcosData.sacredNumber, lcosData.samplePost are top-level
+// Archetype data (arcana, order, personality) informs the story, not shown as raw tags
 export function GeneratedRelicCard({ character }) {
   const lcos = character.lcosData || {};
   const relic = lcos.relics?.[0] || {};
   const objectName = relic.object || character.name || 'Unknown Relic';
   const origin = relic.origin || null;
-  const era = relic.era || null;
   const pseudonym = lcos.pseudonym || null;
   const sacredNumber = lcos.sacredNumber ?? null;
+  const backstory = lcos.backstory || character.bio || null;
+  const essence = lcos.arcana?.coreDesire || null;
   const samplePost = lcos.samplePost || null;
 
   return (
@@ -34,32 +35,34 @@ export function GeneratedRelicCard({ character }) {
       className="bg-dark-800 rounded-xl border border-zinc-500/20 p-5 transition-all"
       style={{ boxShadow: '0 0 12px 2px rgba(161,161,170,0.06)' }}
     >
-      <h3 className="font-semibold text-white text-sm mb-2">{objectName}</h3>
+      <h3 className="font-semibold text-white text-sm mb-1">{objectName}</h3>
+
+      {essence && (
+        <p className="text-[10px] uppercase tracking-widest text-dark-500 mb-3">{essence}</p>
+      )}
 
       {origin && (
-        <p className="text-xs text-dark-300 mb-1">
+        <p className="text-xs text-dark-300 mb-2">
           <span className="text-dark-500">Origin:</span> {origin}
         </p>
       )}
-      {era && (
-        <p className="text-xs text-dark-300 mb-1">
-          <span className="text-dark-500">Era:</span> {era}
-        </p>
+
+      {backstory && (
+        <p className="text-xs text-dark-400 leading-relaxed mb-2">{backstory}</p>
       )}
-      {pseudonym && (
-        <p className="text-xs text-dark-300 mb-1">
-          <span className="text-dark-500">Pseudonym:</span> {pseudonym}
-        </p>
+
+      {(pseudonym || sacredNumber !== null) && (
+        <div className="flex items-center gap-3 text-xs text-dark-500 mt-2">
+          {pseudonym && <span>aka {pseudonym}</span>}
+          {pseudonym && sacredNumber !== null && <span className="text-dark-700">|</span>}
+          {sacredNumber !== null && <span>No. {sacredNumber}</span>}
+        </div>
       )}
-      {sacredNumber !== null && (
-        <p className="text-xs text-dark-300 mb-1">
-          <span className="text-dark-500">Sacred Number:</span> {sacredNumber}
-        </p>
-      )}
+
       {samplePost && (
         <div className="mt-3 pt-3 border-t border-dark-700">
           <span className="text-[10px] uppercase tracking-widest text-dark-500">Sample Post</span>
-          <p className="text-xs text-dark-400 italic mt-1 line-clamp-3">{samplePost}</p>
+          <p className="text-xs text-dark-400 italic mt-1 line-clamp-3">"{samplePost}"</p>
         </div>
       )}
     </div>

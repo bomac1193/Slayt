@@ -320,73 +320,91 @@ export default function GeneratorPanel({ onAccept, onClose }) {
             {displayName}
           </div>
 
-          {/* Badges */}
-          <div className="flex flex-wrap gap-1.5">
-            {adminMode ? (
-              <>
-                <Badge variant="purple">{generated.heritage}</Badge>
-                <Badge variant="blue">{generated.order.name}</Badge>
-                <Badge variant="amber">{generated.arcana.system}: {generated.arcana.archetype}</Badge>
-              </>
-            ) : (
-              <>
-                {generated.subtaste && (
-                  <>
-                    <Badge variant="purple">{generated.subtaste.code}</Badge>
-                    <Badge variant="amber">{generated.subtaste.glyph}</Badge>
-                    <Badge variant="default">{generated.subtaste.label}</Badge>
-                  </>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Appearance */}
-          <div className="text-sm text-dark-300">
-            <span className="text-dark-500">Appearance:</span>{' '}
-            {generated.appearance.build}, {generated.appearance.distinctiveTrait}
-          </div>
-          <div className="text-sm text-dark-300">
-            <span className="text-dark-500">Style:</span>{' '}
-            {generated.appearance.styleAesthetic}
-          </div>
-          <div className="text-sm text-dark-300">
-            <span className="text-dark-500">Voice:</span>{' '}
-            {generated.personality.voiceTone}
-          </div>
-
-          {/* Backstory */}
-          <div className="text-sm text-dark-300">
-            <span className="text-dark-500">Backstory:</span>{' '}
-            {generated.backstory}
-          </div>
-
-          {/* Relic details */}
-          {generated.relics && generated.relics.length > 0 && (
+          {isRelic ? (
+            /* Relic preview — narrative-driven, archetype woven into story */
             <>
-              <div className="text-sm text-dark-300">
-                <span className="text-dark-500">Relic:</span>{' '}
-                {generated.relics[0].object}
-                {generated.relics[0].origin && ` — ${generated.relics[0].origin}`}
+              {generated.arcana?.coreDesire && (
+                <p className="text-[10px] uppercase tracking-widest text-dark-500">
+                  {generated.arcana.coreDesire}
+                </p>
+              )}
+
+              {generated.relics?.[0]?.origin && (
+                <div className="text-sm text-dark-300">
+                  <span className="text-dark-500">Origin:</span>{' '}
+                  {generated.relics[0].origin}
+                </div>
+              )}
+
+              <div className="text-sm text-dark-400 leading-relaxed">
+                {generated.backstory}
               </div>
-              {generated.pseudonym && (
-                <div className="text-sm text-dark-300">
-                  <span className="text-dark-500">Pseudonym:</span>{' '}
-                  {generated.pseudonym}
+
+              {(generated.pseudonym || generated.sacredNumber !== undefined) && (
+                <div className="flex items-center gap-3 text-sm text-dark-500">
+                  {generated.pseudonym && <span>aka {generated.pseudonym}</span>}
+                  {generated.pseudonym && generated.sacredNumber !== undefined && (
+                    <span className="text-dark-700">|</span>
+                  )}
+                  {generated.sacredNumber !== undefined && <span>No. {generated.sacredNumber}</span>}
                 </div>
               )}
-              {generated.sacredNumber !== undefined && (
-                <div className="text-sm text-dark-300">
-                  <span className="text-dark-500">Sacred Number:</span>{' '}
-                  {generated.sacredNumber}
-                </div>
-              )}
+
               {generated.samplePost && (
                 <div className="text-sm text-dark-300 italic">
-                  <span className="text-dark-500 not-italic">Sample Post:</span>{' '}
                   "{generated.samplePost}"
                 </div>
               )}
+
+              {/* Admin mode: show raw archetype data */}
+              {adminMode && (
+                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-dark-700">
+                  <Badge variant="purple">{generated.heritage}</Badge>
+                  <Badge variant="blue">{generated.order.name}</Badge>
+                  <Badge variant="amber">{generated.arcana.system}: {generated.arcana.archetype}</Badge>
+                </div>
+              )}
+            </>
+          ) : (
+            /* Character preview — badges + structured fields */
+            <>
+              <div className="flex flex-wrap gap-1.5">
+                {adminMode ? (
+                  <>
+                    <Badge variant="purple">{generated.heritage}</Badge>
+                    <Badge variant="blue">{generated.order.name}</Badge>
+                    <Badge variant="amber">{generated.arcana.system}: {generated.arcana.archetype}</Badge>
+                  </>
+                ) : (
+                  <>
+                    {generated.subtaste && (
+                      <>
+                        <Badge variant="purple">{generated.subtaste.code}</Badge>
+                        <Badge variant="amber">{generated.subtaste.glyph}</Badge>
+                        <Badge variant="default">{generated.subtaste.label}</Badge>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="text-sm text-dark-300">
+                <span className="text-dark-500">Appearance:</span>{' '}
+                {generated.appearance.build}, {generated.appearance.distinctiveTrait}
+              </div>
+              <div className="text-sm text-dark-300">
+                <span className="text-dark-500">Style:</span>{' '}
+                {generated.appearance.styleAesthetic}
+              </div>
+              <div className="text-sm text-dark-300">
+                <span className="text-dark-500">Voice:</span>{' '}
+                {generated.personality.voiceTone}
+              </div>
+
+              <div className="text-sm text-dark-300">
+                <span className="text-dark-500">Backstory:</span>{' '}
+                {generated.backstory}
+              </div>
             </>
           )}
 
