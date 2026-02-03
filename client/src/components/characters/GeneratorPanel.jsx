@@ -162,12 +162,9 @@ export default function GeneratorPanel({ onAccept, onClose }) {
         bio: generated.backstory,
         voice: mapVoiceTone(generated.personality.voiceTone),
         color: COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)],
-        personaTags: [
-          generated.order.name,
-          generated.arcana.system,
-          generated.arcana.archetype,
-          generated.heritage,
-        ].filter(Boolean),
+        personaTags: generated.subtaste
+          ? [generated.subtaste.label, generated.subtaste.code]
+          : [generated.arcana.archetype].filter(Boolean),
         toneAllowed: generated.arcana.goldenGifts || [],
         toneForbidden: generated.arcana.shadowThemes || [],
         systemPrompt: buildSystemPrompt(generated),
