@@ -369,6 +369,7 @@ function TasteGenome() {
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [prefMessage, setPrefMessage] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [showSubdominant, setShowSubdominant] = useState(false);
   const [showAllArchetypes, setShowAllArchetypes] = useState(false);
   const [signals, setSignals] = useState([]);
   const [govMetrics, setGovMetrics] = useState({
@@ -1027,11 +1028,9 @@ function TasteGenome() {
             </div>
           )}
 
-          {/* ── Full Genome Detail + Tier/Achievements side-by-side ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-            {/* Left — Full Genome Detail dossier */}
-            <div className="lg:col-span-2 space-y-6">
+          {/* ── Full Genome Detail — full width ── */}
+          <div className="space-y-6">
+            <div>
               <div className="bg-dark-900/80 rounded-sm border p-4" style={{ borderColor: `${GLOW}11` }}>
                 <button
                   onClick={() => setShowDetails((s) => !s)}
@@ -1100,33 +1099,45 @@ function TasteGenome() {
                       </div>
                     )}
 
-                    {/* ── Subdominant ── */}
+                    {/* ── Subdominant — collapsible ── */}
                     {secondaryArch && secondaryDossier && (
-                      <div className="space-y-3 pt-3" style={{ borderTop: `1px solid ${GLOW}11` }}>
-                        <div className="flex items-center gap-3">
-                          <p className="text-xs uppercase tracking-[0.12em] font-mono" style={{ color: VIOLET_TEXT }}>Subdominant</p>
-                          <span className="px-2 py-0.5 rounded-sm border text-xs font-mono" style={{ borderColor: `${VIOLET}44`, color: VIOLET_TEXT }}>
-                            {secondaryArch.designation}
-                          </span>
-                          <span className="text-sm font-semibold uppercase tracking-[0.08em]" style={{ color: GLOW_DIM }}>
-                            {secondaryArch.glyph}
-                          </span>
-                          <span className="text-xs font-mono" style={{ color: '#52525b' }}>
-                            {Math.round((secondaryArch.confidence || 0) * 100)}%
-                          </span>
-                        </div>
+                      <div className="pt-3" style={{ borderTop: `1px solid ${GLOW}11` }}>
+                        <button
+                          onClick={() => setShowSubdominant((s) => !s)}
+                          className="w-full flex items-center justify-between text-left"
+                        >
+                          <div className="flex items-center gap-3">
+                            <p className="text-xs uppercase tracking-[0.12em] font-mono" style={{ color: VIOLET_TEXT }}>Subdominant</p>
+                            <span className="px-2 py-0.5 rounded-sm border text-xs font-mono" style={{ borderColor: `${VIOLET}44`, color: VIOLET_TEXT }}>
+                              {secondaryArch.designation}
+                            </span>
+                            <span className="text-sm font-semibold uppercase tracking-[0.08em]" style={{ color: GLOW_DIM }}>
+                              {secondaryArch.glyph}
+                            </span>
+                            <span className="text-xs font-mono" style={{ color: '#52525b' }}>
+                              {Math.round((secondaryArch.confidence || 0) * 100)}%
+                            </span>
+                          </div>
+                          <ChevronDown
+                            className={`w-4 h-4 transition-transform ${showSubdominant ? 'rotate-180' : ''}`}
+                            style={{ color: '#52525b' }}
+                          />
+                        </button>
+                        {showSubdominant && (
+                          <div className="mt-3 space-y-3">
+                            <p className="text-sm leading-relaxed" style={{ color: '#a1a1aa', fontFamily: 'Georgia, serif' }}>
+                              {secondaryDossier.brief}
+                            </p>
 
-                        <p className="text-sm leading-relaxed" style={{ color: '#a1a1aa', fontFamily: 'Georgia, serif' }}>
-                          {secondaryDossier.brief}
-                        </p>
-
-                        <p className="text-sm leading-relaxed" style={{ color: '#a1a1aa', fontFamily: 'Georgia, serif' }}>
-                          <span className="font-mono text-xs" style={{ color: VIOLET_TEXT }}>{secondaryArch.glyph}</span> influences your dominant <span className="font-mono text-xs" style={{ color: GLOW_BRIGHT }}>{primaryArch.glyph}</span> by
-                          pulling toward {secondaryDossier.strengths[0]?.toLowerCase() || 'a complementary instinct'}{secondaryDossier.strengths[1] ? ` and ${secondaryDossier.strengths[1].toLowerCase()}` : ''}.
-                          {primaryDossier?.weaknesses?.[0] && secondaryDossier.strengths?.[0] && (
-                            <> It compensates for the dominant tendency toward {primaryDossier.weaknesses[0].toLowerCase()}, grounding it with {secondaryDossier.strengths[0].toLowerCase()}.</>
-                          )}
-                        </p>
+                            <p className="text-sm leading-relaxed" style={{ color: '#a1a1aa', fontFamily: 'Georgia, serif' }}>
+                              <span className="font-mono text-xs" style={{ color: VIOLET_TEXT }}>{secondaryArch.glyph}</span> influences your dominant <span className="font-mono text-xs" style={{ color: GLOW_BRIGHT }}>{primaryArch.glyph}</span> by
+                              pulling toward {secondaryDossier.strengths[0]?.toLowerCase() || 'a complementary instinct'}{secondaryDossier.strengths[1] ? ` and ${secondaryDossier.strengths[1].toLowerCase()}` : ''}.
+                              {primaryDossier?.weaknesses?.[0] && secondaryDossier.strengths?.[0] && (
+                                <> It compensates for the dominant tendency toward {primaryDossier.weaknesses[0].toLowerCase()}, grounding it with {secondaryDossier.strengths[0].toLowerCase()}.</>
+                              )}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -1182,96 +1193,62 @@ function TasteGenome() {
               </div>
             </div>
 
-            {/* Right — Tier, Achievements, Keywords */}
-            <div className="space-y-6">
-              {/* XP & Tier */}
-              {gamification && (
-                <div className="bg-dark-900/80 rounded-sm p-4 border" style={{ borderColor: `${GLOW}11` }}>
-                  <div className="flex items-center gap-3 mb-4">
+            {/* ── Clearance Chamber — replaces gamified tier/XP/streak ── */}
+            {gamification && (
+              <div className="bg-dark-900/80 rounded-sm border p-4" style={{ borderColor: `${GLOW}11` }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
                     <div
-                      className="w-12 h-12 rounded-sm flex items-center justify-center"
-                      style={{ backgroundColor: `${GLOW}08` }}
+                      className="w-10 h-10 rounded-sm flex items-center justify-center"
+                      style={{ backgroundColor: `${VIOLET}0a`, border: `1px solid ${VIOLET}22` }}
                     >
-                      <Award className="w-6 h-6" style={{ color: GLOW_DIM, filter: `drop-shadow(0 0 4px ${GLOW}33)` }} />
+                      <Lock className="w-5 h-5" style={{ color: VIOLET_TEXT }} />
                     </div>
                     <div>
-                      <p className="text-sm font-mono uppercase tracking-widest" style={{ color: '#52525b' }}>Current Tier</p>
-                      <h3 className="font-semibold" style={{ color: GLOW }}>{gamification.tier?.name || 'Nascent'}</h3>
+                      <p className="text-[10px] font-mono uppercase tracking-[0.2em]" style={{ color: '#52525b' }}>Clearance</p>
+                      <h3 className="text-sm font-semibold font-mono uppercase tracking-[0.1em]" style={{ color: GLOW }}>{gamification.tier?.name || 'Nascent'}</h3>
                     </div>
                   </div>
-
-                  <div className="mb-4">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="font-mono uppercase tracking-widest" style={{ color: '#52525b' }}>XP</span>
-                      <span className="font-mono" style={{ color: GLOW }}>{gamification.xp || 0}</span>
+                  <div className="flex items-center gap-6">
+                    <div className="text-right">
+                      <p className="text-[10px] font-mono uppercase tracking-[0.2em]" style={{ color: '#52525b' }}>Depth</p>
+                      <p className="text-sm font-mono" style={{ color: GLOW_DIM }}>{gamification.xp || 0}</p>
                     </div>
-                    <div className="h-2 bg-dark-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full transition-all rounded-full"
-                        style={{
-                          width: `${Math.min(100, (gamification.xp || 0) / 20)}%`,
-                          background: `linear-gradient(90deg, ${GLOW}55, ${GLOW}aa)`,
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4 text-sm">
-                    <div className="flex items-center gap-1.5" style={{ color: GLOW_DIM }}>
-                      <Flame className="w-4 h-4" />
-                      <span className="font-mono">{gamification.streak || 0} day streak</span>
+                    <div className="text-right">
+                      <p className="text-[10px] font-mono uppercase tracking-[0.2em]" style={{ color: '#52525b' }}>Signals</p>
+                      <p className="text-sm font-mono" style={{ color: GLOW_DIM }}>{gamification.signalCount || genome?.signals?.length || 0}</p>
                     </div>
                   </div>
                 </div>
-              )}
-
-              {/* Achievements */}
-              <div className="bg-dark-900/80 rounded-sm p-4 border" style={{ borderColor: `${GLOW}11` }}>
-                <h3 className="font-semibold text-white mb-4 flex items-center gap-2 font-mono uppercase tracking-widest text-sm">
-                  <Trophy className="w-5 h-5" style={{ color: GLOW_DIM, filter: `drop-shadow(0 0 3px ${GLOW}33)` }} />
-                  Achievements
-                </h3>
-                <div className="space-y-2">
-                  {allAchievements.slice(0, 6).map((achievement) => (
-                    <AchievementBadge
-                      key={achievement.id}
-                      achievement={achievement}
-                      unlocked={gamification?.achievements?.some(a => a.id === achievement.id)}
-                    />
-                  ))}
+                {/* Clearance progress — subtle bar */}
+                <div className="mt-3 h-1 rounded-full overflow-hidden" style={{ backgroundColor: '#18181b' }}>
+                  <div
+                    className="h-full transition-all rounded-full"
+                    style={{
+                      width: `${Math.min(100, (gamification.xp || 0) / 20)}%`,
+                      background: `linear-gradient(90deg, ${VIOLET}44, ${VIOLET}99)`,
+                    }}
+                  />
                 </div>
-              </div>
-
-              {/* Top Keywords */}
-              {genome?.keywords && (
-                <div className="bg-dark-900/80 rounded-sm p-4 border" style={{ borderColor: `${GLOW}11` }}>
-                  <h3 className="font-semibold text-white mb-3 flex items-center gap-2 font-mono uppercase tracking-widest text-sm">
-                    <Crosshair className="w-5 h-5" style={{ color: GLOW_DIM, filter: `drop-shadow(0 0 3px ${GLOW}33)` }} />
-                    Top Keywords
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(genome.keywords.visual || {})
-                      .flatMap(([cat, keywords]) =>
-                        Object.entries(keywords)
-                          .filter(([, score]) => score > 0.5)
-                          .map(([kw, score]) => ({ keyword: kw, score }))
-                      )
-                      .sort((a, b) => b.score - a.score)
-                      .slice(0, 10)
-                      .map(({ keyword, score }) => (
+                {/* Achievements — inline, subtle */}
+                {allAchievements.some(a => gamification?.achievements?.some(u => u.id === a.id)) && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {allAchievements
+                      .filter(a => gamification?.achievements?.some(u => u.id === a.id))
+                      .map((achievement) => (
                         <span
-                          key={keyword}
-                          className="px-2 py-1 rounded-sm text-sm font-mono border"
-                          style={{ borderColor: '#1c1c1e', color: GLOW_DIM, backgroundColor: '#0a0a0c' }}
-                          title={`Score: ${score.toFixed(2)}`}
+                          key={achievement.id}
+                          className="px-2 py-0.5 rounded-sm border text-[11px] font-mono uppercase tracking-[0.1em]"
+                          style={{ borderColor: `${GLOW}22`, color: GLOW_DIM, backgroundColor: '#0a0a0c' }}
+                          title={achievement.description}
                         >
-                          {keyword}
+                          {achievement.name}
                         </span>
                       ))}
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* ── All Archetypes — Collapsible Section — full width ── */}
