@@ -1518,31 +1518,51 @@ export const GENDER_OPTIONS = [
   { value: 'neutral', label: 'Neutral' },
 ];
 
-// Exported for archetype editing UI
-export const ARCHETYPE_SYSTEM_LIST = ARCHETYPE_SYSTEMS;
-export const ORDER_TYPE_LIST = ORDER_TYPES;
+// Exported for subtaste archetype editing UI
 
-export function getArchetypesForSystem(system) {
-  switch (system) {
-    case 'tarot': return Object.keys(TAROT_ARCHETYPES_DATA).map(k => ({ value: k, label: k.replace(/_/g, ' '), ...TAROT_ARCHETYPES_DATA[k] }));
-    case 'jung': return Object.keys(JUNG_ARCHETYPES).map(k => ({ value: k, label: k.replace(/_/g, ' '), ...JUNG_ARCHETYPES[k] }));
-    case 'kabbalah': return Object.keys(KABBALAH_ARCHETYPES).map(k => ({ value: k, label: k.replace(/_/g, ' '), ...KABBALAH_ARCHETYPES[k] }));
-    case 'orisha': return Object.keys(ORISHA_ARCHETYPES).map(k => ({ value: k, label: k.replace(/_/g, ' '), ...ORISHA_ARCHETYPES[k] }));
-    case 'norse': return Object.keys(NORSE_ARCHETYPES).map(k => ({ value: k, label: k.replace(/_/g, ' '), ...NORSE_ARCHETYPES[k] }));
-    default: return [];
+export const SUBTASTE_OPTIONS = Object.entries(SUBTASTE_DESIGNATIONS).map(([code, data]) => ({
+  code,
+  glyph: data.glyph,
+  label: data.label,
+}));
+
+// Reverse map: subtaste code → list of { system, key, ...data } archetypes
+function buildReverseSubtasteMap() {
+  const allSystems = {
+    tarot: TAROT_ARCHETYPES_DATA,
+    jung: JUNG_ARCHETYPES,
+    kabbalah: KABBALAH_ARCHETYPES,
+    orisha: ORISHA_ARCHETYPES,
+    norse: NORSE_ARCHETYPES,
+  };
+  const reverseMap = {};
+  for (const [key, subtasteCode] of Object.entries(ARCHETYPE_TO_SUBTASTE)) {
+    if (!reverseMap[subtasteCode]) reverseMap[subtasteCode] = [];
+    for (const [system, archetypes] of Object.entries(allSystems)) {
+      if (archetypes[key]) {
+        reverseMap[subtasteCode].push({ system, key, ...archetypes[key] });
+        break;
+      }
+    }
   }
+  return reverseMap;
 }
 
-export function buildArcanaFromSelection(system, archetypeKey) {
-  const archetypes = getArchetypesForSystem(system);
-  const data = archetypes.find(a => a.value === archetypeKey);
-  if (!data) return null;
+const REVERSE_SUBTASTE_MAP = buildReverseSubtasteMap();
+
+export function getArchetypesForSubtaste(subtasteCode) {
+  return REVERSE_SUBTASTE_MAP[subtasteCode] || [];
+}
+
+export function buildArcanaFromSubtaste(subtasteCode, archetypeEntry) {
+  // archetypeEntry is one item from getArchetypesForSubtaste()
+  if (!archetypeEntry) return null;
   return {
-    system,
-    archetype: archetypeKey.replace(/_/g, ' '),
-    meaning: data.meaning,
-    coreDesire: data.coreDesire,
-    shadowThemes: data.shadow,
-    goldenGifts: data.gifts,
+    system: archetypeEntry.system,
+    archetype: archetypeEntry.key.replace(/_/g, ' '),
+    meaning: archetypeEntry.meaning,
+    coreDesire: archetypeEntry.coreDesire,
+    shadowThemes: archetypeEntry.shadow,
+    goldenGifts: archetypeEntry.gifts,
   };
 }

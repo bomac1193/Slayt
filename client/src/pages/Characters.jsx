@@ -4,10 +4,9 @@ import { useAppStore } from '../stores/useAppStore';
 import GeneratorPanel from '../components/characters/GeneratorPanel';
 import Reliquary from '../components/boveda/Reliquary';
 import {
-  ARCHETYPE_SYSTEM_LIST,
-  ORDER_TYPE_LIST,
-  getArchetypesForSystem,
-  buildArcanaFromSelection,
+  SUBTASTE_OPTIONS,
+  getArchetypesForSubtaste,
+  buildArcanaFromSubtaste,
 } from '../lib/characterGenerator';
 import {
   Plus,
@@ -419,38 +418,37 @@ function GenerateModal({ character, onClose }) {
 
 function ArchetypeModal({ character, onClose, onSave }) {
   const lcos = character.lcosData || {};
-  const [order, setOrder] = useState(lcos.order?.name || ORDER_TYPE_LIST[0]);
-  const [system, setSystem] = useState(lcos.arcana?.system || ARCHETYPE_SYSTEM_LIST[0]);
-  const [archetypeKey, setArchetypeKey] = useState(
-    lcos.arcana?.archetype?.replace(/ /g, '_').toLowerCase() || ''
-  );
+  const currentCode = lcos.subtaste?.code || null;
+  const [selectedCode, setSelectedCode] = useState(currentCode || SUBTASTE_OPTIONS[0].code);
   const [saving, setSaving] = useState(false);
 
-  const archetypes = getArchetypesForSystem(system);
-  // Reset archetype selection when system changes
-  const currentArchetype = archetypes.find(a => a.value === archetypeKey);
-
-  const handleSystemChange = (newSystem) => {
-    setSystem(newSystem);
-    const newArchetypes = getArchetypesForSystem(newSystem);
-    setArchetypeKey(newArchetypes[0]?.value || '');
-  };
+  // Archetypes that map to the selected subtaste
+  const matchingArchetypes = getArchetypesForSubtaste(selectedCode);
+  const selected = SUBTASTE_OPTIONS.find(s => s.code === selectedCode);
 
   const handleSave = async () => {
-    if (!archetypeKey) return;
+    if (!matchingArchetypes.length) return;
     setSaving(true);
     try {
-      const newArcana = buildArcanaFromSelection(system, archetypeKey);
+      // Pick the first matching archetype as the representative
+      const entry = matchingArchetypes[0];
+      const newArcana = buildArcanaFromSubtaste(selectedCode, entry);
       if (!newArcana) return;
+
+      const newSubtaste = {
+        code: selectedCode,
+        glyph: selected.glyph,
+        label: selected.label,
+      };
 
       const updatedLcos = {
         ...lcos,
-        order: { name: order, ideology: lcos.order?.ideology || '' },
         arcana: newArcana,
+        subtaste: newSubtaste,
       };
       await onSave({
         lcosData: updatedLcos,
-        personaTags: [newArcana.archetype],
+        personaTags: [newSubtaste.label, newSubtaste.code],
         toneAllowed: newArcana.goldenGifts || [],
         toneForbidden: newArcana.shadowThemes || [],
       });
@@ -471,78 +469,47 @@ function ArchetypeModal({ character, onClose, onSave }) {
         </div>
 
         <div className="p-4 space-y-4">
-          {/* Order */}
-          <div>
-            <label className="block text-xs text-dark-400 mb-1.5 uppercase tracking-wider">Order</label>
-            <div className="flex flex-wrap gap-1.5">
-              {ORDER_TYPE_LIST.map((o) => (
-                <button
-                  key={o}
-                  type="button"
-                  onClick={() => setOrder(o)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
-                    order === o
-                      ? 'bg-zinc-300/10 text-zinc-200 border border-zinc-400/40'
-                      : 'bg-dark-700 text-dark-300 hover:bg-dark-600 hover:text-white border border-transparent'
-                  }`}
-                >
-                  {o}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* System */}
-          <div>
-            <label className="block text-xs text-dark-400 mb-1.5 uppercase tracking-wider">System</label>
-            <div className="flex flex-wrap gap-1.5">
-              {ARCHETYPE_SYSTEM_LIST.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => handleSystemChange(s)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
-                    system === s
-                      ? 'bg-zinc-300/10 text-zinc-200 border border-zinc-400/40'
-                      : 'bg-dark-700 text-dark-300 hover:bg-dark-600 hover:text-white border border-transparent'
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Archetype */}
-          <div>
-            <label className="block text-xs text-dark-400 mb-1.5 uppercase tracking-wider">Archetype</label>
-            <div className="flex flex-wrap gap-1.5">
-              {archetypes.map((a) => (
-                <button
-                  key={a.value}
-                  type="button"
-                  onClick={() => setArchetypeKey(a.value)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
-                    archetypeKey === a.value
-                      ? 'bg-zinc-300/10 text-zinc-200 border border-zinc-400/40'
-                      : 'bg-dark-700 text-dark-300 hover:bg-dark-600 hover:text-white border border-transparent'
-                  }`}
-                >
-                  {a.label}
-                </button>
-              ))}
-            </div>
+          {/* Subtaste Designations */}
+          <div className="flex flex-wrap gap-2">
+            {SUBTASTE_OPTIONS.map((s) => (
+              <button
+                key={s.code}
+                type="button"
+                onClick={() => setSelectedCode(s.code)}
+                className={`px-3 py-2 rounded-lg text-left transition-colors ${
+                  selectedCode === s.code
+                    ? 'bg-zinc-300/10 border border-zinc-400/40'
+                    : 'bg-dark-700 border border-transparent hover:bg-dark-600'
+                }`}
+              >
+                <span className={`block text-xs font-medium ${selectedCode === s.code ? 'text-zinc-200' : 'text-dark-300'}`}>
+                  {s.label}
+                </span>
+                <span className="block text-[10px] text-dark-500 mt-0.5">
+                  {s.code} · {s.glyph}
+                </span>
+              </button>
+            ))}
           </div>
 
           {/* Preview */}
-          {currentArchetype && (
-            <div className="p-3 bg-dark-900/50 rounded-lg border border-dark-700 space-y-1">
-              <p className="text-sm text-white capitalize">{currentArchetype.label}</p>
-              <p className="text-xs text-dark-400">{currentArchetype.meaning}</p>
-              <p className="text-xs text-dark-500 italic">{currentArchetype.coreDesire}</p>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {currentArchetype.gifts?.map((g, i) => (
+          {selected && matchingArchetypes.length > 0 && (
+            <div className="p-3 bg-dark-900/50 rounded-lg border border-dark-700 space-y-2">
+              <div>
+                <p className="text-sm font-medium text-white">{selected.label}</p>
+                <p className="text-[10px] text-dark-500 uppercase tracking-widest">{selected.code} · {selected.glyph}</p>
+              </div>
+              <div className="text-xs text-dark-400">
+                <p className="italic">{matchingArchetypes[0].coreDesire}</p>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {matchingArchetypes[0].gifts?.map((g, i) => (
                   <span key={i} className="px-1.5 py-0.5 bg-dark-700 rounded text-[10px] text-dark-300">{g}</span>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {matchingArchetypes[0].shadow?.map((s, i) => (
+                  <span key={i} className="px-1.5 py-0.5 bg-dark-800 rounded text-[10px] text-dark-500">{s}</span>
                 ))}
               </div>
             </div>
@@ -555,7 +522,7 @@ function ArchetypeModal({ character, onClose, onSave }) {
           </button>
           <button
             onClick={handleSave}
-            disabled={saving || !archetypeKey}
+            disabled={saving || !matchingArchetypes.length}
             className="px-4 py-2 bg-zinc-200 text-dark-900 rounded-lg hover:bg-white transition-colors disabled:opacity-50"
           >
             {saving ? 'Saving...' : 'Apply'}
