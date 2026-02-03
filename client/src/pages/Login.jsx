@@ -124,10 +124,16 @@ function Login() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
+          <div className="w-14 h-14 rounded-sm border border-dark-600 bg-dark-900 flex items-center justify-center mx-auto mb-4">
+            <svg viewBox="0 0 24 24" fill="none" className="w-8 h-8 text-dark-100" xmlns="http://www.w3.org/2000/svg">
+              <path d="M14.5 2C13 2 11.5 3.2 11.5 5.5L11.5 18.5C11.5 20.8 10 22 8.5 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
+          </div>
           <h1 className="text-3xl font-display font-bold text-dark-100 mb-2 uppercase tracking-widest">
             Slayt
           </h1>
-          <p className="text-dark-400">AI-Powered Social Media Command Center</p>
+          <p className="text-dark-400 text-sm font-mono uppercase tracking-widest">Taste-Driven Content OS</p>
         </div>
 
         {/* Card */}

@@ -25,8 +25,8 @@ import {
   Clock,
 } from 'lucide-react';
 
-// Custom magic wand logo icon for creator-magician brand
-function MagicWandLogo({ className }) {
+// ∮ Contour integral — closed-path integration of taste signals
+function ContourIntegralLogo({ className }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -34,29 +34,20 @@ function MagicWandLogo({ className }) {
       className={className}
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Wand */}
+      {/* Integral curve — the ∫ shape, stretched 8 */}
       <path
-        d="M3 21L15 9"
+        d="M14.5 2C13 2 11.5 3.2 11.5 5.5L11.5 18.5C11.5 20.8 10 22 8.5 22"
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
       />
-      {/* Wand tip glow */}
-      <circle cx="16" cy="8" r="1.5" fill="currentColor" opacity="0.9" />
-      {/* Magic sparkles */}
-      <path
-        d="M19 4L19.5 5.5L21 6L19.5 6.5L19 8L18.5 6.5L17 6L18.5 5.5L19 4Z"
-        fill="currentColor"
-      />
-      <path
-        d="M21 10L21.3 11L22.3 11.3L21.3 11.6L21 12.6L20.7 11.6L19.7 11.3L20.7 11L21 10Z"
-        fill="currentColor"
-        opacity="0.7"
-      />
-      <path
-        d="M14 3L14.3 4L15.3 4.3L14.3 4.6L14 5.6L13.7 4.6L12.7 4.3L13.7 4L14 3Z"
-        fill="currentColor"
-        opacity="0.5"
+      {/* Circle — the closed-path marker */}
+      <circle
+        cx="12"
+        cy="12"
+        r="3.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
       />
     </svg>
   );
@@ -200,12 +191,12 @@ function Sidebar() {
         sidebarCollapsed ? 'w-16' : 'w-64'
       }`}
     >
-      {/* Logo - Creator Magician Brand */}
+      {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-dark-700">
         {!sidebarCollapsed && (
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center">
-              <MagicWandLogo className="w-5 h-5 text-white" />
+            <div className="w-9 h-9 rounded-sm border border-dark-600 bg-dark-900 flex items-center justify-center">
+              <ContourIntegralLogo className="w-5 h-5 text-dark-100" />
             </div>
             <span className="font-display font-semibold text-lg text-white uppercase tracking-widest">
               Slayt
@@ -213,8 +204,8 @@ function Sidebar() {
           </div>
         )}
         {sidebarCollapsed && (
-          <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center mx-auto group cursor-pointer">
-            <MagicWandLogo className="w-5 h-5 text-white transition-transform group-hover:rotate-12" />
+          <div className="w-9 h-9 rounded-sm border border-dark-600 bg-dark-900 flex items-center justify-center mx-auto group cursor-pointer">
+            <ContourIntegralLogo className="w-5 h-5 text-dark-100 transition-transform group-hover:rotate-12" />
           </div>
         )}
       </div>
