@@ -42,9 +42,11 @@
 }
 
 .sidebar-logo {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 1.5rem;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
   color: var(--color-text);
   text-decoration: none;
 }
@@ -132,8 +134,10 @@
 }
 
 .header-title {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
   margin: 0;
 }
 

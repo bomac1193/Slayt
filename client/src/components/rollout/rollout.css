@@ -14,7 +14,9 @@
 .rollout-header h1 {
   font-size: 2rem;
   margin: 0;
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
 }
 
 .rollout-subtitle {
@@ -259,8 +261,10 @@
 }
 
 .rollout-empty-content h2 {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
   margin: 0 0 0.5rem;
 }
 

@@ -197,7 +197,7 @@ function ArchetypeRow({ archetype, designation, isActive, isPrimary, isSecondary
       {expanded && (
         <div className="px-4 pb-4 pt-1 space-y-3 border-t border-dark-700/40 animate-fade-in">
           {archetype.essence && (
-            <p className="text-sm text-dark-200 leading-relaxed" style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
+            <p className="text-sm text-dark-200 leading-relaxed" style={{ fontFamily: 'Inter, sans-serif', fontStyle: 'italic' }}>
               {archetype.essence}
             </p>
           )}
@@ -687,7 +687,7 @@ function TasteGenome() {
               {primaryArch.essence && (
                 <p
                   className="mb-4 leading-relaxed"
-                  style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', color: GLOW_DIM }}
+                  style={{ fontFamily: 'Inter, sans-serif', fontStyle: 'italic', color: GLOW_DIM }}
                 >
                   {primaryArch.essence}
                 </p>
@@ -751,7 +751,7 @@ function TasteGenome() {
                 {secondaryArch.essence && (
                   <p
                     className="hidden md:block text-xs max-w-xs leading-relaxed"
-                    style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', color: '#52525b' }}
+                    style={{ fontFamily: 'Inter, sans-serif', fontStyle: 'italic', color: '#52525b' }}
                   >
                     {secondaryArch.essence.length > 120 ? secondaryArch.essence.slice(0, 120) + '...' : secondaryArch.essence}
                   </p>
@@ -790,7 +790,7 @@ function TasteGenome() {
                           </span>
                         </div>
 
-                        <p className="text-sm leading-relaxed" style={{ color: '#d4d4d8', fontFamily: 'Georgia, serif' }}>
+                        <p className="text-sm leading-relaxed" style={{ color: '#d4d4d8', fontFamily: 'Inter, sans-serif' }}>
                           {primaryDossier.brief}
                         </p>
 
@@ -857,11 +857,11 @@ function TasteGenome() {
                         </button>
                         {showSubdominant && (
                           <div className="mt-3 space-y-3">
-                            <p className="text-sm leading-relaxed" style={{ color: '#a1a1aa', fontFamily: 'Georgia, serif' }}>
+                            <p className="text-sm leading-relaxed" style={{ color: '#a1a1aa', fontFamily: 'Inter, sans-serif' }}>
                               {secondaryDossier.brief}
                             </p>
 
-                            <p className="text-sm leading-relaxed" style={{ color: '#a1a1aa', fontFamily: 'Georgia, serif' }}>
+                            <p className="text-sm leading-relaxed" style={{ color: '#a1a1aa', fontFamily: 'Inter, sans-serif' }}>
                               <span className="font-mono text-xs" style={{ color: VIOLET_TEXT }}>{secondaryArch.glyph}</span> influences your dominant <span className="font-mono text-xs" style={{ color: GLOW_BRIGHT }}>{primaryArch.glyph}</span> by
                               pulling toward {secondaryDossier.strengths[0]?.toLowerCase() || 'a complementary instinct'}{secondaryDossier.strengths[1] ? ` and ${secondaryDossier.strengths[1].toLowerCase()}` : ''}.
                               {primaryDossier?.weaknesses?.[0] && secondaryDossier.strengths?.[0] && (
