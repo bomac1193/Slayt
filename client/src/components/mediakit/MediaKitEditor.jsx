@@ -506,6 +506,7 @@ function MediaKitEditor({ mediaKit, onUpdate, onFetchStats }) {
                 onChange={(e) => handleCustomizationUpdate({ fontFamily: e.target.value })}
               >
                 <option value="Inter">Inter</option>
+                <option value="JetBrains Mono">JetBrains Mono</option>
                 <option value="Space Grotesk">Space Grotesk</option>
                 <option value="Poppins">Poppins</option>
                 <option value="Playfair Display">Playfair Display</option>

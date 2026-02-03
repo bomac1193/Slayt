@@ -11,7 +11,7 @@ const PRESET_THEMES = [
       buttonStyle: 'filled',
       buttonColor: '#111111',
       buttonTextColor: '#ffffff',
-      fontFamily: 'Space Grotesk',
+      fontFamily: 'Inter',
     },
   },
   {
@@ -22,7 +22,7 @@ const PRESET_THEMES = [
       buttonStyle: 'filled',
       buttonColor: '#ffffff',
       buttonTextColor: '#1a1816',
-      fontFamily: 'Space Grotesk',
+      fontFamily: 'Inter',
     },
   },
   {
@@ -79,8 +79,9 @@ const BUTTON_STYLES = [
 ];
 
 const FONT_OPTIONS = [
-  'Space Grotesk',
   'Inter',
+  'JetBrains Mono',
+  'Space Grotesk',
   'Poppins',
   'Nunito',
   'Montserrat',

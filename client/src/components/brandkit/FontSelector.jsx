@@ -3,8 +3,9 @@ import PropTypes from 'prop-types';
 import './brandkit.css';
 
 const GOOGLE_FONTS = [
-  'Space Grotesk',
+  'JetBrains Mono',
   'Inter',
+  'Space Grotesk',
   'Poppins',
   'Roboto',
   'Open Sans',
@@ -66,9 +67,9 @@ function FontSelector({ fonts, onUpdateFonts, onSelectFont }) {
         <div className="font-role">
           <label>Heading Font</label>
           <select
-            value={fonts.heading || 'Space Grotesk'}
+            value={fonts.heading || 'JetBrains Mono'}
             onChange={(e) => handleHeadingChange(e.target.value)}
-            style={{ fontFamily: fonts.heading || 'Space Grotesk' }}
+            style={{ fontFamily: fonts.heading || 'JetBrains Mono' }}
           >
             {allFonts.map((font) => (
               <option key={font} value={font} style={{ fontFamily: font }}>
@@ -78,7 +79,7 @@ function FontSelector({ fonts, onUpdateFonts, onSelectFont }) {
           </select>
           <div
             className="font-preview heading"
-            style={{ fontFamily: fonts.heading || 'Space Grotesk' }}
+            style={{ fontFamily: fonts.heading || 'JetBrains Mono' }}
           >
             The quick brown fox jumps
           </div>
@@ -87,9 +88,9 @@ function FontSelector({ fonts, onUpdateFonts, onSelectFont }) {
         <div className="font-role">
           <label>Body Font</label>
           <select
-            value={fonts.body || 'Space Grotesk'}
+            value={fonts.body || 'Inter'}
             onChange={(e) => handleBodyChange(e.target.value)}
-            style={{ fontFamily: fonts.body || 'Space Grotesk' }}
+            style={{ fontFamily: fonts.body || 'Inter' }}
           >
             {allFonts.map((font) => (
               <option key={font} value={font} style={{ fontFamily: font }}>
@@ -99,7 +100,7 @@ function FontSelector({ fonts, onUpdateFonts, onSelectFont }) {
           </select>
           <div
             className="font-preview body"
-            style={{ fontFamily: fonts.body || 'Space Grotesk' }}
+            style={{ fontFamily: fonts.body || 'Inter' }}
           >
             The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.
           </div>
