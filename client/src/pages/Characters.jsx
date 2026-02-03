@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { characterApi } from '../lib/api';
 import { useAppStore } from '../stores/useAppStore';
+import GeneratorPanel from '../components/characters/GeneratorPanel';
 import {
   Plus,
+  Crosshair,
   Trash2,
   Edit3,
   Sparkles,
@@ -36,8 +38,8 @@ const CAPTION_STYLES = [
 ];
 
 const COLOR_OPTIONS = [
-  '#8b5cf6', '#ec4899', '#f97316', '#eab308', '#22c55e',
-  '#06b6d4', '#3b82f6', '#6366f1', '#a855f7', '#f43f5e',
+  '#d4d4d8', '#ec4899', '#f97316', '#eab308', '#22c55e',
+  '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#f43f5e',
 ];
 
 function CharacterCard({ character, onEdit, onDelete, onGenerate }) {
@@ -47,7 +49,7 @@ function CharacterCard({ character, onEdit, onDelete, onGenerate }) {
         {/* Avatar */}
         <div
           className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg"
-          style={{ backgroundColor: character.color || '#8b5cf6' }}
+          style={{ backgroundColor: character.color || '#d4d4d8' }}
         >
           {character.avatar ? (
             <img src={character.avatar} alt={character.name} className="w-full h-full rounded-full object-cover" />
@@ -81,7 +83,7 @@ function CharacterCard({ character, onEdit, onDelete, onGenerate }) {
       <div className="flex items-center gap-2 mt-4 pt-3 border-t border-dark-700">
         <button
           onClick={() => onGenerate(character)}
-          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-accent-purple/20 text-accent-purple rounded-lg hover:bg-accent-purple/30 transition-colors text-sm"
+          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-zinc-400/[0.08] text-zinc-300 border border-zinc-500/20 rounded-lg hover:bg-zinc-400/[0.12] transition-colors text-sm"
         >
           <Sparkles className="w-4 h-4" />
           Generate
@@ -107,7 +109,7 @@ function CharacterModal({ character, onClose, onSave }) {
   const [form, setForm] = useState({
     name: character?.name || '',
     bio: character?.bio || '',
-    color: character?.color || '#8b5cf6',
+    color: character?.color || '#d4d4d8',
     voice: character?.voice || 'conversational',
     captionStyle: character?.captionStyle || 'conversational',
     personaTags: character?.personaTags?.join(', ') || '',
@@ -275,7 +277,7 @@ function CharacterModal({ character, onClose, onSave }) {
           <button
             onClick={handleSubmit}
             disabled={saving || !form.name}
-            className="px-4 py-2 bg-accent-purple text-white rounded-lg hover:bg-accent-purple/80 transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-zinc-200 text-dark-900 rounded-lg hover:bg-white transition-colors disabled:opacity-50"
           >
             {saving ? 'Saving...' : character ? 'Update' : 'Create'}
           </button>
@@ -356,7 +358,8 @@ function GenerateModal({ character, onClose }) {
             <button
               onClick={handleGenerate}
               disabled={generating || !topic.trim()}
-              className="px-4 py-2 bg-accent-purple text-white rounded-lg hover:bg-accent-purple/80 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-dark-700 border border-zinc-500/30 text-zinc-300 rounded-lg hover:border-zinc-400/50 hover:text-zinc-200 transition-colors disabled:opacity-50 flex items-center gap-2"
+              style={{ boxShadow: '0 0 12px 2px rgba(212,212,216,0.06)' }}
             >
               <Sparkles className="w-4 h-4" />
               {generating ? 'Generating...' : 'Generate'}
@@ -396,6 +399,7 @@ function Characters() {
   const [loading, setLoading] = useState(true);
   const [editingCharacter, setEditingCharacter] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [showGenerator, setShowGenerator] = useState(false);
   const [generatingFor, setGeneratingFor] = useState(null);
 
   useEffect(() => {
@@ -430,10 +434,16 @@ function Characters() {
     setCharacters(characters.filter(c => c._id !== id));
   };
 
+  const handleGeneratorAccept = async (data) => {
+    const character = await characterApi.create(data);
+    setCharacters([character, ...characters]);
+    setShowGenerator(false);
+  };
+
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-2 border-accent-purple border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-2 border-zinc-400 border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -443,29 +453,42 @@ function Characters() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white font-display uppercase tracking-widest">Characters</h1>
+          <h1 className="text-2xl font-bold text-white font-display uppercase tracking-widest">Boveda</h1>
           <p className="text-dark-400 mt-1">AI personas for generating content in unique voices</p>
         </div>
         <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-accent-purple text-white rounded-lg hover:bg-accent-purple/80 transition-colors"
+          onClick={() => setShowGenerator(!showGenerator)}
+          className="flex items-center gap-2 px-4 py-2 bg-dark-700 border border-zinc-500/30 text-zinc-300 rounded-lg hover:border-zinc-400/50 hover:text-zinc-200 transition-colors"
+          style={{ boxShadow: '0 0 12px 2px rgba(212,212,216,0.06)' }}
         >
-          <Plus className="w-5 h-5" />
-          New Character
+          <Crosshair className="w-5 h-5" />
+          Generate
         </button>
       </div>
+
+      {/* Generator Panel */}
+      {showGenerator && (
+        <div className="mb-6">
+          <GeneratorPanel
+            onAccept={handleGeneratorAccept}
+            onClose={() => setShowGenerator(false)}
+          />
+        </div>
+      )}
 
       {/* Grid */}
       {characters.length === 0 ? (
         <div className="text-center py-16 bg-dark-800 rounded-xl border border-dark-700">
           <User className="w-12 h-12 text-dark-500 mx-auto mb-3" />
-          <h3 className="text-lg font-medium text-white mb-2">No characters yet</h3>
-          <p className="text-dark-400 mb-4">Create AI characters with unique personalities to generate content</p>
+          <h3 className="text-lg font-medium text-white mb-2">Your Boveda is empty</h3>
+          <p className="text-dark-400 mb-4">Generate characters with unique archetypes and personalities</p>
           <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2 bg-accent-purple text-white rounded-lg hover:bg-accent-purple/80 transition-colors"
+            onClick={() => setShowGenerator(true)}
+            className="flex items-center gap-2 mx-auto px-4 py-2 bg-dark-700 border border-zinc-500/30 text-zinc-300 rounded-lg hover:border-zinc-400/50 hover:text-zinc-200 transition-colors"
+            style={{ boxShadow: '0 0 12px 2px rgba(212,212,216,0.06)' }}
           >
-            Create Your First Character
+            <Crosshair className="w-5 h-5" />
+            Generate
           </button>
         </div>
       ) : (
