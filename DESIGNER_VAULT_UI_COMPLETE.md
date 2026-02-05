@@ -468,3 +468,454 @@ const ARCHETYPE_GLYPHS = {
 **API Methods Added**: 7 (performanceApi)
 
 **Next Priority**: Learning Dashboard for Conviction Loop visualization
+
+---
+
+## 📍 Current Status: Where We Are
+
+### ERRC Framework Implementation Status
+
+#### CREATE Column (Revolutionary Features) - 85% Complete
+
+| Feature | Backend | Frontend | Status | Notes |
+|---------|---------|----------|--------|-------|
+| **Conviction Loop** | ✅ 100% | ⚠️ 60% | **Needs UI** | API complete, needs Learning Dashboard |
+| **Designer Vault** | ✅ 100% | ✅ 100% | **COMPLETE** | Template Library fully operational |
+| **Taste API** | ✅ 100% | N/A | **COMPLETE** | External partner API, no UI needed |
+
+#### RAISE Column (Differentiation Features) - 40% Complete
+
+| Feature | Backend | Frontend | Status | Notes |
+|---------|---------|----------|--------|-------|
+| **95% On-Brand Enforcement** | ⚠️ 50% | ❌ 0% | **Needs Work** | Partial genome, needs gating UI |
+| **One-Click Playbooks** | ❌ 0% | ❌ 0% | **Not Started** | Template → Rollout integration |
+
+#### REDUCE Column (Simplification) - Status Unknown
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Manual Scheduling | Unknown | May already be simplified |
+| Multi-Platform Juggling | Partial | Instagram + TikTok working |
+| Content Library Chaos | Good | Collections system exists |
+
+#### ELIMINATE Column (Removal) - Status Unknown
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Generic Templates | In Progress | Designer Vault solving this |
+| Trial and Error Posting | In Progress | Conviction scores solving this |
+
+---
+
+## 🎯 What Needs to Be Implemented to Finish
+
+### HIGH PRIORITY - Complete CREATE Column
+
+#### 1. Learning Dashboard (Conviction Loop UI) 🔥
+**Estimated Time**: 2-3 days
+**Priority**: Critical - completes core moat feature
+
+**Components to Create**:
+```
+/client/src/pages/LearningDashboard.jsx
+  - Learning progress chart (conviction accuracy over time)
+  - Validation history table (predicted vs actual)
+  - Genome evolution timeline (archetype confidence changes)
+  - Performance improvement metrics
+  - Recent validations feed
+
+/client/src/components/conviction/LearningProgressChart.jsx
+  - Line chart showing prediction accuracy trending up
+  - Weekly/monthly aggregate view
+  - Breakdown by archetype
+
+/client/src/components/conviction/ValidationHistoryTable.jsx
+  - Sortable table: content, predicted, actual, delta, date
+  - Filter by: time range, archetype, accuracy
+  - Pagination for large datasets
+
+/client/src/components/conviction/GenomeEvolutionTimeline.jsx
+  - Visual timeline of genome changes
+  - Archetype confidence adjustments over time
+  - Weight modifications (performance/taste/brand)
+  - Trigger events (posts that caused learning)
+```
+
+**Integration Points**:
+- Add route: `/learning` or `/insights`
+- Sidebar nav item (TrendingUp icon)
+- Link from Calendar/Grid when conviction validation completes
+- Auto-refresh when new validations come in
+
+**API Calls**:
+```javascript
+// Get learning progress
+const progress = await performanceApi.getLearningProgress(profileId);
+
+// Get validation history
+const validations = await api.get('/api/performance/validations', {
+  params: { profileId, limit: 50, offset: 0 }
+});
+
+// Get genome evolution timeline
+const evolution = await api.get('/api/performance/genome-history', {
+  params: { profileId, timeRange: '30d' }
+});
+```
+
+**Backend Needs**:
+- `GET /api/performance/validations/:profileId` - Paginated validation history
+- `GET /api/performance/genome-history/:profileId` - Genome change timeline
+- Both endpoints likely need to be added (currently only stats endpoint exists)
+
+**Why Critical**: Without this UI, users can't see the conviction loop learning. The entire moat depends on visible improvement over time. This is the "proof" that Slayt gets smarter.
+
+---
+
+### MEDIUM PRIORITY - Complete RAISE Column
+
+#### 2. 95% On-Brand Enforcement System 🎨
+**Estimated Time**: 1-2 weeks
+**Priority**: High - key differentiator
+
+**What Exists**:
+- ✅ Taste genome system
+- ✅ Archetype matching
+- ✅ Conviction scoring
+- ✅ Conviction gating (partial - only warning in Calendar)
+
+**What's Missing**:
+
+**A. Brand DNA Capture**
+```
+/client/src/pages/BrandDNASetup.jsx
+  - Wizard for first-time setup
+  - Upload 10-20 reference images
+  - Confirm archetype designation
+  - Set color palette (manual or auto-extract)
+  - Define brand keywords/voice
+  - Set enforcement strictness (70%, 80%, 95%)
+```
+
+**B. On-Brand Scoring**
+```
+Backend: /src/services/brandEnforcementService.js
+  - Calculate "on-brand score" (0-100)
+  - Factors:
+    - Archetype match (40%)
+    - Color palette match (30%)
+    - Visual consistency (20%)
+    - Caption voice match (10%)
+  - Returns: score, tier, violations, suggestions
+```
+
+**C. Enforcement Gates**
+```
+/client/src/components/brand/BrandGateModal.jsx
+  - Shows when content < threshold
+  - Visual diff: content vs brand DNA
+  - Violations list with severity
+  - Actions: Override, Edit, Discard
+  - "Proceed Anyway" requires confirmation
+```
+
+**D. Brand Dashboard**
+```
+/client/src/pages/BrandDashboard.jsx
+  - Brand DNA summary card
+  - On-brand score distribution chart
+  - Recent violations feed
+  - Brand drift detector (warns if recent posts diverging)
+  - Archetype consistency meter
+```
+
+**Integration Points**:
+- Enforce in Calendar before scheduling
+- Enforce in Grid before saving
+- Enforce in Quick Editor before export
+- Show score in Grid conviction overlays
+- Add "On-Brand" badge to high-scoring posts
+
+**Backend Endpoints Needed**:
+```javascript
+POST /api/brand/setup - Initial brand DNA setup
+PUT /api/brand/update - Update brand DNA
+GET /api/brand/score - Calculate on-brand score
+GET /api/brand/violations/:contentId - Get specific violations
+GET /api/brand/dashboard - Dashboard stats
+```
+
+---
+
+#### 3. One-Click Playbooks 📋
+**Estimated Time**: 1 week
+**Priority**: Medium - nice-to-have differentiator
+
+**Concept**: Template → Rollout integration
+- User picks template (e.g., "Summer Vibes 3x3")
+- System applies template
+- System auto-creates 7-day rollout
+- System schedules posts with optimal timing
+- Result: One click = full week planned
+
+**Components to Create**:
+```
+/client/src/components/playbook/PlaybookGenerator.jsx
+  - Modal triggered from Template Library
+  - Options:
+    - Select template
+    - Choose date range (7d, 14d, 30d)
+    - Set posting frequency (daily, 2x/day, etc.)
+    - Pick platforms (Instagram, TikTok, both)
+    - Review generated schedule
+  - Action: "Generate Playbook" → creates rollout + schedules
+
+/client/src/components/playbook/PlaybookPreview.jsx
+  - Calendar preview of generated schedule
+  - Shows conviction scores for each day
+  - Optimal posting times highlighted
+  - Edit before confirming
+```
+
+**Backend Service**:
+```javascript
+// src/services/playbookService.js
+async function generatePlaybook(options) {
+  // 1. Apply template to get grid
+  const grid = await templateApi.applyTemplate(templateId, contentIds);
+
+  // 2. Create rollout
+  const rollout = await rolloutApi.create({
+    name: `${template.name} Playbook`,
+    sections: [...] // Auto-generated
+  });
+
+  // 3. Calculate optimal posting times
+  const schedule = await calculateOptimalSchedule(grid, options);
+
+  // 4. Schedule all posts
+  await Promise.all(schedule.map(slot =>
+    postingApi.schedulePost(slot.contentId, slot.scheduledTime)
+  ));
+
+  return { rollout, schedule };
+}
+```
+
+**Integration**:
+- Button in Template Library: "Create Playbook from Template"
+- In Grid: "Save & Create Playbook"
+- In Calendar: "Fill Week with Playbook"
+
+---
+
+### LOW PRIORITY - Polish & Enhancement
+
+#### 4. Template Marketplace Features 💰
+**Estimated Time**: 2-3 weeks
+**Priority**: Low - revenue features
+
+- Template ratings UI (stars, reviews)
+- Template detail modal (full preview, metrics, creator info)
+- Publish to marketplace toggle
+- Pricing UI for premium templates
+- Payment integration (Stripe)
+- Creator dashboard (earnings, analytics)
+- Template bundles (themed packs)
+- Template versioning
+- Template remixing (fork & modify)
+
+#### 5. Conviction Loop Enhancements 🧠
+**Estimated Time**: 1-2 weeks
+**Priority**: Low - nice-to-have
+
+- Real-time Instagram/TikTok API integration (fetch actual metrics)
+- Webhook support for instant validation
+- A/B testing framework (compare two versions)
+- Confidence intervals on predictions
+- "What-If" predictor (predict score before creating)
+- Genome export/import (backup, share)
+- Multi-profile genome (different brands)
+
+#### 6. Calendar Enhancements 📅
+**Estimated Time**: 1 week
+**Priority**: Low - UX improvements
+
+- Drag-drop rescheduling
+- Bulk actions (schedule multiple, delete multiple)
+- Calendar templates (weekly patterns)
+- Time zone support
+- Collaboration (team comments, approvals)
+- Calendar export (iCal, Google Calendar)
+
+#### 7. Grid Enhancements 🎨
+**Estimated Time**: 1 week
+**Priority**: Low - UX improvements
+
+- Grid size options (2x2, 4x4, 5x3, custom)
+- Grid themes (apply color filters to all)
+- Grid export (PNG, PDF for client presentations)
+- Grid comparison (side-by-side A/B)
+- Grid history (version control)
+- Grid sharing (public link)
+
+---
+
+## 🏗️ Implementation Roadmap
+
+### Phase 1: Complete Core Moats (2-3 weeks)
+**Goal**: Finish all CREATE column features
+
+1. **Week 1**: Learning Dashboard (Conviction Loop UI)
+   - Days 1-2: Backend endpoints for validations & genome history
+   - Days 3-4: Learning progress chart + validation table
+   - Day 5: Genome evolution timeline + integration
+
+2. **Week 2-3**: 95% On-Brand Enforcement
+   - Days 1-3: Brand DNA setup wizard + backend service
+   - Days 4-6: Brand gating system + enforcement in Calendar/Grid
+   - Day 7: Brand dashboard
+
+**Deliverable**: All three CREATE features fully operational with complete UIs
+
+---
+
+### Phase 2: Differentiation Features (2-3 weeks)
+**Goal**: Complete RAISE column
+
+3. **Week 4**: One-Click Playbooks
+   - Days 1-2: Playbook generator backend service
+   - Days 3-5: Playbook UI (modal, preview, confirmation)
+   - Days 6-7: Integration testing + edge cases
+
+**Deliverable**: Template → Rollout → Schedule in one click
+
+---
+
+### Phase 3: Revenue & Polish (4-6 weeks)
+**Goal**: Monetization + UX refinement
+
+4. **Weeks 5-6**: Template Marketplace
+   - Week 5: Rating system, detail modals, publish flow
+   - Week 6: Pricing, payments, creator dashboard
+
+5. **Weeks 7-8**: Conviction Loop Enhancements
+   - Real-time API integration
+   - A/B testing framework
+
+6. **Weeks 9-10**: Calendar & Grid Polish
+   - Drag-drop, bulk actions, export features
+
+**Deliverable**: Fully monetizable, polished product
+
+---
+
+## 🎯 Definition of "Done"
+
+### MVP Complete Checklist
+
+**Core Features**:
+- [x] Conviction scoring system
+- [x] Conviction Loop backend
+- [ ] **Learning Dashboard** ⬅️ BLOCKS CORE MOAT
+- [x] Designer Vault backend
+- [x] Template Library UI
+- [x] Taste API for partners
+- [ ] **Brand DNA setup** ⬅️ BLOCKS DIFFERENTIATION
+- [ ] **Brand enforcement gates** ⬅️ BLOCKS DIFFERENTIATION
+- [ ] **One-click playbooks** (optional for MVP)
+
+**User Experience**:
+- [ ] First-time setup wizard (Brand DNA + Genome training)
+- [x] Grid creation with conviction scores
+- [x] Template save/apply flow
+- [x] Calendar scheduling with gating
+- [ ] Learning progress visible in UI
+- [ ] Brand violations clearly communicated
+
+**Technical**:
+- [x] All backend APIs operational
+- [x] All frontend pages created
+- [ ] All API wrappers complete (missing 2-3 endpoints)
+- [x] Navigation complete
+- [ ] Error handling comprehensive
+- [ ] Loading states everywhere
+- [ ] Mobile responsive (needs testing)
+
+**Documentation**:
+- [x] Conviction Loop documented
+- [x] Designer Vault documented
+- [x] Taste API documented
+- [ ] Brand Enforcement documented
+- [ ] User guides created
+- [ ] API documentation for partners
+
+---
+
+## 🚀 Next Session Priorities
+
+### Immediate (Do First)
+1. **Learning Dashboard** - 2-3 days
+   - Create page + components
+   - Add backend endpoints (validations, genome-history)
+   - Integrate with sidebar nav
+
+### Short-term (Do Next)
+2. **Brand DNA Setup** - 3-4 days
+   - Setup wizard UI
+   - Brand enforcement service (backend)
+   - Scoring algorithm
+
+3. **Brand Gating** - 2-3 days
+   - Gate modal UI
+   - Integration in Calendar/Grid
+   - Override flow
+
+### Medium-term (Nice to Have)
+4. **Playbook Generator** - 5-7 days
+5. **Template Marketplace** - 10-14 days
+
+---
+
+## 📊 Current Feature Maturity
+
+| Feature | Backend | Frontend | UX | Docs | Total |
+|---------|---------|----------|----|----|-------|
+| Conviction Scoring | 100% | 90% | 85% | 100% | **94%** |
+| Conviction Loop | 100% | 60% | 0% | 100% | **65%** ⬅️ NEEDS DASHBOARD |
+| Designer Vault | 100% | 100% | 80% | 100% | **95%** ✅ |
+| Taste API | 100% | N/A | N/A | 100% | **100%** ✅ |
+| Brand Enforcement | 50% | 0% | 0% | 0% | **13%** ⬅️ NEEDS EVERYTHING |
+| One-Click Playbooks | 0% | 0% | 0% | 0% | **0%** |
+
+**Overall Completion**: ~61% of core differentiating features
+
+---
+
+## 💡 Success Metrics When Complete
+
+### User Engagement
+- **Learning Visible**: Users see conviction accuracy improve 5-10% per week
+- **Brand Confidence**: 95%+ of scheduled posts meet brand threshold
+- **Template Reuse**: Users apply templates 3+ times on average
+- **Time Saved**: 10 minutes → 2 minutes to plan weekly content
+
+### Business Metrics
+- **Partner API**: 100+ partners using Taste API (month 6)
+- **Template Sales**: $10k/month from marketplace (month 12)
+- **User Retention**: 80%+ monthly active (conviction loop stickiness)
+- **Conversion**: 40% free → paid (conviction proves value)
+
+### Technical Metrics
+- **API Performance**: <200ms average response time
+- **Prediction Accuracy**: 75%+ correlation (predicted vs actual)
+- **Uptime**: 99.9% availability
+- **Cache Hit Rate**: 85%+ (conviction scores cached effectively)
+
+---
+
+**Current Status**: ~61% complete on core differentiating features
+**Time to MVP**: 2-3 weeks (Learning Dashboard + Brand Enforcement)
+**Time to Full Feature Set**: 8-10 weeks
+
+**Immediate Blocker**: Learning Dashboard (without it, conviction loop has no visible proof of learning)
