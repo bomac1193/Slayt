@@ -3246,11 +3246,11 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
   };
 
   return (
-    <div className="relative">
+    <div className="relative min-h-screen">
       {/* Floating Aesthetic Score Panel */}
       {activeTab === 'posts' && showAestheticScore && postsWithConviction.some(p => p.conviction) && (
         <div
-          className={`fixed left-4 bottom-24 z-40 transition-all duration-300 ease-in-out ${
+          className={`absolute left-4 bottom-24 z-10 transition-all duration-300 ease-in-out ${
             aestheticPanelExpanded ? 'w-72' : 'w-16'
           }`}
         >

@@ -1,14 +1,7 @@
 import React from 'react';
-import { Sparkles } from 'lucide-react';
 
 /**
- * ConvictionBadge - Compact conviction score badge
- *
- * @param {number} score - Conviction score (0-100)
- * @param {string} tier - Conviction tier (exceptional, high, medium, low)
- * @param {string} size - Badge size (xs, sm, md)
- * @param {boolean} showGlyph - Show archetype glyph
- * @param {object} archetypeMatch - Archetype match data {designation, glyph, confidence}
+ * ConvictionBadge - Compact circular conviction score badge
  */
 const ConvictionBadge = ({
   score,
@@ -17,50 +10,48 @@ const ConvictionBadge = ({
   showGlyph = false,
   archetypeMatch
 }) => {
-  // Tier-based styling
+  // Tier-based styling with maximum contrast - darker backgrounds
   const getTierStyles = () => {
     if (!score && score !== 0) {
       return {
-        bg: 'bg-gray-700/50',
-        text: 'text-gray-400',
-        ring: 'ring-gray-600'
+        bg: 'bg-gray-900',
+        text: 'text-gray-100',
+        ring: 'ring-gray-700',
+        shadow: 'shadow-black/50'
       };
     }
 
-    if (score >= 80) {
+    if (score >= 70) {
       return {
-        bg: 'bg-green-500/20',
-        text: 'text-green-400',
-        ring: 'ring-green-500'
+        bg: 'bg-green-700',
+        text: 'text-white',
+        ring: 'ring-green-600',
+        shadow: 'shadow-green-900/50'
       };
-    } else if (score >= 60) {
+    } else if (score >= 50) {
       return {
-        bg: 'bg-green-600/20',
-        text: 'text-green-500',
-        ring: 'ring-green-600'
-      };
-    } else if (score >= 40) {
-      return {
-        bg: 'bg-orange-500/20',
-        text: 'text-orange-400',
-        ring: 'ring-orange-500'
+        bg: 'bg-orange-700',
+        text: 'text-white',
+        ring: 'ring-orange-600',
+        shadow: 'shadow-orange-900/50'
       };
     } else {
       return {
-        bg: 'bg-red-600/20',
-        text: 'text-red-400',
-        ring: 'ring-red-600'
+        bg: 'bg-red-700',
+        text: 'text-white',
+        ring: 'ring-red-600',
+        shadow: 'shadow-red-900/50'
       };
     }
   };
 
   const styles = getTierStyles();
 
-  // Size-based dimensions
+  // Smaller, sleeker sizes
   const sizeClasses = {
-    xs: 'w-6 h-6 text-xs',
-    sm: 'w-8 h-8 text-sm',
-    md: 'w-10 h-10 text-base'
+    xs: 'w-5 h-5 text-[11px]',
+    sm: 'w-6 h-6 text-xs',
+    md: 'w-8 h-8 text-sm'
   };
 
   return (
@@ -72,16 +63,22 @@ const ConvictionBadge = ({
           ${styles.text}
           rounded-full
           flex items-center justify-center
-          ring-1 ${styles.ring}
+          ring-2 ${styles.ring}
+          font-sans
           font-semibold
-          backdrop-blur-sm
+          tracking-tight
+          shadow-xl ${styles.shadow}
+          tabular-nums
         `}
+        style={{
+          textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+        }}
       >
         {score !== null && score !== undefined ? Math.round(score) : '?'}
       </div>
 
       {showGlyph && archetypeMatch?.glyph && (
-        <span className={`${styles.text} ${size === 'xs' ? 'text-sm' : 'text-base'}`}>
+        <span className={`${styles.text} drop-shadow-lg ${size === 'xs' ? 'text-xs' : 'text-sm'}`}>
           {archetypeMatch.glyph}
         </span>
       )}

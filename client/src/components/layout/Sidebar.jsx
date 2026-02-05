@@ -49,34 +49,13 @@ function LambdaLogo({ className }) {
 const navItems = [
   { path: '/grid', icon: LayoutGrid, label: 'Grid Planner' },
   { path: '/youtube', icon: Youtube, label: 'YouTube Planner' },
-  {
-    id: 'scheduler',
-    icon: Clock,
-    label: 'Scheduler',
-    children: [
-      { path: '/rollout', icon: Layers, label: 'Rollout' },
-      { path: '/calendar', icon: CalendarIcon, label: 'Calendar' },
-    ],
-  },
-  {
-    id: 'editor',
-    icon: PenTool,
-    label: 'Editor',
-    children: [
-      { path: '/editor', icon: Image, label: 'Quick' },
-      { path: '/editor/pro', icon: Wand2, label: 'Pro' },
-    ],
-  },
-  {
-    id: 'subtaste',
-    icon: ScanLine,
-    label: 'Subtaste',
-    children: [
-      { path: '/genome', icon: Crosshair, label: 'Genome' },
-      { path: '/training', icon: Radio, label: 'Training' },
-      { path: '/studio', icon: FolderOpen, label: 'Folio' },
-    ],
-  },
+  { path: '/calendar', icon: CalendarIcon, label: 'Calendar' },
+  { path: '/rollout', icon: Layers, label: 'Rollout' },
+  { path: '/editor', icon: PenTool, label: 'Editor' },
+  { path: '/editor/pro', icon: Wand2, label: 'Editor Pro' },
+  { path: '/genome', icon: Crosshair, label: 'Genome' },
+  { path: '/training', icon: Radio, label: 'Training' },
+  { path: '/studio', icon: FolderOpen, label: 'Folio' },
   { path: '/characters', icon: UserCircle2, label: 'Boveda' },
   { path: '/library', icon: FolderOpen, label: 'Gallery' },
   { path: '/profiles', icon: Users, label: 'Profiles' },
@@ -125,15 +104,28 @@ function NavItem({ item, collapsed }) {
 
   // Grouped nav item with children
   return (
-    <li>
+    <li style={{ position: 'relative', zIndex: 100 }}>
       <button
-        onClick={() => !collapsed && setIsOpen(!isOpen)}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('CLICKED:', item.label, 'Current state:', isOpen);
+          setIsOpen(!isOpen);
+        }}
         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
           isActive
             ? 'bg-accent-purple/20 text-accent-purple'
             : 'text-dark-300 hover:bg-dark-700 hover:text-dark-100'
         } ${collapsed ? 'justify-center' : ''}`}
         title={collapsed ? item.label : undefined}
+        style={{
+          position: 'relative',
+          zIndex: 9999,
+          pointerEvents: 'auto',
+          cursor: 'pointer',
+          userSelect: 'none'
+        }}
+        type="button"
       >
         <item.icon className="w-5 h-5 flex-shrink-0" />
         {!collapsed && (
@@ -178,9 +170,10 @@ function Sidebar() {
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-full bg-dark-800 border-r border-dark-700 flex flex-col transition-all duration-300 z-40 ${
+      className={`fixed left-0 top-0 h-full bg-dark-800 border-r border-dark-700 flex flex-col transition-all duration-300 z-[60] ${
         sidebarCollapsed ? 'w-16' : 'w-64'
       }`}
+      style={{ pointerEvents: 'auto', position: 'fixed', zIndex: 9999 }}
     >
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-dark-700">
