@@ -854,4 +854,57 @@ export const convictionApi = {
   }
 };
 
+// Template API - Designer Vault
+export const templateApi = {
+  async createFromGrid(gridId, templateData) {
+    const { data } = await api.post('/api/templates/create-from-grid', {
+      gridId,
+      ...templateData
+    });
+    return data;
+  },
+
+  async applyTemplate(templateId, contentIds) {
+    const { data } = await api.post(`/api/templates/apply/${templateId}`, {
+      contentIds
+    });
+    return data;
+  },
+
+  async getMyTemplates(filters = {}) {
+    const { data } = await api.get('/api/templates/my-templates', { params: filters });
+    return data.templates || [];
+  },
+
+  async getPublicLibrary(filters = {}) {
+    const { data } = await api.get('/api/templates/library', { params: filters });
+    return data.templates || [];
+  },
+
+  async getById(templateId) {
+    const { data } = await api.get(`/api/templates/${templateId}`);
+    return data.template;
+  },
+
+  async update(templateId, updates) {
+    const { data } = await api.put(`/api/templates/${templateId}`, updates);
+    return data.template;
+  },
+
+  async delete(templateId) {
+    const { data } = await api.delete(`/api/templates/${templateId}`);
+    return data;
+  },
+
+  async rate(templateId, rating) {
+    const { data} = await api.post(`/api/templates/${templateId}/rate`, { rating });
+    return data.template;
+  },
+
+  async getStats() {
+    const { data } = await api.get('/api/templates/stats/summary');
+    return data;
+  }
+};
+
 export default api;

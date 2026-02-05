@@ -32,6 +32,7 @@ const genomeRoutes = require('./routes/genome');
 const characterRoutes = require('./routes/character');
 const convictionRoutes = require('./routes/conviction');
 const performanceRoutes = require('./routes/performance');
+const templateRoutes = require('./routes/template');
 const schedulingService = require('./services/schedulingService');
 
 // Connect to MongoDB
@@ -110,6 +111,7 @@ app.use('/api/genome', genomeRoutes);
 app.use('/api/characters', characterRoutes);
 app.use('/api/conviction', convictionRoutes);
 app.use('/api/performance', performanceRoutes);
+app.use('/api/templates', templateRoutes);
 
 // Proxy to Folio API to avoid CORS pain locally
 app.use('/folio', createProxyMiddleware({
