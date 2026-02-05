@@ -33,6 +33,8 @@ const characterRoutes = require('./routes/character');
 const convictionRoutes = require('./routes/conviction');
 const performanceRoutes = require('./routes/performance');
 const templateRoutes = require('./routes/template');
+const tasteApiRoutes = require('./routes/tasteApi');
+const apiKeyManagementRoutes = require('./routes/apiKeyManagement');
 const schedulingService = require('./services/schedulingService');
 
 // Connect to MongoDB
@@ -112,6 +114,8 @@ app.use('/api/characters', characterRoutes);
 app.use('/api/conviction', convictionRoutes);
 app.use('/api/performance', performanceRoutes);
 app.use('/api/templates', templateRoutes);
+app.use('/api/taste', tasteApiRoutes); // External Taste API
+app.use('/api/admin/api-keys', apiKeyManagementRoutes); // API key management
 
 // Proxy to Folio API to avoid CORS pain locally
 app.use('/folio', createProxyMiddleware({
