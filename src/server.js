@@ -35,6 +35,7 @@ const performanceRoutes = require('./routes/performance');
 const templateRoutes = require('./routes/template');
 const tasteApiRoutes = require('./routes/tasteApi');
 const apiKeyManagementRoutes = require('./routes/apiKeyManagement');
+const bovedaRoutes = require('./routes/boveda');
 const schedulingService = require('./services/schedulingService');
 
 // Connect to MongoDB
@@ -116,6 +117,7 @@ app.use('/api/performance', performanceRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/taste', tasteApiRoutes); // External Taste API
 app.use('/api/admin/api-keys', apiKeyManagementRoutes); // API key management
+app.use('/api', bovedaRoutes); // Boveda integration
 
 // Proxy to Folio API to avoid CORS pain locally
 app.use('/folio', createProxyMiddleware({
@@ -129,9 +131,21 @@ app.use('/folio', createProxyMiddleware({
   }
 }));
 
-// Health check
+// Health check endpoints (both /health and /api/health for compatibility)
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    version: '2.0.0',
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'healthy',
+    version: '2.0.0',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Serve index.html for root route
