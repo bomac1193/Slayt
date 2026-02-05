@@ -151,7 +151,7 @@ function SortableRow({ rowId, rowIndex, children, showHandle = true }) {
 
 // Draggable grid item with drop zone (handles both internal drags AND file drops from explorer)
 // Default drag = rearrange, Shift+drag = replace/carousel, File drop = replace/carousel
-function DraggableGridItem({ post, postId, onDragStart, onDragEnd, onFileDrop, onReorder, onReplaceOrCarousel, isSelected, onSelect, onDelete }) {
+function DraggableGridItem({ post, postId, onDragStart, onDragEnd, onFileDrop, onReorder, onReplaceOrCarousel, isSelected, onSelect, onDelete, showConvictionOverlays }) {
   const [isDragging, setIsDragging] = useState(false);
   const [isOver, setIsOver] = useState(false);
   const [isFileOver, setIsFileOver] = useState(false);
@@ -324,8 +324,8 @@ function DraggableGridItem({ post, postId, onDragStart, onDragEnd, onFileDrop, o
             </div>
           )}
 
-          {/* Conviction Overlay - Always show if conviction data exists */}
-          {post.conviction && (
+          {/* Conviction Overlay - Show based on toggle state */}
+          {showConvictionOverlays && post.conviction && (
             <GridConvictionOverlay
               score={post.conviction.score}
               tier={post.conviction.tier}
@@ -3764,6 +3764,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
                         isSelected={selectedItemId === (post.id || post._id)}
                         onSelect={handleSelectItem}
                         onDelete={handleDeleteRequest}
+                        showConvictionOverlays={showConvictionOverlays}
                       />
                     ))}
                   </div>

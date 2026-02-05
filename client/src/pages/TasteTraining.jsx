@@ -464,7 +464,7 @@ function TasteTraining() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white flex items-center gap-3 font-display uppercase tracking-widest">
           <Radio className="w-7 h-7 text-dark-300" />
-          Subtaste: Training
+          Subtaste · Training
         </h1>
         <p className="text-dark-400 mt-1">
           High-signal inputs to sharpen your profile. Short, focused, and reaction-forward.
@@ -489,14 +489,14 @@ function TasteTraining() {
       {/* Training Stack */}
       <section className="bg-dark-900 rounded-lg border border-dark-700 p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2 uppercase tracking-[0.12em]">
+          <h3 className="text-sm font-display font-semibold text-white flex items-center gap-2 uppercase tracking-widest">
             <Crosshair className="w-4 h-4 text-dark-300" />
             Training Stack
           </h3>
           <span className="text-[11px] text-dark-500 font-mono uppercase tracking-[0.16em]">Best / Worst</span>
         </div>
         <div className="mb-6">
-          <p className="text-lg text-white font-semibold tracking-wide">Pick your best and worst from these cards, then lock to continue.</p>
+          <p className="text-sm text-dark-300 tracking-wide">Pick your best and worst from these cards, then lock to continue.</p>
         </div>
 
         <div className="grid gap-4">

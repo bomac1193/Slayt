@@ -124,6 +124,75 @@ const contentSchema = new mongoose.Schema({
     overrideReason: String,
     calculatedAt: Date
   },
+  // Performance Metrics (actual results from platforms)
+  performanceMetrics: {
+    contentId: String,
+    platform: String,
+    postedAt: Date,
+    metrics: {
+      instagram: {
+        likes: Number,
+        comments: Number,
+        impressions: Number,
+        reach: Number,
+        engagement: Number,
+        saved: Number,
+        timestamp: Date,
+        url: String,
+        error: String
+      },
+      tiktok: {
+        likes: Number,
+        comments: Number,
+        shares: Number,
+        views: Number,
+        timestamp: Date,
+        url: String,
+        error: String
+      }
+    },
+    engagementScore: Number, // Composite score 0-100
+    fetchedAt: Date
+  },
+  // Conviction Validation (predicted vs actual)
+  convictionValidation: {
+    contentId: String,
+    predicted: {
+      convictionScore: Number,
+      tier: String,
+      breakdown: {
+        performance: Number,
+        taste: Number,
+        brand: Number
+      },
+      archetypeMatch: {
+        designation: String,
+        glyph: String,
+        confidence: Number
+      }
+    },
+    actual: {
+      engagementScore: Number,
+      metrics: Object,
+      postedAt: Date
+    },
+    validation: {
+      accuracy: Number, // 0-100
+      predictionQuality: String, // excellent, good, fair, poor, very_poor
+      componentAnalysis: Object
+    },
+    feedback: {
+      shouldUpdateGenome: Boolean,
+      weight: Number,
+      signals: [Object]
+    },
+    calculatedAt: Date
+  },
+  lastMetricsFetch: Date,
+  platformPostIds: {
+    instagram: String,
+    tiktok: String
+  },
   // AI Suggestions
   aiSuggestions: {
     recommendedType: {

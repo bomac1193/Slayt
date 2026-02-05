@@ -1,0 +1,374 @@
+/**
+ * Recommendation Engine - AI-powered suggestions for conviction optimization
+ */
+
+/**
+ * Generate calendar recommendations based on scheduled posts
+ * @param {Array} scheduledPosts - Array of scheduled posts with conviction data
+ * @returns {Array} Array of recommendation objects
+ */
+export function generateCalendarRecommendations(scheduledPosts) {
+  const recommendations = [];
+
+  if (!scheduledPosts || scheduledPosts.length === 0) {
+    return recommendations;
+  }
+
+  // Filter posts with conviction data
+  const postsWithConviction = scheduledPosts.filter(p => p.conviction?.score !== null && p.conviction?.score !== undefined);
+
+  if (postsWithConviction.length === 0) {
+    return recommendations;
+  }
+
+  // 1. Find low-conviction posts (<50)
+  const lowConvictionPosts = postsWithConviction.filter(p => p.conviction.score < 50);
+
+  lowConvictionPosts.forEach(post => {
+    const improvement = analyzeConvictionBreakdown(post.conviction);
+
+    recommendations.push({
+      type: 'content-quality',
+      priority: 'high',
+      icon: 'alert-triangle',
+      title: 'Low-conviction content detected',
+      description: `"${(post.caption || 'Untitled').slice(0, 30)}..." scores ${Math.round(post.conviction.score)}/100`,
+      suggestion: improvement.suggestion,
+      action: {
+        type: 'edit',
+        postId: post.id || post._id,
+        contentId: post.contentId
+      }
+    });
+  });
+
+  // 2. Identify optimal posting patterns
+  const dayPerformance = analyzeDayPerformance(postsWithConviction);
+  const bestDay = Object.entries(dayPerformance).sort((a, b) => b[1].avgScore - a[1].avgScore)[0];
+  const worstDay = Object.entries(dayPerformance).sort((a, b) => a[1].avgScore - b[1].avgScore)[0];
+
+  if (bestDay && worstDay && bestDay[1].avgScore - worstDay[1].avgScore > 15) {
+    recommendations.push({
+      type: 'timing',
+      priority: 'medium',
+      icon: 'calendar',
+      title: 'Posting pattern insight',
+      description: `Your ${bestDay[0]} posts score ${Math.round(bestDay[1].avgScore - worstDay[1].avgScore)} points higher than ${worstDay[0]}`,
+      suggestion: `Consider moving low-conviction posts to ${bestDay[0]} for better performance`,
+      action: null
+    });
+  }
+
+  // 3. Detect conviction decline over time
+  const trend = analyzeConvictionTrend(postsWithConviction);
+
+  if (trend.direction === 'declining' && trend.change < -10) {
+    recommendations.push({
+      type: 'trend',
+      priority: 'high',
+      icon: 'trending-down',
+      title: 'Conviction score declining',
+      description: `Average conviction dropped ${Math.abs(trend.change)} points over the past week`,
+      suggestion: 'Review recent content strategy - taste alignment may have shifted',
+      action: null
+    });
+  }
+
+  // 4. Find scheduling gaps on high-conviction days
+  const gaps = findSchedulingGaps(scheduledPosts, dayPerformance);
+
+  gaps.forEach(gap => {
+    recommendations.push({
+      type: 'opportunity',
+      priority: 'low',
+      icon: 'sparkles',
+      title: `${gap.day} has scheduling capacity`,
+      description: `High-conviction day with only ${gap.count} posts scheduled`,
+      suggestion: `Add 1-2 more posts to maximize ${gap.day}'s performance potential`,
+      action: {
+        type: 'schedule',
+        suggestedDay: gap.dayIndex
+      }
+    });
+  });
+
+  // 5. Archetype consistency recommendations
+  const archetypeAnalysis = analyzeArchetypeConsistency(postsWithConviction);
+
+  if (archetypeAnalysis.consistency < 50 && archetypeAnalysis.count > 5) {
+    recommendations.push({
+      type: 'consistency',
+      priority: 'medium',
+      icon: 'layers',
+      title: 'Mixed archetype distribution',
+      description: `${archetypeAnalysis.count} different archetypes in your schedule`,
+      suggestion: `Focus on ${archetypeAnalysis.dominant} archetype (your strongest) for better cohesion`,
+      action: null
+    });
+  }
+
+  return recommendations;
+}
+
+/**
+ * Generate grid recommendations for improving aesthetic score
+ * @param {Array} gridItems - Grid items with conviction data
+ * @param {number} currentScore - Current aesthetic score
+ * @returns {Array} Array of recommendation objects
+ */
+export function generateGridRecommendations(gridItems, currentScore) {
+  const recommendations = [];
+
+  if (!gridItems || gridItems.length === 0) return recommendations;
+
+  const itemsWithConviction = gridItems.filter(item => item.conviction);
+
+  if (itemsWithConviction.length < 3) return recommendations;
+
+  // 1. Identify weak spots in grid
+  const weakSpots = itemsWithConviction
+    .map((item, index) => ({ item, index, score: item.conviction.score }))
+    .filter(spot => spot.score < 60)
+    .sort((a, b) => a.score - b.score);
+
+  if (weakSpots.length > 0) {
+    const weakest = weakSpots[0];
+    recommendations.push({
+      type: 'grid-quality',
+      priority: 'high',
+      icon: 'alert-circle',
+      title: 'Low-scoring grid item detected',
+      description: `Position ${weakest.index + 1} scores only ${Math.round(weakest.score)}/100`,
+      suggestion: 'Replace with higher-conviction content to boost grid score',
+      action: {
+        type: 'replace',
+        position: weakest.index,
+        contentId: weakest.item._id || weakest.item.id
+      }
+    });
+  }
+
+  // 2. Check archetype flow
+  const archetypeFlow = analyzeGridArchetypeFlow(itemsWithConviction);
+
+  if (archetypeFlow.jarringTransitions > 0) {
+    recommendations.push({
+      type: 'grid-flow',
+      priority: 'medium',
+      icon: 'shuffle',
+      title: 'Improve visual flow',
+      description: `${archetypeFlow.jarringTransitions} jarring archetype transitions detected`,
+      suggestion: 'Rearrange to group similar archetypes together',
+      action: {
+        type: 'rearrange',
+        suggestions: archetypeFlow.suggestedOrder
+      }
+    });
+  }
+
+  // 3. Score potential analysis
+  const potential = calculateGridPotential(itemsWithConviction, currentScore);
+
+  if (potential.maxScore - currentScore > 10) {
+    recommendations.push({
+      type: 'grid-potential',
+      priority: 'low',
+      icon: 'trending-up',
+      title: `Grid can reach ${potential.maxScore}/100`,
+      description: `+${potential.maxScore - currentScore} points achievable with optimal arrangement`,
+      suggestion: 'Use What-If mode to experiment with different row orders',
+      action: {
+        type: 'what-if',
+        optimalArrangement: potential.optimalArrangement
+      }
+    });
+  }
+
+  // 4. Consistency boost
+  const dominant = findDominantArchetype(itemsWithConviction);
+  const minority = itemsWithConviction.filter(item =>
+    item.conviction.archetypeMatch?.designation !== dominant.designation
+  );
+
+  if (minority.length > 0 && minority.length < itemsWithConviction.length * 0.3) {
+    recommendations.push({
+      type: 'grid-consistency',
+      priority: 'low',
+      icon: 'target',
+      title: 'Boost archetype consistency',
+      description: `${minority.length} items don't match your dominant ${dominant.designation} archetype`,
+      suggestion: `Replace with ${dominant.designation} content for +${Math.round(minority.length * 5)} consistency points`,
+      action: null
+    });
+  }
+
+  return recommendations;
+}
+
+// Helper functions
+
+function analyzeConvictionBreakdown(conviction) {
+  const breakdown = conviction.breakdown || {};
+  const scores = {
+    performance: breakdown.performance || 0,
+    taste: breakdown.taste || 0,
+    brand: breakdown.brand || 0
+  };
+
+  const lowest = Object.entries(scores).sort((a, b) => a[1] - b[1])[0];
+
+  const suggestions = {
+    performance: 'Add trending hashtags or optimize caption for engagement',
+    taste: 'Content may not align with your taste profile - review aesthetic',
+    brand: 'Brand voice inconsistent - review tone and messaging'
+  };
+
+  return {
+    weakest: lowest[0],
+    score: lowest[1],
+    suggestion: suggestions[lowest[0]]
+  };
+}
+
+function analyzeDayPerformance(posts) {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const performance = {};
+
+  posts.forEach(post => {
+    if (!post.scheduledAt) return;
+
+    const date = new Date(post.scheduledAt);
+    const day = days[date.getDay()];
+
+    if (!performance[day]) {
+      performance[day] = { scores: [], count: 0, avgScore: 0 };
+    }
+
+    performance[day].scores.push(post.conviction.score);
+    performance[day].count++;
+  });
+
+  // Calculate averages
+  Object.keys(performance).forEach(day => {
+    const scores = performance[day].scores;
+    performance[day].avgScore = scores.reduce((sum, s) => sum + s, 0) / scores.length;
+  });
+
+  return performance;
+}
+
+function analyzeConvictionTrend(posts) {
+  const sorted = [...posts].sort((a, b) =>
+    new Date(a.scheduledAt) - new Date(b.scheduledAt)
+  );
+
+  if (sorted.length < 4) return { direction: 'neutral', change: 0 };
+
+  const midpoint = Math.floor(sorted.length / 2);
+  const firstHalf = sorted.slice(0, midpoint);
+  const secondHalf = sorted.slice(midpoint);
+
+  const firstAvg = firstHalf.reduce((sum, p) => sum + p.conviction.score, 0) / firstHalf.length;
+  const secondAvg = secondHalf.reduce((sum, p) => sum + p.conviction.score, 0) / secondHalf.length;
+
+  const change = Math.round(secondAvg - firstAvg);
+
+  return {
+    direction: change < -5 ? 'declining' : change > 5 ? 'improving' : 'stable',
+    change
+  };
+}
+
+function findSchedulingGaps(posts, dayPerformance) {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const gaps = [];
+
+  const performanceEntries = Object.entries(dayPerformance)
+    .filter(([_, data]) => data.avgScore > 70)
+    .sort((a, b) => b[1].avgScore - a[1].avgScore);
+
+  performanceEntries.forEach(([day, data]) => {
+    if (data.count < 3) {
+      gaps.push({
+        day,
+        dayIndex: days.indexOf(day),
+        count: data.count,
+        avgScore: data.avgScore
+      });
+    }
+  });
+
+  return gaps.slice(0, 2); // Return top 2 opportunities
+}
+
+function analyzeArchetypeConsistency(posts) {
+  const archetypes = posts
+    .map(p => p.conviction.archetypeMatch?.designation)
+    .filter(Boolean);
+
+  const counts = {};
+  archetypes.forEach(arch => {
+    counts[arch] = (counts[arch] || 0) + 1;
+  });
+
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const dominant = entries[0];
+
+  const consistency = dominant ? (dominant[1] / archetypes.length) * 100 : 0;
+
+  return {
+    consistency: Math.round(consistency),
+    dominant: dominant ? dominant[0] : null,
+    count: Object.keys(counts).length
+  };
+}
+
+function analyzeGridArchetypeFlow(items) {
+  let jarringTransitions = 0;
+  const archetypes = items.map(item => item.conviction.archetypeMatch?.designation);
+
+  for (let i = 0; i < archetypes.length - 1; i++) {
+    if (archetypes[i] && archetypes[i + 1] && archetypes[i] !== archetypes[i + 1]) {
+      jarringTransitions++;
+    }
+  }
+
+  // Simple suggestion: group by archetype
+  const grouped = [...items].sort((a, b) => {
+    const aArch = a.conviction.archetypeMatch?.designation || 'zzz';
+    const bArch = b.conviction.archetypeMatch?.designation || 'zzz';
+    return aArch.localeCompare(bArch);
+  });
+
+  return {
+    jarringTransitions,
+    suggestedOrder: grouped.map((item, index) => ({ from: items.indexOf(item), to: index }))
+  };
+}
+
+function calculateGridPotential(items, currentScore) {
+  // Simulate best possible arrangement
+  const sortedByScore = [...items].sort((a, b) => b.conviction.score - a.conviction.score);
+
+  // Rough estimate: avg conviction * 0.5 + max consistency (100) * 0.3 + max flow (100) * 0.2
+  const avgConviction = sortedByScore.reduce((sum, item) => sum + item.conviction.score, 0) / items.length;
+  const maxPossibleScore = Math.round(avgConviction * 0.5 + 100 * 0.3 + 100 * 0.2);
+
+  return {
+    maxScore: Math.min(100, maxPossibleScore),
+    optimalArrangement: sortedByScore.map(item => item.id || item._id)
+  };
+}
+
+function findDominantArchetype(items) {
+  const counts = {};
+  items.forEach(item => {
+    const designation = item.conviction.archetypeMatch?.designation;
+    if (designation) {
+      counts[designation] = (counts[designation] || 0) + 1;
+    }
+  });
+
+  const dominant = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  return dominant ? { designation: dominant[0], count: dominant[1] } : null;
+}

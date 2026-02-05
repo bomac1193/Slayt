@@ -47,6 +47,7 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-instagram": "^1.0.0",
     "passport-oauth2": "^1.7.0",
+    "recharts": "^3.7.0",
     "replicate": "^1.4.0",
     "sharp": "^0.33.1"
   },

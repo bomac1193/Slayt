@@ -4,6 +4,7 @@ import { intelligenceApi, genomeApi } from '../lib/api';
 import folioApi, { folioAuth, isFolioConnected, getFolioUser } from '../lib/folioApi';
 import {
   Sparkles,
+  FolderOpen,
   Zap,
   TrendingUp,
   Copy,
@@ -523,7 +524,7 @@ function ContentStudio() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white flex items-center gap-3 font-display uppercase tracking-widest">
-          <Sparkles className="w-7 h-7 text-accent-purple" />
+          <FolderOpen className="w-7 h-7 text-dark-300" />
           Subtaste · Folio
         </h1>
         <p className="text-dark-400 mt-1">

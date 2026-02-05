@@ -468,11 +468,11 @@ function TasteGenome() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <Dna className="w-7 h-7" style={{ color: GLOW, filter: `drop-shadow(0 0 4px ${GLOW}44)` }} />
-            <span className="font-mono uppercase tracking-widest">Subtaste · Taste Genome</span>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-3 font-display uppercase tracking-widest">
+            <Crosshair className="w-7 h-7 text-dark-300" />
+            Subtaste · Genome
           </h1>
-          <p className="text-dark-500 mt-1 text-sm">Your creative DNA profile, wired into Folio and the content studio.</p>
+          <p className="text-dark-400 mt-1">Your creative DNA profile, wired into Folio and the content studio.</p>
           {primaryArch && (
             <div className="mt-2 flex items-center gap-3">
               <span

@@ -71,6 +71,18 @@ export default {
           '0%, 100%': { opacity: '0.6' },
           '50%': { opacity: '1' },
         },
+        relicCrack: {
+          '0%': { transform: 'scale(0.8)', opacity: '0' },
+          '50%': { transform: 'scale(1.05)' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        reliquaryShake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '20%': { transform: 'translateX(-8px)' },
+          '40%': { transform: 'translateX(8px)' },
+          '60%': { transform: 'translateX(-4px)' },
+          '80%': { transform: 'translateX(4px)' },
+        },
       },
     },
   },
