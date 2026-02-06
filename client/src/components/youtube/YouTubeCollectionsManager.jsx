@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useAppStore } from '../../stores/useAppStore';
 import { youtubeApi } from '../../lib/api';
 import {
@@ -31,13 +31,20 @@ function YouTubeCollectionsManager({ onSelectCollection, selectedCollectionId })
   const [draggedCollection, setDraggedCollection] = useState(null);
 
   // Group collections by folder with safety checks
-  const collectionsByFolder = (youtubeCollections || []).reduce((acc, collection) => {
-    if (!collection) return acc;
-    const folder = collection.folder || 'root';
-    if (!acc[folder]) acc[folder] = [];
-    acc[folder].push(collection);
-    return acc;
-  }, {});
+  const collectionsByFolder = React.useMemo(() => {
+    try {
+      return (youtubeCollections || []).reduce((acc, collection) => {
+        if (!collection) return acc;
+        const folder = collection.folder || 'root';
+        if (!acc[folder]) acc[folder] = [];
+        acc[folder].push(collection);
+        return acc;
+      }, {});
+    } catch (error) {
+      console.error('[collectionsByFolder] Error grouping collections:', error);
+      return { root: [] };
+    }
+  }, [youtubeCollections]);
 
   // Sort collections within folders by position
   Object.keys(collectionsByFolder).forEach(folder => {
@@ -46,7 +53,16 @@ function YouTubeCollectionsManager({ onSelectCollection, selectedCollectionId })
     }
   });
 
-  const folders = ['root', ...Object.keys(collectionsByFolder).filter(f => f && f !== 'root').sort()];
+  const folders = React.useMemo(() => {
+    try {
+      const keys = Object.keys(collectionsByFolder || {});
+      const nonRootFolders = keys.filter(f => f && f !== 'root').sort();
+      return ['root', ...nonRootFolders];
+    } catch (error) {
+      console.error('[folders] Error generating folder list:', error);
+      return ['root'];
+    }
+  }, [collectionsByFolder]);
 
   const toggleFolder = (folder) => {
     const newExpanded = new Set(expandedFolders);
@@ -96,37 +112,51 @@ function YouTubeCollectionsManager({ onSelectCollection, selectedCollectionId })
   };
 
   const handleCreateFolder = async () => {
-    if (!newFolderName.trim()) return;
+    console.log('[handleCreateFolder] Starting folder creation...');
+
+    if (!newFolderName.trim()) {
+      console.log('[handleCreateFolder] Empty folder name, aborting');
+      return;
+    }
 
     const folderName = newFolderName.trim();
+    console.log('[handleCreateFolder] Creating folder:', folderName);
 
     try {
       // Create a default collection in this folder to persist it
+      console.log('[handleCreateFolder] Calling API...');
       const response = await youtubeApi.createCollection({
         name: 'New Collection',
         folder: folderName,
       });
 
-      console.log('Create collection response:', response);
+      console.log('[handleCreateFolder] API response:', response);
 
       // Handle different response structures
       const newCollection = response.collection || response;
 
       if (!newCollection) {
+        console.error('[handleCreateFolder] Invalid response structure:', response);
         throw new Error('Invalid response from server');
       }
 
+      console.log('[handleCreateFolder] Adding collection to store:', newCollection);
       addYoutubeCollection(newCollection);
 
       // Expand the new folder
+      console.log('[handleCreateFolder] Expanding folder...');
       const newExpanded = new Set(expandedFolders);
       newExpanded.add(folderName);
       setExpandedFolders(newExpanded);
 
+      console.log('[handleCreateFolder] Resetting form state...');
       setIsCreatingFolder(false);
       setNewFolderName('');
+
+      console.log('[handleCreateFolder] ✅ Folder creation complete!');
     } catch (error) {
-      console.error('Failed to create folder:', error);
+      console.error('[handleCreateFolder] ❌ Error:', error);
+      console.error('[handleCreateFolder] Error stack:', error.stack);
       alert(`Failed to create folder: ${error.message || 'Unknown error'}`);
       setIsCreatingFolder(false);
       setNewFolderName('');
