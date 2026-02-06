@@ -15,7 +15,7 @@ import {
 import { useAppStore } from '../../stores/useAppStore';
 import { youtubeApi } from '../../lib/api';
 import YouTubeVideoCard from './YouTubeVideoCard';
-import { Upload, ImagePlus, Youtube, Settings, X, Camera, ZoomIn, ZoomOut, RotateCcw, Save, Pencil } from 'lucide-react';
+import { Upload, ImagePlus, Youtube, Settings, X, Camera, ZoomIn, ZoomOut, RotateCcw, Save, Pencil, Move } from 'lucide-react';
 
 // Remap zoom: slider 80%-200% maps to actual 80%-400%
 const getActualZoom = (sliderValue) => {
@@ -39,6 +39,8 @@ function YouTubeGridView({ isLocked, onUpload }) {
 
   // Settings modal state
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showGridControls, setShowGridControls] = useState(false);
+  const [gridColumns, setGridColumns] = useState(4); // Fixed columns for row/column controls
 
   // Avatar editing state (same as IG/TikTok)
   const [showAvatarEditor, setShowAvatarEditor] = useState(false);
@@ -118,6 +120,66 @@ function YouTubeGridView({ isLocked, onUpload }) {
     const overId = event.over?.id || null;
     setOverItemId(overId !== activeDragId ? overId : null);
   }, [activeDragId]);
+
+  // Move entire row up or down
+  const moveRow = useCallback((rowIndex, direction) => {
+    const targetRow = direction === 'up' ? rowIndex - 1 : rowIndex + 1;
+    const numRows = Math.ceil(youtubeVideos.length / gridColumns);
+
+    if (targetRow < 0 || targetRow >= numRows) return;
+
+    const newVideos = [...youtubeVideos];
+
+    // Swap rows
+    for (let col = 0; col < gridColumns; col++) {
+      const index1 = rowIndex * gridColumns + col;
+      const index2 = targetRow * gridColumns + col;
+
+      if (index1 < newVideos.length && index2 < newVideos.length) {
+        [newVideos[index1], newVideos[index2]] = [newVideos[index2], newVideos[index1]];
+      }
+    }
+
+    reorderYoutubeVideos(newVideos);
+
+    // Persist to backend
+    if (currentYoutubeCollectionId) {
+      const videoIds = newVideos.map(v => v.id || v._id);
+      youtubeApi.reorderVideos(currentYoutubeCollectionId, videoIds).catch(err =>
+        console.error('Failed to persist row reorder:', err)
+      );
+    }
+  }, [youtubeVideos, gridColumns, reorderYoutubeVideos, currentYoutubeCollectionId]);
+
+  // Move entire column left or right
+  const moveColumn = useCallback((colIndex, direction) => {
+    const targetCol = direction === 'left' ? colIndex - 1 : colIndex + 1;
+
+    if (targetCol < 0 || targetCol >= gridColumns) return;
+
+    const newVideos = [...youtubeVideos];
+    const numRows = Math.ceil(newVideos.length / gridColumns);
+
+    // Swap columns
+    for (let row = 0; row < numRows; row++) {
+      const index1 = row * gridColumns + colIndex;
+      const index2 = row * gridColumns + targetCol;
+
+      if (index1 < newVideos.length && index2 < newVideos.length) {
+        [newVideos[index1], newVideos[index2]] = [newVideos[index2], newVideos[index1]];
+      }
+    }
+
+    reorderYoutubeVideos(newVideos);
+
+    // Persist to backend
+    if (currentYoutubeCollectionId) {
+      const videoIds = newVideos.map(v => v.id || v._id);
+      youtubeApi.reorderVideos(currentYoutubeCollectionId, videoIds).catch(err =>
+        console.error('Failed to persist column reorder:', err)
+      );
+    }
+  }, [youtubeVideos, gridColumns, reorderYoutubeVideos, currentYoutubeCollectionId]);
 
   // Open settings modal
   const openSettingsModal = () => {
@@ -351,6 +413,19 @@ function YouTubeGridView({ isLocked, onUpload }) {
           <p className="text-xs text-dark-400">YouTube Grid Preview</p>
         </div>
 
+        {/* Grid Controls Toggle */}
+        <button
+          onClick={() => setShowGridControls(!showGridControls)}
+          className={`p-2 rounded-lg transition-colors ${
+            showGridControls
+              ? 'bg-blue-500/20 text-blue-400'
+              : 'text-dark-400 hover:text-dark-200 hover:bg-dark-700'
+          }`}
+          title={showGridControls ? 'Hide row/column controls' : 'Show row/column controls'}
+        >
+          <Move className="w-5 h-5" />
+        </button>
+
         {/* Settings Cog */}
         <button
           onClick={openSettingsModal}
@@ -375,31 +450,117 @@ function YouTubeGridView({ isLocked, onUpload }) {
           items={youtubeVideos.map((v) => v.id)}
           strategy={() => null}
         >
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {youtubeVideos.map((video) => (
-              <YouTubeVideoCard
-                key={video.id}
-                video={video}
-                isSelected={video.id === selectedYoutubeVideoId}
-                isLocked={isLocked}
-                isDropTarget={video.id === overItemId}
-                onClick={() => selectYoutubeVideo(video.id)}
-                onDelete={() => handleDelete(video.id)}
-              />
-            ))}
+          {showGridControls ? (
+            <div className="flex gap-2">
+              {/* Row Controls on Left */}
+              <div className="flex flex-col gap-2 pt-10">
+                {Array.from({ length: Math.ceil((youtubeVideos.length + 1) / gridColumns) }).map((_, rowIndex) => (
+                  <div key={rowIndex} className="flex flex-col gap-1 justify-center" style={{ height: 'calc((100% - 1rem * (Math.ceil((youtubeVideos.length + 1) / gridColumns) - 1)) / Math.ceil((youtubeVideos.length + 1) / gridColumns))' }}>
+                    <button
+                      type="button"
+                      onClick={() => moveRow(rowIndex, 'up')}
+                      disabled={rowIndex === 0}
+                      className="p-1 bg-dark-700 hover:bg-dark-600 disabled:opacity-30 disabled:cursor-not-allowed rounded text-dark-300 hover:text-white transition-colors"
+                      title="Move row up"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveRow(rowIndex, 'down')}
+                      disabled={rowIndex === Math.ceil((youtubeVideos.length + 1) / gridColumns) - 1}
+                      className="p-1 bg-dark-700 hover:bg-dark-600 disabled:opacity-30 disabled:cursor-not-allowed rounded text-dark-300 hover:text-white transition-colors"
+                      title="Move row down"
+                    >
+                      ↓
+                    </button>
+                  </div>
+                ))}
+              </div>
 
-            {/* Add New Card */}
-            <label className="relative aspect-video bg-dark-700 rounded-lg border-2 border-dashed border-dark-500 hover:border-red-500 transition-colors cursor-pointer flex flex-col items-center justify-center gap-2 text-dark-400 hover:text-red-500">
-              <ImagePlus className="w-8 h-8" />
-              <span className="text-sm font-medium">Add Video</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={onUpload}
-                className="hidden"
-              />
-            </label>
-          </div>
+              {/* Main Grid with Column Controls */}
+              <div className="flex-1">
+                {/* Column Controls on Top */}
+                <div className="grid gap-4 mb-2" style={{ gridTemplateColumns: `repeat(${gridColumns}, 1fr)` }}>
+                  {Array.from({ length: gridColumns }).map((_, colIndex) => (
+                    <div key={colIndex} className="flex gap-1 justify-center">
+                      <button
+                        type="button"
+                        onClick={() => moveColumn(colIndex, 'left')}
+                        disabled={colIndex === 0}
+                        className="p-1 bg-dark-700 hover:bg-dark-600 disabled:opacity-30 disabled:cursor-not-allowed rounded text-dark-300 hover:text-white transition-colors"
+                        title="Move column left"
+                      >
+                        ←
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveColumn(colIndex, 'right')}
+                        disabled={colIndex === gridColumns - 1}
+                        className="p-1 bg-dark-700 hover:bg-dark-600 disabled:opacity-30 disabled:cursor-not-allowed rounded text-dark-300 hover:text-white transition-colors"
+                        title="Move column right"
+                      >
+                        →
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Grid */}
+                <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${gridColumns}, 1fr)` }}>
+                  {youtubeVideos.map((video) => (
+                    <YouTubeVideoCard
+                      key={video.id}
+                      video={video}
+                      isSelected={video.id === selectedYoutubeVideoId}
+                      isLocked={isLocked}
+                      isDropTarget={video.id === overItemId}
+                      onClick={() => selectYoutubeVideo(video.id)}
+                      onDelete={() => handleDelete(video.id)}
+                    />
+                  ))}
+
+                  {/* Add New Card */}
+                  <label className="relative aspect-video bg-dark-700 rounded-lg border-2 border-dashed border-dark-500 hover:border-red-500 transition-colors cursor-pointer flex flex-col items-center justify-center gap-2 text-dark-400 hover:text-red-500">
+                    <ImagePlus className="w-8 h-8" />
+                    <span className="text-sm font-medium">Add Video</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={onUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {youtubeVideos.map((video) => (
+                <YouTubeVideoCard
+                  key={video.id}
+                  video={video}
+                  isSelected={video.id === selectedYoutubeVideoId}
+                  isLocked={isLocked}
+                  isDropTarget={video.id === overItemId}
+                  onClick={() => selectYoutubeVideo(video.id)}
+                  onDelete={() => handleDelete(video.id)}
+                />
+              ))}
+
+              {/* Add New Card */}
+              <label className="relative aspect-video bg-dark-700 rounded-lg border-2 border-dashed border-dark-500 hover:border-red-500 transition-colors cursor-pointer flex flex-col items-center justify-center gap-2 text-dark-400 hover:text-red-500">
+                <ImagePlus className="w-8 h-8" />
+                <span className="text-sm font-medium">Add Video</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={onUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          )}
         </SortableContext>
 
         <DragOverlay dropAnimation={null}>
