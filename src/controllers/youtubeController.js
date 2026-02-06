@@ -50,7 +50,7 @@ const uploadThumbnailToCloudinary = async (base64Data, userId) => {
 // Create a new collection
 exports.createCollection = async (req, res) => {
   try {
-    const { name, color, tags } = req.body;
+    const { name, color, tags, folder, position } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Collection name is required' });
@@ -60,7 +60,9 @@ exports.createCollection = async (req, res) => {
       userId: req.user._id,
       name: name.trim(),
       color: color || '#6366f1',
-      tags: tags || []
+      tags: tags || [],
+      folder: folder || null,
+      position: position || 0
     });
 
     await collection.save();

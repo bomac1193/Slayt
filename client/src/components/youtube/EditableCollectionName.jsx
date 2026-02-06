@@ -12,14 +12,17 @@ function EditableCollectionName({
   showEditIcon = true,
   editIconPosition = 'right' // 'right' or 'hover'
 }) {
+  // Defensive: ensure name is always a string
+  const safeName = typeof name === 'string' ? name : (name?.name || 'Unnamed');
+
   const [isEditing, setIsEditing] = useState(false);
-  const [editedName, setEditedName] = useState(name);
+  const [editedName, setEditedName] = useState(safeName);
   const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => {
-    setEditedName(name);
-  }, [name]);
+    setEditedName(safeName);
+  }, [safeName]);
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -29,9 +32,9 @@ function EditableCollectionName({
   }, [isEditing]);
 
   const handleSave = async () => {
-    if (!editedName.trim() || editedName === name) {
+    if (!editedName.trim() || editedName === safeName) {
       setIsEditing(false);
-      setEditedName(name);
+      setEditedName(safeName);
       return;
     }
 
@@ -41,7 +44,7 @@ function EditableCollectionName({
       setIsEditing(false);
     } catch (error) {
       console.error('Failed to save collection name:', error);
-      setEditedName(name); // Revert on error
+      setEditedName(safeName); // Revert on error
       setIsEditing(false);
     } finally {
       setIsSaving(false);
@@ -49,7 +52,7 @@ function EditableCollectionName({
   };
 
   const handleCancel = () => {
-    setEditedName(name);
+    setEditedName(safeName);
     setIsEditing(false);
   };
 
@@ -102,7 +105,7 @@ function EditableCollectionName({
         className="cursor-pointer hover:text-accent-purple transition-colors"
         title="Click to edit"
       >
-        {name}
+        {safeName}
       </span>
       {showEditIcon && editIconPosition === 'right' && (
         <button
