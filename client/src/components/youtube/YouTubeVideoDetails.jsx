@@ -49,6 +49,9 @@ function YouTubeVideoDetails({ video, onThumbnailUpload }) {
   const [scheduledTime, setScheduledTime] = useState(video?.scheduledTime || '12:00');
   const [showTruncatePreview, setShowTruncatePreview] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showVideoFile, setShowVideoFile] = useState(true);
+  const [showDescription, setShowDescription] = useState(true);
+  const [showSchedule, setShowSchedule] = useState(true);
 
   // AI Generation state
   const [showAIPanel, setShowAIPanel] = useState(false);
@@ -428,18 +431,25 @@ function YouTubeVideoDetails({ video, onThumbnailUpload }) {
         </div>
 
         {/* Video File Upload */}
-        <div className="p-4 bg-dark-700 rounded-lg border border-dark-600">
-          <div className="flex items-center justify-between mb-3">
-            <label className="flex items-center gap-2 text-sm font-medium text-dark-200">
+        <div className="bg-dark-700 rounded-lg border border-dark-600">
+          <button
+            onClick={() => setShowVideoFile(!showVideoFile)}
+            className="w-full flex items-center justify-between p-3 hover:bg-dark-650 transition-colors"
+          >
+            <div className="flex items-center gap-2">
               <Youtube className="w-4 h-4 text-red-400" />
-              Video File
-            </label>
-            {video.videoFileName && (
-              <span className="text-xs text-dark-400">
-                {(video.videoFileSize / 1024 / 1024).toFixed(1)} MB
-              </span>
-            )}
-          </div>
+              <span className="text-sm font-medium text-dark-200">Video File</span>
+              {video.videoFileName && (
+                <span className="text-xs text-dark-400">
+                  ({(video.videoFileSize / 1024 / 1024).toFixed(1)} MB)
+                </span>
+              )}
+            </div>
+            <ChevronDown className={`w-4 h-4 text-dark-400 transition-transform ${showVideoFile ? 'rotate-180' : ''}`} />
+          </button>
+
+          {showVideoFile && (
+            <div className="p-3 pt-0">
 
           {video.videoFileName ? (
             <div className="flex items-center justify-between p-3 bg-dark-800 rounded-lg">
@@ -475,6 +485,8 @@ function YouTubeVideoDetails({ video, onThumbnailUpload }) {
                 className="hidden"
               />
             </label>
+          )}
+            </div>
           )}
         </div>
 
@@ -533,17 +545,25 @@ function YouTubeVideoDetails({ video, onThumbnailUpload }) {
 
         {/* Description */}
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-dark-200 mb-2">
-            <FileText className="w-4 h-4" />
-            Description
-          </label>
-          <textarea
-            value={description}
-            onChange={(e) => handleDescriptionChange(e.target.value)}
-            onBlur={handleDescriptionBlur}
-            placeholder="Add a description (optional)..."
-            className="input w-full min-h-[200px] resize-y"
-          />
+          <button
+            onClick={() => setShowDescription(!showDescription)}
+            className="w-full flex items-center justify-between mb-2 hover:opacity-80 transition-opacity"
+          >
+            <label className="flex items-center gap-2 text-sm font-medium text-dark-200 cursor-pointer">
+              <FileText className="w-4 h-4" />
+              Description
+            </label>
+            <ChevronDown className={`w-4 h-4 text-dark-400 transition-transform ${showDescription ? 'rotate-180' : ''}`} />
+          </button>
+          {showDescription && (
+            <textarea
+              value={description}
+              onChange={(e) => handleDescriptionChange(e.target.value)}
+              onBlur={handleDescriptionBlur}
+              placeholder="Add a description (optional)..."
+              className="input w-full min-h-[200px] resize-y"
+            />
+          )}
         </div>
 
         {/* Taste Feedback */}
@@ -663,27 +683,40 @@ function YouTubeVideoDetails({ video, onThumbnailUpload }) {
 
         {/* Schedule */}
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-dark-200 mb-2">
-            <Calendar className="w-4 h-4" />
-            Schedule
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              type="date"
-              value={scheduledDate}
-              onChange={(e) => setScheduledDate(e.target.value)}
-              onBlur={handleScheduleChange}
-              className="input"
-              min={new Date().toISOString().split('T')[0]}
-            />
-            <input
-              type="time"
-              value={scheduledTime}
-              onChange={(e) => setScheduledTime(e.target.value)}
-              onBlur={handleScheduleChange}
-              className="input"
-            />
-          </div>
+          <button
+            onClick={() => setShowSchedule(!showSchedule)}
+            className="w-full flex items-center justify-between mb-2 hover:opacity-80 transition-opacity"
+          >
+            <label className="flex items-center gap-2 text-sm font-medium text-dark-200 cursor-pointer">
+              <Calendar className="w-4 h-4" />
+              Schedule
+              {scheduledDate && (
+                <span className="text-xs text-dark-400">
+                  ({new Date(scheduledDate).toLocaleDateString()})
+                </span>
+              )}
+            </label>
+            <ChevronDown className={`w-4 h-4 text-dark-400 transition-transform ${showSchedule ? 'rotate-180' : ''}`} />
+          </button>
+          {showSchedule && (
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="date"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                onBlur={handleScheduleChange}
+                className="input"
+                min={new Date().toISOString().split('T')[0]}
+              />
+              <input
+                type="time"
+                value={scheduledTime}
+                onChange={(e) => setScheduledTime(e.target.value)}
+                onBlur={handleScheduleChange}
+                className="input"
+              />
+            </div>
+          )}
         </div>
       </div>
 
