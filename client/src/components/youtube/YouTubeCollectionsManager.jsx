@@ -95,13 +95,27 @@ function YouTubeCollectionsManager({ onSelectCollection, selectedCollectionId })
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
 
-    setIsCreatingFolder(false);
-    setNewFolderName('');
+    const folderName = newFolderName.trim();
 
-    // Expand the new folder
-    const newExpanded = new Set(expandedFolders);
-    newExpanded.add(newFolderName);
-    setExpandedFolders(newExpanded);
+    try {
+      // Create a default collection in this folder to persist it
+      const collection = await youtubeApi.createCollection({
+        name: 'New Collection',
+        folder: folderName,
+      });
+      addYoutubeCollection(collection.collection);
+
+      // Expand the new folder
+      const newExpanded = new Set(expandedFolders);
+      newExpanded.add(folderName);
+      setExpandedFolders(newExpanded);
+
+      setIsCreatingFolder(false);
+      setNewFolderName('');
+    } catch (error) {
+      console.error('Failed to create folder:', error);
+      alert('Failed to create folder. Please try again.');
+    }
   };
 
   const handleDragStart = (e, collection) => {
