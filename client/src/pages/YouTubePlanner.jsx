@@ -70,7 +70,11 @@ function YouTubePlanner() {
   // Rollouts for assignment
   const rollouts = useAppStore((state) => state.rollouts);
 
-  const [isLocked, setIsLocked] = useState(false);
+  const [isLocked, setIsLocked] = useState(() => {
+    // Load from localStorage, default to false (unlocked)
+    const saved = localStorage.getItem('youtubeGridLocked');
+    return saved === 'true';
+  });
   const [isDraggingFiles, setIsDraggingFiles] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
@@ -94,6 +98,11 @@ function YouTubePlanner() {
   const youtubeVideosByCollection = useAppStore((state) => state.youtubeVideosByCollection);
 
   const dragCounterRef = useRef(0);
+
+  // Persist isLocked state to localStorage
+  useEffect(() => {
+    localStorage.setItem('youtubeGridLocked', isLocked.toString());
+  }, [isLocked]);
 
   // Get current collection - use _id for backend collections
   const currentCollection = youtubeCollections?.find(c => (c._id || c.id) === currentYoutubeCollectionId)
@@ -904,24 +913,25 @@ function YouTubePlanner() {
               </button>
             </div>
 
-            {/* Lock Toggle */}
+            {/* Lock Toggle - Control grid reordering */}
             <button
               onClick={() => setIsLocked(!isLocked)}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
                 isLocked
-                  ? 'bg-amber-500/20 text-amber-400'
-                  : 'bg-dark-700 text-dark-300 hover:text-dark-100'
+                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                  : 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30'
               }`}
+              title={isLocked ? 'Click to enable drag & drop reordering' : 'Click to lock grid (prevent reordering)'}
             >
               {isLocked ? (
                 <>
                   <Lock className="w-4 h-4" />
-                  <span className="text-sm">Locked</span>
+                  <span className="text-sm font-medium">Grid Locked</span>
                 </>
               ) : (
                 <>
                   <Unlock className="w-4 h-4" />
-                  <span className="text-sm">Unlocked</span>
+                  <span className="text-sm font-medium">Drag Enabled</span>
                 </>
               )}
             </button>
