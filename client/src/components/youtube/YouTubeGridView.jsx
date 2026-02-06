@@ -15,7 +15,7 @@ import {
 import { useAppStore } from '../../stores/useAppStore';
 import { youtubeApi } from '../../lib/api';
 import YouTubeVideoCard from './YouTubeVideoCard';
-import { Upload, ImagePlus, Youtube, Settings, X, Camera, ZoomIn, ZoomOut, RotateCcw, Save, Pencil, Move } from 'lucide-react';
+import { Upload, ImagePlus, Youtube, Settings, X, Camera, ZoomIn, ZoomOut, RotateCcw, Save, Pencil, Move, GripVertical, GripHorizontal } from 'lucide-react';
 
 // Remap zoom: slider 80%-200% maps to actual 80%-400%
 const getActualZoom = (sliderValue) => {
@@ -41,6 +41,10 @@ function YouTubeGridView({ isLocked, onUpload }) {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showGridControls, setShowGridControls] = useState(false);
   const [gridColumns, setGridColumns] = useState(4); // Fixed columns for row/column controls
+  const [draggedRow, setDraggedRow] = useState(null);
+  const [draggedColumn, setDraggedColumn] = useState(null);
+  const [dragOverRow, setDragOverRow] = useState(null);
+  const [dragOverColumn, setDragOverColumn] = useState(null);
 
   // Avatar editing state (same as IG/TikTok)
   const [showAvatarEditor, setShowAvatarEditor] = useState(false);
@@ -121,19 +125,16 @@ function YouTubeGridView({ isLocked, onUpload }) {
     setOverItemId(overId !== activeDragId ? overId : null);
   }, [activeDragId]);
 
-  // Move entire row up or down
-  const moveRow = useCallback((rowIndex, direction) => {
-    const targetRow = direction === 'up' ? rowIndex - 1 : rowIndex + 1;
-    const numRows = Math.ceil(youtubeVideos.length / gridColumns);
-
-    if (targetRow < 0 || targetRow >= numRows) return;
+  // Swap two rows
+  const swapRows = useCallback((row1, row2) => {
+    if (row1 === row2) return;
 
     const newVideos = [...youtubeVideos];
 
     // Swap rows
     for (let col = 0; col < gridColumns; col++) {
-      const index1 = rowIndex * gridColumns + col;
-      const index2 = targetRow * gridColumns + col;
+      const index1 = row1 * gridColumns + col;
+      const index2 = row2 * gridColumns + col;
 
       if (index1 < newVideos.length && index2 < newVideos.length) {
         [newVideos[index1], newVideos[index2]] = [newVideos[index2], newVideos[index1]];
@@ -151,19 +152,17 @@ function YouTubeGridView({ isLocked, onUpload }) {
     }
   }, [youtubeVideos, gridColumns, reorderYoutubeVideos, currentYoutubeCollectionId]);
 
-  // Move entire column left or right
-  const moveColumn = useCallback((colIndex, direction) => {
-    const targetCol = direction === 'left' ? colIndex - 1 : colIndex + 1;
-
-    if (targetCol < 0 || targetCol >= gridColumns) return;
+  // Swap two columns
+  const swapColumns = useCallback((col1, col2) => {
+    if (col1 === col2) return;
 
     const newVideos = [...youtubeVideos];
     const numRows = Math.ceil(newVideos.length / gridColumns);
 
     // Swap columns
     for (let row = 0; row < numRows; row++) {
-      const index1 = row * gridColumns + colIndex;
-      const index2 = row * gridColumns + targetCol;
+      const index1 = row * gridColumns + col1;
+      const index2 = row * gridColumns + col2;
 
       if (index1 < newVideos.length && index2 < newVideos.length) {
         [newVideos[index1], newVideos[index2]] = [newVideos[index2], newVideos[index1]];
@@ -180,6 +179,52 @@ function YouTubeGridView({ isLocked, onUpload }) {
       );
     }
   }, [youtubeVideos, gridColumns, reorderYoutubeVideos, currentYoutubeCollectionId]);
+
+  // Row drag handlers
+  const handleRowDragStart = (e, rowIndex) => {
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedRow(rowIndex);
+  };
+
+  const handleRowDragOver = (e, rowIndex) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedRow !== null && draggedRow !== rowIndex) {
+      setDragOverRow(rowIndex);
+    }
+  };
+
+  const handleRowDrop = (e, targetRow) => {
+    e.preventDefault();
+    if (draggedRow !== null && draggedRow !== targetRow) {
+      swapRows(draggedRow, targetRow);
+    }
+    setDraggedRow(null);
+    setDragOverRow(null);
+  };
+
+  // Column drag handlers
+  const handleColumnDragStart = (e, colIndex) => {
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedColumn(colIndex);
+  };
+
+  const handleColumnDragOver = (e, colIndex) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedColumn !== null && draggedColumn !== colIndex) {
+      setDragOverColumn(colIndex);
+    }
+  };
+
+  const handleColumnDrop = (e, targetCol) => {
+    e.preventDefault();
+    if (draggedColumn !== null && draggedColumn !== targetCol) {
+      swapColumns(draggedColumn, targetCol);
+    }
+    setDraggedColumn(null);
+    setDragOverColumn(null);
+  };
 
   // Open settings modal
   const openSettingsModal = () => {
@@ -452,56 +497,53 @@ function YouTubeGridView({ isLocked, onUpload }) {
         >
           {showGridControls ? (
             <div className="flex gap-2">
-              {/* Row Controls on Left */}
-              <div className="flex flex-col gap-2 pt-10">
+              {/* Row Controls on Left - Draggable Handles */}
+              <div className="flex flex-col gap-4 pt-10">
                 {Array.from({ length: Math.ceil((youtubeVideos.length + 1) / gridColumns) }).map((_, rowIndex) => (
-                  <div key={rowIndex} className="flex flex-col gap-1 justify-center" style={{ height: 'calc((100% - 1rem * (Math.ceil((youtubeVideos.length + 1) / gridColumns) - 1)) / Math.ceil((youtubeVideos.length + 1) / gridColumns))' }}>
-                    <button
-                      type="button"
-                      onClick={() => moveRow(rowIndex, 'up')}
-                      disabled={rowIndex === 0}
-                      className="p-1 bg-dark-700 hover:bg-dark-600 disabled:opacity-30 disabled:cursor-not-allowed rounded text-dark-300 hover:text-white transition-colors"
-                      title="Move row up"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveRow(rowIndex, 'down')}
-                      disabled={rowIndex === Math.ceil((youtubeVideos.length + 1) / gridColumns) - 1}
-                      className="p-1 bg-dark-700 hover:bg-dark-600 disabled:opacity-30 disabled:cursor-not-allowed rounded text-dark-300 hover:text-white transition-colors"
-                      title="Move row down"
-                    >
-                      ↓
-                    </button>
+                  <div
+                    key={rowIndex}
+                    draggable
+                    onDragStart={(e) => handleRowDragStart(e, rowIndex)}
+                    onDragOver={(e) => handleRowDragOver(e, rowIndex)}
+                    onDragLeave={() => setDragOverRow(null)}
+                    onDrop={(e) => handleRowDrop(e, rowIndex)}
+                    className={`flex items-center justify-center p-2 rounded cursor-move transition-all ${
+                      draggedRow === rowIndex
+                        ? 'opacity-50'
+                        : dragOverRow === rowIndex
+                        ? 'bg-blue-500/20 ring-2 ring-blue-500'
+                        : 'bg-dark-700 hover:bg-dark-600'
+                    }`}
+                    title="Drag to reorder row"
+                    style={{ height: `calc((100% / ${Math.ceil((youtubeVideos.length + 1) / gridColumns)}) - 1rem)` }}
+                  >
+                    <GripVertical className="w-4 h-4 text-dark-400" />
                   </div>
                 ))}
               </div>
 
               {/* Main Grid with Column Controls */}
               <div className="flex-1">
-                {/* Column Controls on Top */}
+                {/* Column Controls on Top - Draggable Handles */}
                 <div className="grid gap-4 mb-2" style={{ gridTemplateColumns: `repeat(${gridColumns}, 1fr)` }}>
                   {Array.from({ length: gridColumns }).map((_, colIndex) => (
-                    <div key={colIndex} className="flex gap-1 justify-center">
-                      <button
-                        type="button"
-                        onClick={() => moveColumn(colIndex, 'left')}
-                        disabled={colIndex === 0}
-                        className="p-1 bg-dark-700 hover:bg-dark-600 disabled:opacity-30 disabled:cursor-not-allowed rounded text-dark-300 hover:text-white transition-colors"
-                        title="Move column left"
-                      >
-                        ←
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => moveColumn(colIndex, 'right')}
-                        disabled={colIndex === gridColumns - 1}
-                        className="p-1 bg-dark-700 hover:bg-dark-600 disabled:opacity-30 disabled:cursor-not-allowed rounded text-dark-300 hover:text-white transition-colors"
-                        title="Move column right"
-                      >
-                        →
-                      </button>
+                    <div
+                      key={colIndex}
+                      draggable
+                      onDragStart={(e) => handleColumnDragStart(e, colIndex)}
+                      onDragOver={(e) => handleColumnDragOver(e, colIndex)}
+                      onDragLeave={() => setDragOverColumn(null)}
+                      onDrop={(e) => handleColumnDrop(e, colIndex)}
+                      className={`flex items-center justify-center p-2 rounded cursor-move transition-all ${
+                        draggedColumn === colIndex
+                          ? 'opacity-50'
+                          : dragOverColumn === colIndex
+                          ? 'bg-blue-500/20 ring-2 ring-blue-500'
+                          : 'bg-dark-700 hover:bg-dark-600'
+                      }`}
+                      title="Drag to reorder column"
+                    >
+                      <GripHorizontal className="w-4 h-4 text-dark-400" />
                     </div>
                   ))}
                 </div>
