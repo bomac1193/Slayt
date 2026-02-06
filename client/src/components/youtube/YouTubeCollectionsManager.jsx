@@ -33,6 +33,7 @@ function YouTubeCollectionsManager({ onSelectCollection, selectedCollectionId })
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [draggedCollection, setDraggedCollection] = useState(null);
   const [dragOverFolder, setDragOverFolder] = useState(null);
+  const [dragOverCollection, setDragOverCollection] = useState(null);
   const [selectedFolders, setSelectedFolders] = useState(new Set());
   const [lastClickedFolder, setLastClickedFolder] = useState(null);
   const [emptyFolders, setEmptyFolders] = useState(new Set()); // Folders without collections yet
@@ -336,6 +337,87 @@ function YouTubeCollectionsManager({ onSelectCollection, selectedCollectionId })
     }
   };
 
+  const handleCollectionDragOver = (e, targetCollection) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+
+    const targetId = targetCollection.id || targetCollection._id;
+    const draggedId = draggedCollection?.id || draggedCollection?._id;
+
+    if (draggedId !== targetId) {
+      setDragOverCollection(targetId);
+    }
+  };
+
+  const handleCollectionDrop = async (e, targetCollection) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverCollection(null);
+
+    if (!draggedCollection) return;
+
+    const draggedId = draggedCollection.id || draggedCollection._id;
+    const targetId = targetCollection.id || targetCollection._id;
+
+    // Don't reorder if dropping on itself
+    if (draggedId === targetId) {
+      setDraggedCollection(null);
+      return;
+    }
+
+    // Get the folder these collections are in
+    const draggedFolder = draggedCollection.folder || 'root';
+    const targetFolder = targetCollection.folder || 'root';
+
+    // Only reorder within the same folder
+    if (draggedFolder !== targetFolder) {
+      setDraggedCollection(null);
+      return;
+    }
+
+    try {
+      // Get all collections in this folder
+      const collectionsInFolder = (collectionsByFolder[draggedFolder] || []).slice();
+
+      // Find current positions
+      const draggedIndex = collectionsInFolder.findIndex(c =>
+        (c.id || c._id) === draggedId
+      );
+      const targetIndex = collectionsInFolder.findIndex(c =>
+        (c.id || c._id) === targetId
+      );
+
+      if (draggedIndex === -1 || targetIndex === -1) {
+        setDraggedCollection(null);
+        return;
+      }
+
+      // Reorder the array
+      const [removed] = collectionsInFolder.splice(draggedIndex, 1);
+      collectionsInFolder.splice(targetIndex, 0, removed);
+
+      // Update positions for all collections
+      for (let i = 0; i < collectionsInFolder.length; i++) {
+        const collection = collectionsInFolder[i];
+        const collectionId = collection.id || collection._id;
+        const newPosition = i;
+
+        // Only update if position changed
+        if (collection.position !== newPosition) {
+          await youtubeApi.updateCollection(collectionId, { position: newPosition });
+          updateYoutubeCollection(collectionId, { position: newPosition });
+        }
+      }
+
+      console.log(`✅ Reordered collections in folder "${draggedFolder}"`);
+      setDraggedCollection(null);
+    } catch (error) {
+      console.error('Failed to reorder collections:', error);
+      setDraggedCollection(null);
+    }
+  };
+
   const handleCreateCollection = async (folder = null) => {
     try {
       const collection = await youtubeApi.createCollection({
@@ -631,6 +713,7 @@ function YouTubeCollectionsManager({ onSelectCollection, selectedCollectionId })
                     collections.map((collection) => {
                       const collectionId = collection.id || collection._id;
                       const isSelected = collectionId === selectedCollectionId;
+                      const isDraggedOver = dragOverCollection === collectionId;
 
                       return (
                         <div
@@ -638,8 +721,13 @@ function YouTubeCollectionsManager({ onSelectCollection, selectedCollectionId })
                           draggable
                           tabIndex={0}
                           onDragStart={(e) => handleDragStart(e, collection)}
-                          className={`flex items-center gap-2 px-4 py-2 hover:bg-dark-700 transition-colors cursor-pointer group focus:outline-none focus:ring-2 focus:ring-accent-purple focus:ring-inset ${
+                          onDragOver={(e) => handleCollectionDragOver(e, collection)}
+                          onDragLeave={() => setDragOverCollection(null)}
+                          onDrop={(e) => handleCollectionDrop(e, collection)}
+                          className={`flex items-center gap-2 px-4 py-2 hover:bg-dark-700 transition-colors cursor-pointer group focus:outline-none focus:ring-2 focus:ring-accent-purple focus:ring-inset relative ${
                             isSelected ? 'bg-dark-700 border-l-2 border-accent-purple' : ''
+                          } ${
+                            isDraggedOver ? 'border-t-2 border-blue-400' : ''
                           }`}
                           onClick={() => onSelectCollection?.(collectionId)}
                           onKeyDown={(e) => {
