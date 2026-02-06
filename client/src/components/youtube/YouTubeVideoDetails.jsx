@@ -378,10 +378,10 @@ function YouTubeVideoDetails({ video, onThumbnailUpload }) {
               }
             }}
             disabled={generating}
-            className="p-1.5 text-dark-300 hover:text-red-400 hover:bg-dark-700 rounded-lg transition-colors disabled:opacity-50"
-            title="Taste-aligned roll for title & description"
+            className="p-1.5 text-dark-400 hover:text-dark-200 hover:bg-dark-700 rounded-lg transition-colors disabled:opacity-50"
+            title="Quick generate"
           >
-            <Dice5 className="w-4 h-4" />
+            <Sparkles className="w-4 h-4" />
           </button>
           <button
             onClick={() => setShowDeleteConfirm(true)}
@@ -575,28 +575,22 @@ function YouTubeVideoDetails({ video, onThumbnailUpload }) {
         <div className="border-t border-dark-700 pt-4">
           <button
             onClick={() => setShowAIPanel(!showAIPanel)}
-            className="w-full flex items-center justify-between px-3 py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-dark-600 rounded-lg transition-colors"
           >
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-red-400" />
-              <span className="text-sm font-medium text-red-400">AI Generate Title & Description</span>
-            </div>
-            <ChevronDown className={`w-4 h-4 text-red-400 transition-transform ${showAIPanel ? 'rotate-180' : ''}`} />
+            <span className="text-sm font-medium text-dark-200">AI Generate</span>
+            <ChevronDown className={`w-4 h-4 text-dark-400 transition-transform ${showAIPanel ? 'rotate-180' : ''}`} />
           </button>
 
           {showAIPanel && (
-            <div className="mt-3 p-3 bg-dark-700 rounded-lg space-y-3">
-              <div>
-                <label className="block text-xs text-dark-400 mb-1">What's this video about?</label>
-                <input
-                  type="text"
-                  value={aiTopic}
-                  onChange={(e) => setAiTopic(e.target.value)}
-                  placeholder="Enter your video topic..."
-                  className="input w-full text-sm"
-                  onKeyDown={(e) => e.key === 'Enter' && handleGenerateAI()}
-                />
-              </div>
+            <div className="mt-2 p-3 bg-dark-750 rounded-lg space-y-2">
+              <input
+                type="text"
+                value={aiTopic}
+                onChange={(e) => setAiTopic(e.target.value)}
+                placeholder="Topic or keywords..."
+                className="input w-full text-sm"
+                onKeyDown={(e) => e.key === 'Enter' && handleGenerateAI()}
+              />
               <div className="flex gap-2">
                 <select
                   value={aiVideoType}
@@ -609,65 +603,32 @@ function YouTubeVideoDetails({ video, onThumbnailUpload }) {
                   <option value="tutorial">Tutorial</option>
                   <option value="vlog">Vlog</option>
                 </select>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleGenerateAI()}
-                    disabled={generating || (!aiTopic.trim() && !title && !description)}
-                    className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center gap-2 text-sm"
-                  >
-                    {generating ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Sparkles className="w-4 h-4" />
-                    )}
-                    Generate
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleGenerateAI('taste-aligned refresh')}
-                    disabled={generating}
-                    className="px-3 py-2 bg-dark-700 border border-dark-600 text-white rounded-lg hover:border-red-500 transition-colors disabled:opacity-50 flex items-center gap-1 text-sm"
-                    title="Randomise with taste profile"
-                  >
-                    <Dice5 className="w-4 h-4" />
-                    <span>Shuffle</span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => handleGenerateAI()}
+                  disabled={generating || (!aiTopic.trim() && !title && !description)}
+                  className="px-3 py-1.5 bg-dark-600 hover:bg-dark-500 text-dark-200 rounded-lg transition-colors disabled:opacity-50 text-sm font-medium"
+                >
+                  {generating ? 'Generating...' : 'Generate'}
+                </button>
               </div>
 
               {/* AI Results */}
               {aiVariants.length > 0 && (
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  <p className="text-xs text-green-400">Top result applied. Click another to switch:</p>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto mt-2">
+                  <p className="text-xs text-dark-400 mb-1">Select a variant:</p>
                   {aiVariants.map((variant, i) => (
                     <div
                       key={i}
-                      className="p-2 bg-dark-800 rounded-lg hover:bg-dark-600 transition-colors cursor-pointer group"
+                      className="p-2 bg-dark-700 hover:bg-dark-600 rounded border border-dark-600 hover:border-dark-500 transition-colors cursor-pointer"
                       onClick={() => applyAIVariant(variant)}
                     >
-                      <p className="text-sm text-white font-medium mb-1 line-clamp-2">{variant.title}</p>
-                      <p className="text-xs text-dark-400 line-clamp-2">{variant.description}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="flex items-center gap-2">
-                          <span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-xs">
-                            {variant.hookType}
-                          </span>
-                          <span className="text-xs text-dark-500">{variant.performanceScore}%</span>
-                        </div>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <button
-                              key={star}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRateVariant(variant, star);
-                              }}
-                              className="p-0.5"
-                            >
-                              <Star className="w-3 h-3 text-dark-500 hover:text-yellow-400 hover:fill-yellow-400" />
-                            </button>
-                          ))}
-                        </div>
+                      <p className="text-sm text-dark-100 font-medium mb-0.5 line-clamp-1">{variant.title}</p>
+                      <p className="text-xs text-dark-400 line-clamp-1">{variant.description}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="px-1.5 py-0.5 bg-dark-600 text-dark-300 rounded text-xs">
+                          {variant.hookType}
+                        </span>
+                        <span className="text-xs text-dark-500">{variant.performanceScore}%</span>
                       </div>
                     </div>
                   ))}
