@@ -384,8 +384,13 @@ exports.updateVideo = async (req, res) => {
       updates.thumbnail = await uploadThumbnailToCloudinary(updates.thumbnail, req.user._id.toString());
     }
 
+    // Validate title if being updated (required field)
+    if (updates.title !== undefined && !updates.title.trim()) {
+      return res.status(400).json({ error: 'Title cannot be empty' });
+    }
+
     // Update allowed fields
-    const allowedUpdates = ['title', 'description', 'thumbnail', 'collectionId', 'status', 'scheduledDate', 'position', 'tags'];
+    const allowedUpdates = ['title', 'description', 'thumbnail', 'collectionId', 'status', 'scheduledDate', 'position', 'tags', 'videoFileName', 'videoFileSize'];
 
     allowedUpdates.forEach(field => {
       if (updates[field] !== undefined) {

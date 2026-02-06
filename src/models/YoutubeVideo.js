@@ -28,6 +28,12 @@ const youtubeVideoSchema = new mongoose.Schema({
   thumbnail: {
     type: String // base64 or URL
   },
+  videoFileName: {
+    type: String
+  },
+  videoFileSize: {
+    type: Number
+  },
   status: {
     type: String,
     enum: ['draft', 'scheduled', 'published'],

@@ -97,7 +97,8 @@ function YouTubeVideoDetails({ video, onThumbnailUpload }) {
     autosaveTimer.current = setTimeout(() => {
       const dirtyTitle = title !== lastSavedRef.current.title;
       const dirtyDescription = description !== lastSavedRef.current.description;
-      if (dirtyTitle || dirtyDescription) {
+      // Only save if title is not empty (required field) and something changed
+      if ((dirtyTitle || dirtyDescription) && title.trim()) {
         persistVideoUpdates({ title, description });
         lastSavedRef.current = { title, description };
       }
@@ -128,7 +129,8 @@ function YouTubeVideoDetails({ video, onThumbnailUpload }) {
     if (videoId) {
       const dirtyTitle = title !== lastSavedRef.current.title;
       const dirtyDescription = description !== lastSavedRef.current.description;
-      if (dirtyTitle || dirtyDescription) {
+      // Only save if title is not empty and something changed
+      if ((dirtyTitle || dirtyDescription) && title.trim()) {
         persistVideoUpdates({ title, description });
         lastSavedRef.current = { title, description };
       }
