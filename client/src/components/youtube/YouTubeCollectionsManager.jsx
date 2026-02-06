@@ -346,6 +346,25 @@ function YouTubeCollectionsManager({ onSelectCollection, selectedCollectionId })
     }
   };
 
+  const handleDeleteCollection = async (collectionId, collectionName) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete the collection "${collectionName}"?\n\n` +
+      `This will delete all videos in this collection.\n\n` +
+      `This action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await youtubeApi.deleteCollection(collectionId);
+      deleteYoutubeCollection(collectionId);
+      console.log(`✅ Deleted collection "${collectionName}"`);
+    } catch (error) {
+      console.error('Failed to delete collection:', error);
+      alert(`Failed to delete collection: ${error.message || 'Unknown error'}`);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col bg-dark-800">
       {/* Header */}
@@ -598,11 +617,18 @@ function YouTubeCollectionsManager({ onSelectCollection, selectedCollectionId })
                         <div
                           key={collectionId}
                           draggable
+                          tabIndex={0}
                           onDragStart={(e) => handleDragStart(e, collection)}
-                          className={`flex items-center gap-2 px-4 py-2 hover:bg-dark-700 transition-colors cursor-pointer group ${
+                          className={`flex items-center gap-2 px-4 py-2 hover:bg-dark-700 transition-colors cursor-pointer group focus:outline-none focus:ring-2 focus:ring-accent-purple focus:ring-inset ${
                             isSelected ? 'bg-dark-700 border-l-2 border-accent-purple' : ''
                           }`}
                           onClick={() => onSelectCollection?.(collectionId)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Delete' || e.key === 'Backspace') {
+                              e.preventDefault();
+                              handleDeleteCollection(collectionId, collection.name);
+                            }
+                          }}
                         >
                           <GripVertical className="w-4 h-4 text-dark-600 opacity-0 group-hover:opacity-100" />
                           <Youtube className="w-4 h-4 text-red-400 flex-shrink-0" />
@@ -616,6 +642,17 @@ function YouTubeCollectionsManager({ onSelectCollection, selectedCollectionId })
                           <span className="text-xs text-dark-500 flex-shrink-0">
                             {collection.itemCount || 0}
                           </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCollection(collectionId, collection.name);
+                            }}
+                            className="p-0.5 text-dark-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                            title="Delete collection"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
                         </div>
                       );
                     })

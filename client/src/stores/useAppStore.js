@@ -362,6 +362,11 @@ export const useAppStore = create(
           c.id === id ? { ...c, name } : c
         )
       })),
+      updateYoutubeCollection: (id, updates) => set((state) => ({
+        youtubeCollections: state.youtubeCollections.map(c =>
+          (c.id === id || c._id === id) ? { ...c, ...updates } : c
+        )
+      })),
       duplicateYoutubeCollection: (id) => set((state) => {
         const sourceCollection = state.youtubeCollections.find(c => c.id === id);
         if (!sourceCollection) return state;
