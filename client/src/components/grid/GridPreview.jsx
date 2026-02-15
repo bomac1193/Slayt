@@ -1,11 +1,11 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { User, Upload, ZoomIn, ZoomOut, X, Check, Camera, RotateCcw, Save, GripVertical, Replace, Layers, Trash2, Eye, EyeOff, Play, ChevronDown, FolderPlus, Pencil, LayoutGrid, Loader2, CalendarPlus, ChevronRight, ChevronLeft, Heart, MessageCircle, Bookmark, Send, Share2, MoreHorizontal, Plus, Sparkles, TrendingUp, Bug } from 'lucide-react';
+import { User, Upload, ZoomIn, ZoomOut, X, Check, Camera, RotateCcw, Save, GripVertical, Replace, Layers, Trash2, Eye, EyeOff, Play, ChevronDown, FolderPlus, Pencil, LayoutGrid, Loader2, CalendarPlus, ChevronRight, ChevronLeft, Heart, MessageCircle, Bookmark, Send, Share2, MoreHorizontal, Plus, Gauge, TrendingUp, Bug } from 'lucide-react';
 import PostAIGenerator from './PostAIGenerator';
 import { setInternalDragActive } from '../../utils/dragState';
 import { generateVideoThumbnail, formatDuration } from '../../utils/videoUtils';
 import { contentApi, gridApi, reelCollectionApi, rolloutApi, convictionApi, templateApi } from '../../lib/api';
 import api from '../../lib/api';
-import { GridConvictionOverlay, GridAestheticScore } from '../conviction';
+import { GridConvictionOverlay, GridAestheticScore, CampaignReliabilityScorecard } from '../conviction';
 import ReelPlayer from './ReelPlayer';
 import ReelThumbnailSelector from './ReelThumbnailSelector';
 import ReelEditor from './ReelEditor';
@@ -1314,7 +1314,7 @@ function PostPreviewModal({ post, onClose, onSave }) {
             onClick={() => setShowAIGenerator(true)}
             className="px-4 py-2 text-sm bg-dark-700 text-white rounded-lg hover:bg-dark-600 transition-colors flex items-center gap-2"
           >
-            <Sparkles className="w-4 h-4 text-accent-purple" />
+            <Plus className="w-4 h-4 text-accent-purple" />
             AI Generate
           </button>
           <div className="flex items-center gap-3">
@@ -1408,7 +1408,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
           tier: demoScore >= 80 ? 'exceptional' : demoScore >= 70 ? 'high' : demoScore >= 50 ? 'medium' : 'low',
           archetypeMatch: {
             designation: 'Visionary',
-            glyph: '✨',
+            glyph: 'SG',
             confidence: 0.85
           },
           breakdown: {
@@ -1532,6 +1532,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
   const [loadingConviction, setLoadingConviction] = useState(false);
   const [showDebugInfo, setShowDebugInfo] = useState(false);
   const [aestheticPanelExpanded, setAestheticPanelExpanded] = useState(true);
+  const [controlPanelExpanded, setControlPanelExpanded] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [templateDescription, setTemplateDescription] = useState('');
@@ -1887,7 +1888,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
           tier: demoScore >= 80 ? 'exceptional' : demoScore >= 70 ? 'high' : demoScore >= 50 ? 'medium' : 'low',
           archetypeMatch: {
             designation: 'Visionary',
-            glyph: '✨',
+            glyph: 'SG',
             confidence: 0.85
           },
           breakdown: {
@@ -2610,6 +2611,8 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
             ...p,
             image: dropSource.images[0],
             images: dropSource.images.length > 1 ? dropSource.images : undefined,
+            originalImage: null,
+            editSettings: null,
           };
         }
         return p;
@@ -2663,6 +2666,8 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
             ...p,
             image: combinedImages[0],
             images: combinedImages,
+            originalImage: null,
+            editSettings: null,
           };
         }
         return p;
@@ -3287,14 +3292,14 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
       {activeTab === 'posts' && showAestheticScore && postsWithConviction.some(p => p.conviction) && (
         <div
           className={`absolute left-4 bottom-24 z-10 transition-all duration-300 ease-in-out ${
-            aestheticPanelExpanded ? 'w-72' : 'w-16'
+            aestheticPanelExpanded ? 'w-72' : 'w-14'
           }`}
         >
-          <div className="bg-dark-800/95 backdrop-blur-md rounded-xl border border-dark-700/50 shadow-2xl overflow-visible">
+          <div className="bg-dark-800/95 backdrop-blur-md rounded-xl border border-dark-700/50 shadow-2xl overflow-hidden">
             {/* Collapse/Expand Button */}
             <button
               onClick={() => setAestheticPanelExpanded(!aestheticPanelExpanded)}
-              className="absolute -right-4 top-1/2 -translate-y-1/2 w-8 h-14 bg-dark-700 hover:bg-dark-600 border border-dark-600 rounded-r-lg flex items-center justify-center transition-colors shadow-lg"
+              className="absolute right-2 top-2 w-7 h-7 bg-dark-700 hover:bg-dark-600 border border-dark-600 rounded-md flex items-center justify-center transition-colors z-20"
               title={aestheticPanelExpanded ? 'Collapse Panel' : 'Expand Panel'}
             >
               {aestheticPanelExpanded ? (
@@ -3319,6 +3324,115 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
                 <div className="text-[10px] text-dark-300 font-medium tracking-widest transform -rotate-90 whitespace-nowrap uppercase">
                   Grid Score
                 </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Detached Controls Panel */}
+      {activeTab === 'posts' && (
+        <div
+          className={`absolute right-4 top-24 z-20 transition-all duration-300 ease-in-out ${
+            controlPanelExpanded ? 'w-48' : 'w-11'
+          }`}
+        >
+          <div className="bg-dark-800/95 backdrop-blur-md rounded-xl border border-dark-700/50 shadow-2xl overflow-hidden">
+            <button
+              onClick={() => setControlPanelExpanded(!controlPanelExpanded)}
+              className="w-full h-11 flex items-center justify-center border-b border-dark-700/60 hover:bg-dark-700/40 transition-colors"
+              title={controlPanelExpanded ? 'Collapse Controls' : 'Expand Controls'}
+            >
+              {controlPanelExpanded ? (
+                <ChevronRight className="w-4 h-4 text-dark-300" />
+              ) : (
+                <Layers className="w-4 h-4 text-dark-300" />
+              )}
+            </button>
+
+            {controlPanelExpanded && (
+              <div className="p-2 space-y-2">
+                <button
+                  onClick={() => setShowConvictionOverlays(!showConvictionOverlays)}
+                  className={`w-full h-8 px-2 text-xs rounded-lg transition-colors flex items-center gap-1.5 ${
+                    showConvictionOverlays
+                      ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                      : 'bg-dark-700 text-dark-400 border border-dark-600 hover:border-dark-500'
+                  }`}
+                  title={showConvictionOverlays ? 'Hide Conviction Scores' : 'Show Conviction Scores'}
+                >
+                  {showConvictionOverlays ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                  <span>Scores</span>
+                </button>
+
+                <button
+                  onClick={() => setShowAestheticScore(!showAestheticScore)}
+                  className={`w-full h-8 px-2 text-xs rounded-lg transition-colors flex items-center gap-1.5 ${
+                    showAestheticScore
+                      ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                      : 'bg-dark-700 text-dark-400 border border-dark-600 hover:border-dark-500'
+                  }`}
+                  title={showAestheticScore ? 'Hide Grid Score' : 'Show Grid Score'}
+                >
+                  <Gauge className="w-3 h-3" />
+                  <span>Grid Score</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setWhatIfMode(!whatIfMode);
+                    if (!whatIfMode && originalScore) {
+                      const gridItems = postsWithConviction.filter(p => p.conviction);
+                      const currentScore = calculateAestheticScore(gridItems, cols);
+                      setOriginalScore(currentScore);
+                      setWhatIfScore(null);
+                    } else {
+                      setWhatIfScore(null);
+                    }
+                  }}
+                  className={`w-full h-8 px-2 text-xs rounded-lg transition-colors flex items-center gap-1.5 ${
+                    whatIfMode
+                      ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                      : 'bg-dark-700 text-dark-400 border border-dark-600 hover:border-dark-500'
+                  }`}
+                  title={whatIfMode ? 'Exit What-If Mode' : 'Enable What-If Mode'}
+                  disabled={!showAestheticScore || !postsWithConviction.some(p => p.conviction)}
+                >
+                  <LayoutGrid className="w-3 h-3" />
+                  <span>What-If</span>
+                </button>
+
+                <button
+                  onClick={() => setShowTemplateModal(true)}
+                  className="w-full h-8 px-2 text-xs rounded-lg transition-colors flex items-center gap-1.5 bg-gradient-to-r from-accent-purple to-pink-600 text-white border border-accent-purple/30 hover:from-accent-purple-dark hover:to-pink-700 disabled:opacity-50"
+                  title="Save current grid as a reusable template"
+                  disabled={!gridId || postsWithConviction.length === 0}
+                >
+                  <FolderPlus className="w-3 h-3" />
+                  <span>Save Template</span>
+                </button>
+
+                <button
+                  onClick={() => setShowDebugInfo(!showDebugInfo)}
+                  className={`w-full h-8 px-2 text-xs rounded-lg transition-colors flex items-center gap-1.5 ${
+                    showDebugInfo
+                      ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                      : 'bg-dark-700 text-dark-400 border border-dark-600 hover:border-dark-500'
+                  }`}
+                  title={showDebugInfo ? 'Hide Debug Info' : 'Show Debug Info'}
+                >
+                  <Bug className="w-3 h-3" />
+                  <span>Debug</span>
+                </button>
+
+                {loadingConviction && (
+                  <div className="w-full h-8 px-2 text-xs rounded-lg border border-dark-600 bg-dark-700 text-dark-300 flex items-center gap-2">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Calculating...</span>
+                  </div>
+                )}
+
+                <CampaignReliabilityScorecard gridItems={postsWithConviction} />
               </div>
             )}
           </div>
@@ -3534,96 +3648,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
         </>
       )}
 
-      {/* Conviction Controls */}
-      {activeTab === 'posts' && (
-        <div className="px-4 py-2 border-b border-dark-700 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowConvictionOverlays(!showConvictionOverlays)}
-              className={`px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1.5 ${
-                showConvictionOverlays
-                  ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                  : 'bg-dark-700 text-dark-400 border border-dark-600 hover:border-dark-500'
-              }`}
-              title={showConvictionOverlays ? 'Hide Conviction Scores' : 'Show Conviction Scores'}
-            >
-              {showConvictionOverlays ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-              <span>Scores</span>
-            </button>
-
-            <button
-              onClick={() => setShowAestheticScore(!showAestheticScore)}
-              className={`px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1.5 ${
-                showAestheticScore
-                  ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                  : 'bg-dark-700 text-dark-400 border border-dark-600 hover:border-dark-500'
-              }`}
-              title={showAestheticScore ? 'Hide Grid Score' : 'Show Grid Score'}
-            >
-              <Sparkles className="w-3 h-3" />
-              <span>Grid Score</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setWhatIfMode(!whatIfMode);
-                if (!whatIfMode && originalScore) {
-                  // Entering what-if mode - store current score as original
-                  const gridItems = postsWithConviction.filter(p => p.conviction);
-                  const currentScore = calculateAestheticScore(gridItems, cols);
-                  setOriginalScore(currentScore);
-                  setWhatIfScore(null);
-                } else {
-                  // Exiting what-if mode - clear comparison
-                  setWhatIfScore(null);
-                }
-              }}
-              className={`px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1.5 ${
-                whatIfMode
-                  ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                  : 'bg-dark-700 text-dark-400 border border-dark-600 hover:border-dark-500'
-              }`}
-              title={whatIfMode ? 'Exit What-If Mode' : 'Enable What-If Mode'}
-              disabled={!showAestheticScore || !postsWithConviction.some(p => p.conviction)}
-            >
-              <LayoutGrid className="w-3 h-3" />
-              <span>What-If</span>
-            </button>
-
-            <button
-              onClick={() => setShowTemplateModal(true)}
-              className="px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1.5 bg-gradient-to-r from-accent-purple to-pink-600 text-white border border-accent-purple/30 hover:from-accent-purple-dark hover:to-pink-700"
-              title="Save current grid as a reusable template"
-              disabled={!gridId || postsWithConviction.length === 0}
-            >
-              <FolderPlus className="w-3 h-3" />
-              <span>Save Template</span>
-            </button>
-
-            <button
-              onClick={() => setShowDebugInfo(!showDebugInfo)}
-              className={`px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1.5 ${
-                showDebugInfo
-                  ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                  : 'bg-dark-700 text-dark-400 border border-dark-600 hover:border-dark-500'
-              }`}
-              title={showDebugInfo ? 'Hide Debug Info' : 'Show Debug Info'}
-            >
-              <Bug className="w-3 h-3" />
-              <span>Debug</span>
-            </button>
-          </div>
-
-          {loadingConviction && (
-            <div className="flex items-center gap-2 text-xs text-dark-400">
-              <Loader2 className="w-3 h-3 animate-spin" />
-              <span>Calculating...</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Grid Aesthetic Score Panel - Moved to floating panel below */}
+      {/* Grid Aesthetic Score Panel - floating side panel */}
 
       {/* What-If Mode Comparison */}
       {activeTab === 'posts' && whatIfMode && whatIfScore && originalScore && (

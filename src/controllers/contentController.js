@@ -460,8 +460,13 @@ exports.updateMedia = async (req, res) => {
     }
 
     // Update content with new media URL
+    // Reset originalMediaUrl — the new upload IS the original going forward
+    // Clear editSettings — old crop/transform settings don't apply to the new image
     content.mediaUrl = mediaUrl;
+    content.originalMediaUrl = mediaUrl;
     content.thumbnailUrl = thumbnailUrl;
+    content.editSettings = null;
+    content.markModified('editSettings');
     await content.save();
 
     res.json({
