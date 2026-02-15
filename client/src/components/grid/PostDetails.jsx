@@ -1102,6 +1102,72 @@ function PostDetails({ post }) {
     }));
   };
 
+  // Render the full image with transforms (rotation, flip, brightness, contrast) and upload
+  const saveRenderedImage = async () => {
+    const postId = post.id || post._id;
+    if (!postId) return;
+
+    const settings = getEffectiveEditSettingsForSurface(editTarget);
+    const rotation = settings.rotation || 0;
+    const flipH = settings.flipH ? -1 : 1;
+    const flipV = settings.flipV ? -1 : 1;
+    const brightness = (settings.brightness ?? 100) / 100;
+    const contrast = (settings.contrast ?? 100) / 100;
+
+    setSaving(true);
+    try {
+      // Save edit settings metadata first
+      const nextDrafts = buildDraftsForSave({
+        [editTarget]: { ...editSettings, cropBox: { ...cropBox } },
+      });
+      await persistPlatformDrafts(nextDrafts, editTarget);
+
+      // Load image
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = originalImageSrc || getSurfaceMediaSrc(editTarget);
+      });
+
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      const normalizedRot = ((rotation % 360) + 360) % 360;
+      const isQuarterTurn = normalizedRot === 90 || normalizedRot === 270;
+
+      // Canvas dimensions swap on 90°/270° rotation
+      const canvasW = isQuarterTurn ? h : w;
+      const canvasH = isQuarterTurn ? w : h;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = canvasW;
+      canvas.height = canvasH;
+      const ctx = canvas.getContext('2d');
+
+      ctx.filter = `brightness(${brightness}) contrast(${contrast})`;
+      ctx.save();
+      ctx.translate(canvasW / 2, canvasH / 2);
+      ctx.rotate((normalizedRot * Math.PI) / 180);
+      ctx.scale(flipH, flipV);
+      ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      ctx.restore();
+
+      // Export and upload — replaces the post's actual image
+      const blob = await new Promise((resolve) =>
+        canvas.toBlob(resolve, 'image/jpeg', 0.92)
+      );
+      await contentApi.updateMediaFromBlob(postId, blob, 'quick-edit.jpg');
+
+      setAutoSaveStatus('saved');
+    } catch (error) {
+      console.error('Failed to save rendered image:', error);
+      setAutoSaveStatus('error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const startImagePan = (e) => {
     if (!isQuickEditing || isDragging || isResizing) return;
     const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
@@ -1217,8 +1283,6 @@ function PostDetails({ post }) {
     const settings = getEffectiveEditSettingsForSurface(targetSurface);
     const fitMode = settings.fitMode || 'native';
 
-    // TikTok Fill uses a dual-layer render (blurred bg + contained fg) to avoid destructive cropping.
-    if (targetSurface === 'tiktok' && fitMode === 'fill') return 'contain';
     if (fitMode === 'fill') return 'cover';
     if (fitMode === 'contain') return 'contain';
 
@@ -1250,31 +1314,8 @@ function PostDetails({ post }) {
     const sourceImage = originalImageSrc;
     if (!sourceImage) return;
 
-    setSaving(true);
-    try {
-      // Get the correct post ID (MongoDB uses _id, local might use id)
-      const postId = post.id || post._id;
-      if (!postId) {
-        throw new Error('Post ID not found');
-      }
-      const nextDrafts = buildDraftsForSave({
-        [editTarget]: { ...editSettings, cropBox: { ...cropBox } },
-      });
-      const ok = await persistPlatformDrafts(nextDrafts, editTarget);
-      if (!ok) {
-        throw new Error('Failed to save quick edit settings');
-      }
-
-      // Keep quick edit open for continuous live adjustment across tabs
-      setAutoSaveStatus('saved');
-
-      console.log('Quick edit saved successfully');
-    } catch (error) {
-      console.error('Failed to save edits:', error);
-      alert('Failed to save edits: ' + error.message);
-    } finally {
-      setSaving(false);
-    }
+    // Delegate to saveRenderedImage which saves settings + renders the composed image
+    await saveRenderedImage();
   };
 
   // Instagram Preview Component
@@ -1296,19 +1337,15 @@ function PostDetails({ post }) {
         <MoreHorizontal className="w-5 h-5 text-white" />
       </div>
 
-      {/* Image */}
-      <div className="aspect-square bg-gray-900">
+      {/* Image — full image with transforms */}
+      <div className="aspect-square bg-black overflow-hidden flex items-center justify-center">
         {getSurfaceMediaSrc('instagram') ? (
           <img
             src={getSurfaceMediaSrc('instagram')}
             alt=""
-            className={`w-full h-full bg-black select-none ${isQuickEditing ? (isImagePanning ? 'cursor-grabbing' : 'cursor-grab') : ''}`}
-            style={{ ...getTransformedMediaStyle(), objectFit: getObjectFitForSurface('instagram') }}
+            className="w-full h-full select-none"
+            style={{ ...getTransformedMediaStyle('instagram'), objectFit: 'contain' }}
             draggable={false}
-            onDragStart={(e) => e.preventDefault()}
-            onMouseDown={isQuickEditing ? startImagePan : undefined}
-            onTouchStart={isQuickEditing ? startImagePan : undefined}
-            onWheel={isQuickEditing ? handleScaleWheel : undefined}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: post.color || '#1f1f1f' }}>
@@ -1361,20 +1398,10 @@ function PostDetails({ post }) {
   // TikTok Preview Component
   const TikTokPreview = () => {
     const tiktokSrc = getSurfaceMediaSrc('tiktok');
-    const tiktokSettings = getEffectiveEditSettingsForSurface('tiktok');
-    const isTiktokFill = (tiktokSettings.fitMode || 'native') === 'fill';
     const tiktokTransformStyle = getTransformedMediaStyle('tiktok');
     const foregroundStyle = {
       ...tiktokTransformStyle,
       objectFit: getObjectFitForSurface('tiktok'),
-    };
-    const backgroundStyle = {
-      ...tiktokTransformStyle,
-      objectFit: 'cover',
-      // Keep backdrop aligned to the same rotation/pan, while slightly overfilling to avoid edge gaps.
-      transform: `${tiktokTransformStyle.transform} scale(1.12)`,
-      filter: `${tiktokTransformStyle.filter} blur(26px) saturate(1.1)`,
-      opacity: 0.72,
     };
     return (
     <div className="tiktok-native bg-black rounded-xl overflow-hidden relative" style={{ aspectRatio: '9/16', maxHeight: '500px' }}>
@@ -1382,19 +1409,10 @@ function PostDetails({ post }) {
       <div className="absolute inset-0">
         {tiktokSrc ? (
           <>
-            {isTiktokFill && (
-              <img
-                src={tiktokSrc}
-                alt=""
-                className="w-full h-full"
-                style={backgroundStyle}
-                draggable={false}
-              />
-            )}
             <img
               src={tiktokSrc}
               alt=""
-              className={`absolute inset-0 w-full h-full bg-black select-none ${isQuickEditing ? (isImagePanning ? 'cursor-grabbing' : 'cursor-grab') : ''}`}
+              className={`absolute inset-0 w-full h-full select-none ${isQuickEditing ? (isImagePanning ? 'cursor-grabbing' : 'cursor-grab') : ''}`}
               style={foregroundStyle}
               draggable={false}
               onDragStart={(e) => e.preventDefault()}
@@ -1711,15 +1729,9 @@ function PostDetails({ post }) {
         <p className="text-[11px] text-dark-500">Hold Shift to enable snap.</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-1.5">
-        <button onClick={() => handleSaveSurface('instagram')} className="h-8 px-2 text-[11px] border bg-dark-800 border-dark-700 text-dark-300 hover:text-dark-100">Save IG</button>
-        <button onClick={() => handleSaveSurface('tiktok')} className="h-8 px-2 text-[11px] border bg-dark-800 border-dark-700 text-dark-300 hover:text-dark-100">Save TikTok</button>
-        <button onClick={() => handleSaveSurface('twitter')} className="h-8 px-2 text-[11px] border bg-dark-800 border-dark-700 text-dark-300 hover:text-dark-100">Save X</button>
-      </div>
-
           <div className="grid grid-cols-2 gap-1.5">
             <button onClick={resetEdits} className="h-8 px-2 text-[11px] border bg-dark-800 border-dark-700 text-dark-300 hover:text-dark-100">Reset Surface</button>
-            <button onClick={saveQuickEdit} className="h-8 px-2 text-[11px] border bg-dark-100 border-dark-100 text-dark-900">Save All</button>
+            <button onClick={saveRenderedImage} disabled={saving} className="h-8 px-2 text-[11px] border bg-dark-100 border-dark-100 text-dark-900 disabled:opacity-50">{saving ? 'Saving...' : 'Save'}</button>
           </div>
         </div>
       )}
