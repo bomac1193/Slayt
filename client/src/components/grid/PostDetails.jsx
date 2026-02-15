@@ -1257,11 +1257,7 @@ function PostDetails({ post }) {
   const getTransformedMediaStyle = (surface = null) => {
     const targetSurface = surface || (isQuickEditing ? editTarget : 'instagram');
     const settings = getEffectiveEditSettingsForSurface(targetSurface);
-    const baseScale = (settings.scale ?? 100) / 100;
-    const fitMode = settings.fitMode || 'native';
-    const scale = targetSurface === 'instagram' && fitMode === 'native'
-      ? Math.min(baseScale, 1)
-      : baseScale;
+    const scale = (settings.scale ?? 100) / 100;
     const rotation = settings.rotation || 0;
     const panX = settings.panX || 0;
     const panY = settings.panY || 0;
@@ -1337,14 +1333,14 @@ function PostDetails({ post }) {
         <MoreHorizontal className="w-5 h-5 text-white" />
       </div>
 
-      {/* Image — full image with transforms */}
-      <div className="aspect-square bg-black overflow-hidden flex items-center justify-center">
+      {/* Image — zoomed to fill the square, no letterbox bars */}
+      <div className="aspect-square bg-black overflow-hidden">
         {getSurfaceMediaSrc('instagram') ? (
           <img
             src={getSurfaceMediaSrc('instagram')}
             alt=""
             className="w-full h-full select-none"
-            style={{ ...getTransformedMediaStyle('instagram'), objectFit: 'contain' }}
+            style={{ ...getTransformedMediaStyle('instagram'), objectFit: 'cover' }}
             draggable={false}
           />
         ) : (
