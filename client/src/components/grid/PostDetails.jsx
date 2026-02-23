@@ -91,6 +91,7 @@ function PostDetails({ post }) {
           currentDraft={qe.currentDraft}
           saving={qe.saving}
           cropperRef={qe.cropperRef}
+          cropEditor={cropEditor}
           onSwitchPlatform={qe.switchPlatform}
           onSetActiveTab={qe.setActiveTab}
           onSetCropAspect={qe.setCropAspect}
@@ -145,9 +146,6 @@ function PostDetails({ post }) {
 
       {/* Tab Content */}
       <div className="flex-1 overflow-auto flex flex-col">
-        {/* Crop editor: renders once at top when editing, collapsible */}
-        {qe.editing && cropEditor}
-
         {qe.activeTab === 'details' && (
           <>
             <UpscaleControls

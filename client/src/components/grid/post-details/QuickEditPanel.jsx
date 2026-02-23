@@ -16,6 +16,7 @@ const QuickEditPanel = React.memo(function QuickEditPanel({
   currentDraft,
   saving,
   cropperRef,
+  cropEditor,
   onSwitchPlatform,
   onSetActiveTab,
   onSetCropAspect,
@@ -168,6 +169,13 @@ const QuickEditPanel = React.memo(function QuickEditPanel({
               {saving ? 'Saving...' : 'Save'}
             </button>
           </div>
+
+          {/* Crop Editor */}
+          {cropEditor && (
+            <div className="-mx-3">
+              {cropEditor}
+            </div>
+          )}
         </div>
       )}
     </div>
