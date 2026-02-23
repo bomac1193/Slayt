@@ -145,6 +145,9 @@ function PostDetails({ post }) {
 
       {/* Tab Content */}
       <div className="flex-1 overflow-auto flex flex-col">
+        {/* Crop editor: renders once at top when editing, collapsible */}
+        {qe.editing && cropEditor}
+
         {qe.activeTab === 'details' && (
           <>
             <UpscaleControls
@@ -152,7 +155,7 @@ function PostDetails({ post }) {
               primaryImageSrc={primaryImageSrc}
               originalImageSrc={originalImageSrc}
               isQuickEditing={qe.editing}
-              cropEditor={cropEditor}
+              cropEditor={null}
               onStartQuickEdit={qe.open}
               onNavigateEditor={navigateToEditor}
               getTransformedMediaStyle={qe.getTransformedMediaStyle}
@@ -174,9 +177,7 @@ function PostDetails({ post }) {
         )}
 
         {qe.activeTab === 'instagram' && (
-          <div className="p-4">
-            {qe.editing && cropEditor}
-            <p className="text-xs text-dark-400 mb-3 text-center">Preview how your post will look on Instagram</p>
+          <div className="p-4 flex-1">
             <InstagramPreview
               croppedSrc={qe.getCroppedSrc('instagram')}
               cropStyles={qe.getCroppedPreviewStyles('instagram')}
@@ -193,10 +194,8 @@ function PostDetails({ post }) {
         )}
 
         {qe.activeTab === 'tiktok' && (
-          <div className="p-4 flex flex-col items-center">
-            {qe.editing && <div className="w-full max-w-[280px]">{cropEditor}</div>}
+          <div className="p-4 flex flex-col items-center flex-1">
             <div className="w-full max-w-[280px]">
-              <p className="text-xs text-dark-400 mb-3 text-center">Preview how your post will look on TikTok</p>
               <TikTokPreviewCard
                 croppedSrc={qe.getCroppedSrc('tiktok')}
                 cropStyles={qe.getCroppedPreviewStyles('tiktok')}
@@ -212,9 +211,7 @@ function PostDetails({ post }) {
         )}
 
         {qe.activeTab === 'twitter' && (
-          <div className="p-4">
-            {qe.editing && cropEditor}
-            <p className="text-xs text-dark-400 mb-3 text-center">Preview how your post will look on X/Twitter</p>
+          <div className="p-4 flex-1">
             <TwitterPreviewCard
               croppedSrc={qe.getCroppedSrc('twitter')}
               cropStyles={qe.getCroppedPreviewStyles('twitter')}
