@@ -564,3 +564,102 @@ Keep it **invitation-only** but NOT luxury-priced. The exclusivity is in ACCESS,
 | **What's the scalable TAM?** | $8.7M ARR by Year 4 via beachhead expansion + API platform. |
 | **What kills this?** | False positives that go viral ("Slayt blocked my best post"). Fix with feedback loop. |
 | **What's the revolutionary value?** | "The only AI that protects your brand by saying NO." Every other tool says yes to everything. |
+
+---
+
+## REVENUE SCALING STRATEGY (February 2026)
+
+### Decision: Don't pivot the beachhead. Don't go B2B yet.
+
+The beachhead (mid-tier video creators, 150K-500K) is correct — they have the highest willingness-to-pay-to-pain ratio. One bad post can cost them a $10K brand deal. $49/mo is noise against that risk. Changing the beachhead now would mean abandoning the segment where conviction gating has 71% "wow" moment activation.
+
+### The Revenue Ladder (in priority order)
+
+#### Priority 1: Stay the Course Through Year 2 ($960K ARR target)
+- Beachhead isn't saturated: 2,000 of 50K serviceable = 4% penetration
+- Every 6+ month user generates Taste Genome data that improves the algorithm for everyone
+- Data flywheel hasn't started compounding yet
+- **Action:** Keep building, keep the invite system, don't chase new segments
+
+#### Priority 2: "Conviction Report" for Brand Deals (Year 2, new revenue line)
+- Biggest missed revenue opportunity right now
+- Creators export a conviction report showing sponsors: "My average conviction score is 82. Here's my consistency over 90 days."
+- Charge $99/mo for "Atelier" tier that includes exportable brand reports
+- Transforms Slayt from a cost center into a revenue generator for creators — changes the value equation entirely
+- **Impact:** Creators use conviction report to win $10K+ brand deals. $99/mo for a tool that helps you win $10K deals is 100:1 ROI
+
+#### Priority 3: Conviction API as B2B (Year 3, NOT Year 1-2)
+- Talent agencies and MCNs will want conviction scoring for their roster
+- Build as a separate API product ($299/mo per seat), NOT as "team features" in the creator app
+- Keep products separate: Slayt = solo creators, Conviction API = B2B infrastructure
+- Building team features into the core app now would dilute the solo creator UX driving the 71% wow moment
+- **Action:** Start API design in Year 2 Q4, launch Year 3 Q1
+
+#### Priority 4: Platform Infrastructure (Year 4+)
+- Conviction Score API as infrastructure for social platforms, creator tools, MCNs
+- Usage-based pricing: $0.01 per conviction score calculation
+- 10 platform integrations at $50K-500K/year = $1-5M ARR
+- **Prerequisite:** Need 2+ years of Taste Genome data to sell this credibly
+
+### Why NOT B2B/Teams Now
+
+| Temptation | Why Resist |
+|------------|-----------|
+| "Agencies asked for team features" | 10 agency managers ≠ product-market fit. They want Later with conviction scoring. Don't build Later. |
+| "B2B has bigger contracts" | True, but B2B sales cycles are 3-6 months. You'd burn Year 1 runway on pipeline, not product. |
+| "Teams = more seats = more revenue" | Multi-seat dilutes the solo creator identity. Every feature you add for teams is a feature that makes the solo UX worse. |
+| "Enterprise is where the money is" | Enterprise wants SOC2, SSO, SLAs, uptime guarantees. You're a 1-person team. This is a Year 4 problem. |
+
+### Why NOT Luxury/Exclusive Pricing
+
+| Factor | $29/$49 (current) | $99+ (luxury) |
+|--------|-------------------|---------------|
+| Conversion rate | 66.7% | ~25% (estimated) |
+| Data flywheel speed | Fast (more users = more signals) | Slow (fewer users = thinner data) |
+| Word of mouth | High (affordable = easy to recommend) | Low (price objection in every referral) |
+| MOAT strength | Strong (data compounds) | Weak (less data = easier to replicate) |
+| Revenue at 2K users | $960K ARR | $600K ARR (fewer convert) |
+
+**The exclusivity should be in the invitation system, not the price.** Scarcity of access, not scarcity of affordability.
+
+### Growth Without Losing Exclusivity
+
+**Referral-based invites:** Each user gets 3 invites/month.
+
+- Maintains exclusivity feeling (still can't just sign up)
+- Grows through trusted networks (higher quality users, lower churn)
+- Creates organic word-of-mouth without paid acquisition
+- Prevents Blind Spot 5 ("I applied 2 months ago, still waiting")
+- Math: 68 paying users × 1.5 invites used/mo × 50% conversion = 51 new users/month
+
+### Implementation Roadmap
+
+| Quarter | Action | Revenue Impact |
+|---------|--------|----------------|
+| **Now** | Conviction explainability panel (DONE) | Reduces churn from "score feels arbitrary" |
+| **Q2 2026** | Post-performance feedback loop | Reduces false positive churn (18% of users) |
+| **Q3 2026** | Conviction Report export for brand deals | New $99/mo tier, +40% ARPU uplift |
+| **Q4 2026** | Referral invite system | 2-3x organic growth rate |
+| **Q1 2027** | Cross-platform conviction breakdown | Reduces cross-platform confusion (28% of users) |
+| **Q2 2027** | Begin API design for B2B | Prepares Year 3 revenue line |
+| **Q3 2027** | API beta with 5 agencies | Validates B2B pricing |
+| **Q1 2028** | API general availability | $299/mo per seat, target 90 agencies |
+
+### Revenue Projection (Updated)
+
+| Year | Solo Creator Revenue | B2B/API Revenue | Total ARR |
+|------|---------------------|-----------------|-----------|
+| Year 1 | $28K | $0 | $28K |
+| Year 2 | $960K (incl. Atelier tier) | $0 | $960K |
+| Year 3 | $2.7M | $323K | $3.0M |
+| Year 4 | $4.2M | $4.5M | $8.7M |
+
+### Bottom Line
+
+The highest-ROI moves right now (in order):
+1. **Conviction explainability** (DONE - deployed)
+2. **Post-performance feedback loop** — auto-calibrate when overrides perform well
+3. **Conviction Report export** — new revenue line, same ICP, $99/mo Atelier tier
+4. **Referral invites** — growth without losing exclusivity
+
+B2B/API comes Year 3 when Taste Genome data is deep enough to sell as infrastructure. Building it now splits focus and slows the flywheel that IS the moat.
