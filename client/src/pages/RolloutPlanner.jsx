@@ -292,7 +292,6 @@ function RolloutPlanner() {
     fetchGrids();
     fetchReelCollections();
     fetchRollouts();
-    loadArchetype();
   }, [fetchGrids, fetchReelCollections, fetchRollouts]);
 
   // Combine all collections from all platforms
