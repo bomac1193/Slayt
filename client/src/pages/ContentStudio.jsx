@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../stores/useAppStore';
-import { intelligenceApi, genomeApi } from '../lib/api';
+import { intelligenceApi } from '../lib/api';
 import folioApi, { folioAuth, isFolioConnected, getFolioUser } from '../lib/folioApi';
 import {
   Sparkles,

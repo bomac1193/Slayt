@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plus, ChevronDown, Trash2, Edit3, Check, X, GripVertical, Folder, Search, Tag, Palette, Youtube, Instagram, LayoutGrid, Film, Loader2, Calendar, Flag, Target, Sparkles } from 'lucide-react';
+import { Plus, ChevronDown, Trash2, Edit3, Check, X, GripVertical, Folder, Search, Tag, Youtube, Instagram, LayoutGrid, Film, Loader2, Calendar, Flag, Target, Sparkles } from 'lucide-react';
 import { useAppStore } from '../stores/useAppStore';
-import { gridApi, reelCollectionApi, rolloutApi, genomeApi } from '../lib/api';
+import { gridApi, reelCollectionApi, rolloutApi } from '../lib/api';
 import RolloutIntelligencePanel from '../components/rollout/RolloutIntelligencePanel';
 
 // TikTok icon component
@@ -12,20 +12,6 @@ function TikTokIcon({ className }) {
     </svg>
   );
 }
-
-// Preset colors for sections
-const SECTION_COLORS = [
-  { id: 'purple', value: '#8b5cf6', name: 'Purple' },
-  { id: 'blue', value: '#3b82f6', name: 'Blue' },
-  { id: 'green', value: '#10b981', name: 'Green' },
-  { id: 'orange', value: '#f97316', name: 'Orange' },
-  { id: 'pink', value: '#ec4899', name: 'Pink' },
-  { id: 'indigo', value: '#6366f1', name: 'Indigo' },
-  { id: 'teal', value: '#14b8a6', name: 'Teal' },
-  { id: 'amber', value: '#f59e0b', name: 'Amber' },
-  { id: 'red', value: '#ef4444', name: 'Red' },
-  { id: 'cyan', value: '#06b6d4', name: 'Cyan' },
-];
 
 // Helper to format date for input
 const formatDateForInput = (date) => {
@@ -50,11 +36,11 @@ const ROLLOUT_TEMPLATES = [
     tag: 'Core',
     description: 'Five-phase launch: Tease → Announce → Drip → Drop → Sustain.',
     phases: [
-      { name: 'Tease', color: '#8b5cf6', notes: 'Mood teasers, cryptic hints, visual motifs.' },
-      { name: 'Announce', color: '#3b82f6', notes: 'Title, date, cover. Pre-save CTA.' },
-      { name: 'Drip', color: '#10b981', notes: 'Singles/snippets weekly, behind-the-scenes.' },
-      { name: 'Drop', color: '#f97316', notes: 'Launch day blitz, live stream, press hits.' },
-      { name: 'Sustain', color: '#ec4899', notes: 'Remixes, UGC campaigns, tour tie-ins.' },
+      { name: 'Tease', notes: 'Mood teasers, cryptic hints, visual motifs.' },
+      { name: 'Announce', notes: 'Title, date, cover. Pre-save CTA.' },
+      { name: 'Drip', notes: 'Singles/snippets weekly, behind-the-scenes.' },
+      { name: 'Drop', notes: 'Launch day blitz, live stream, press hits.' },
+      { name: 'Sustain', notes: 'Remixes, UGC campaigns, tour tie-ins.' },
     ],
   },
   {
@@ -63,10 +49,10 @@ const ROLLOUT_TEMPLATES = [
     tag: 'Core',
     description: 'Awareness → Authority → Conversion → Retention.',
     phases: [
-      { name: 'Awareness', color: '#06b6d4', notes: 'Problem agitation, story ads, hooks.' },
-      { name: 'Authority', color: '#6366f1', notes: 'Proof, testimonials, case drops.' },
-      { name: 'Conversion', color: '#22c55e', notes: 'Offer windows, demos, live Q&A.' },
-      { name: 'Retention', color: '#f59e0b', notes: 'Onboarding, community challenges, upsell.' },
+      { name: 'Awareness', notes: 'Problem agitation, story ads, hooks.' },
+      { name: 'Authority', notes: 'Proof, testimonials, case drops.' },
+      { name: 'Conversion', notes: 'Offer windows, demos, live Q&A.' },
+      { name: 'Retention', notes: 'Onboarding, community challenges, upsell.' },
     ],
   },
   {
@@ -75,10 +61,10 @@ const ROLLOUT_TEMPLATES = [
     tag: 'Inspired',
     description: 'High-visual, lore-driven rollout with color-coded chapters.',
     phases: [
-      { name: 'Lore Seeds', color: '#a855f7', notes: 'Cryptic posts, visual glyphs.' },
-      { name: 'Chapter Reveals', color: '#0ea5e9', notes: 'Drop chapters with distinct palettes.' },
-      { name: 'Hero Drop', color: '#f43f5e', notes: 'Full project, live moment, merch tie-in.' },
-      { name: 'Afterglow', color: '#22c55e', notes: 'Remixes, fan edits, alt covers.' },
+      { name: 'Lore Seeds', notes: 'Cryptic posts, visual glyphs.' },
+      { name: 'Chapter Reveals', notes: 'Drop chapters with distinct palettes.' },
+      { name: 'Hero Drop', notes: 'Full project, live moment, merch tie-in.' },
+      { name: 'Afterglow', notes: 'Remixes, fan edits, alt covers.' },
     ],
   },
   {
@@ -87,10 +73,10 @@ const ROLLOUT_TEMPLATES = [
     tag: 'Inspired',
     description: 'Fast-cadence social blitz with short hooks and rapid iterations.',
     phases: [
-      { name: 'Hook Storm', color: '#ec4899', notes: 'Daily hooks/snippets, meme edges.' },
-      { name: 'Pre-Save Surge', color: '#f59e0b', notes: 'Countdowns, share-to-unlock moments.' },
-      { name: 'Drop Day', color: '#3b82f6', notes: 'Live room, collab stitches, platform takeovers.' },
-      { name: 'Iterate', color: '#10b981', notes: 'Alt cuts, sped/slowed, fan feature loop.' },
+      { name: 'Hook Storm', notes: 'Daily hooks/snippets, meme edges.' },
+      { name: 'Pre-Save Surge', notes: 'Countdowns, share-to-unlock moments.' },
+      { name: 'Drop Day', notes: 'Live room, collab stitches, platform takeovers.' },
+      { name: 'Iterate', notes: 'Alt cuts, sped/slowed, fan feature loop.' },
     ],
   },
 ];
@@ -245,7 +231,6 @@ function RolloutPlanner() {
   const [pickerSectionId, setPickerSectionId] = useState(null);
   const [draggedSectionIndex, setDraggedSectionIndex] = useState(null);
   const [activeTab, setActiveTab] = useState('schedule'); // 'schedule' | 'templates'
-  const [archetype, setArchetype] = useState(null);
 
   // Backend grids (IG/TikTok)
   const [grids, setGrids] = useState([]);
@@ -309,17 +294,6 @@ function RolloutPlanner() {
     fetchRollouts();
     loadArchetype();
   }, [fetchGrids, fetchReelCollections, fetchRollouts]);
-
-  const loadArchetype = async () => {
-    try {
-      const res = await genomeApi.get(currentProfileId || null);
-      if (res?.genome?.archetype?.primary) {
-        setArchetype(res.genome.archetype.primary);
-      }
-    } catch (err) {
-      console.error('Failed to load archetype for rollout recommendation:', err);
-    }
-  };
 
   // Combine all collections from all platforms
   const allCollections = [
@@ -426,21 +400,9 @@ function RolloutPlanner() {
         const res = await rolloutApi.addSection(newRollout.id, {
           name: phase.name,
           order: i,
-          color: phase.color,
           notes: phase.notes,
         });
         newRollout = { ...res.rollout, id: res.rollout?._id || res.rollout?.id };
-      }
-      // Log taste signal (optional, non-blocking)
-      try {
-        await genomeApi.signal(
-          'choice',
-          'rollout_template',
-          { templateId: template.id, templateName: template.name, folioId: activeFolioId || undefined, projectId: activeProjectId || undefined },
-          currentProfileId || null
-        );
-      } catch (err) {
-        console.warn('Failed to log template taste signal:', err);
       }
       // Refresh rollouts list by fetching or injecting
       const fetched = await rolloutApi.getAll();
@@ -801,23 +763,6 @@ function RolloutPlanner() {
             <h2 className="text-lg font-semibold text-white">Rollout Templates</h2>
             <span className="text-xs text-dark-500">Core blueprints + inspired overlays</span>
           </div>
-          {archetype && (
-            <div className="p-3 border border-accent-purple/30 bg-accent-purple/5 rounded-lg text-sm text-white flex items-center justify-between">
-              <div>
-                <p className="text-xs text-dark-300 uppercase tracking-[0.16em]">Recommended for {archetype.designation}</p>
-                <p className="font-semibold">Try “{archetype.designation === 'R-10' ? 'Inspired: Charli Velocity' : 'Core Product Blueprint'}” to match your glyph cadence.</p>
-              </div>
-              <button
-                onClick={() => {
-                  const tpl = ROLLOUT_TEMPLATES.find(t => t.name === (archetype.designation === 'R-10' ? 'Inspired: Charli Velocity' : 'Core Product Blueprint'));
-                  if (tpl) handleApplyTemplate(tpl);
-                }}
-                className="px-3 py-1.5 rounded-md bg-accent-purple text-white text-xs hover:bg-accent-purple/80"
-              >
-                Apply recommended
-              </button>
-            </div>
-          )}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {ROLLOUT_TEMPLATES.map((tpl) => (
               <div key={tpl.id} className="border border-dark-700 bg-dark-900 rounded-lg p-4 flex flex-col gap-2">
@@ -1016,7 +961,6 @@ function RolloutSection({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(section.name);
-  const [showColorPicker, setShowColorPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [sectionStartDate, setSectionStartDate] = useState(formatDateForInput(section.startDate));
   const [sectionDeadline, setSectionDeadline] = useState(formatDateForInput(section.deadline));
@@ -1043,19 +987,12 @@ function RolloutSection({
     setIsEditing(false);
   };
 
-  const handleColorSelect = (color) => {
-    onUpdateSection(section.id, { color });
-    setShowColorPicker(false);
-  };
-
-  const sectionColor = section.color || '#8b5cf6';
-
   return (
     <div
       className={`bg-dark-800 border border-dark-700 rounded-xl overflow-hidden transition-all ${
         isDragging ? 'opacity-50 border-accent-purple' : ''
       }`}
-      style={{ borderLeftWidth: '4px', borderLeftColor: sectionColor }}
+      style={{ borderLeftWidth: '4px', borderLeftColor: '#4b5563' }}
       draggable
       onDragStart={onDragStart}
       onDragOver={onDragOver}
@@ -1067,18 +1004,7 @@ function RolloutSection({
           <GripVertical className="w-5 h-5" />
         </div>
 
-        {/* Color indicator */}
-        <div
-          className="w-4 h-4 rounded-full flex-shrink-0 border border-dark-500 cursor-pointer hover:scale-110 transition-transform"
-          style={{ backgroundColor: sectionColor }}
-          onClick={() => setShowColorPicker(!showColorPicker)}
-          title="Change phase color"
-        />
-
-        <span
-          className="text-xs font-medium px-2 py-1 rounded"
-          style={{ backgroundColor: `${sectionColor}20`, color: sectionColor }}
-        >
+        <span className="text-xs font-medium px-2 py-1 rounded bg-dark-700 text-dark-300">
           Phase {index + 1}
         </span>
 
@@ -1198,36 +1124,6 @@ function RolloutSection({
             )}
           </div>
 
-          {/* Color picker button */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowColorPicker(!showColorPicker)}
-              className="p-1.5 text-dark-400 hover:text-white hover:bg-dark-700 rounded transition-colors"
-              title="Change color"
-            >
-              <Palette className="w-4 h-4" />
-            </button>
-            {showColorPicker && (
-              <div className="absolute top-full right-0 mt-1 w-36 bg-dark-900 border border-dark-600 rounded-lg shadow-xl z-50 p-2">
-                <p className="text-xs text-dark-400 mb-2 px-1">Phase Color</p>
-                <div className="grid grid-cols-5 gap-1">
-                  {SECTION_COLORS.map((color) => (
-                    <button
-                      key={color.id}
-                      type="button"
-                      onClick={() => handleColorSelect(color.value)}
-                      className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${
-                        sectionColor === color.value ? 'border-white' : 'border-transparent'
-                      }`}
-                      style={{ backgroundColor: color.value }}
-                      title={color.name}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
           {!isEditing && (
             <button
               type="button"

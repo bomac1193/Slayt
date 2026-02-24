@@ -7,8 +7,6 @@ const express = require('express');
 const router = express.Router();
 const { authenticate: auth } = require('../middleware/auth');
 const Content = require('../models/Content');
-const User = require('../models/User');
-const Profile = require('../models/Profile');
 const convictionService = require('../services/convictionService');
 
 /**
@@ -29,20 +27,8 @@ router.post('/calculate', auth, async (req, res) => {
       return res.status(404).json({ error: 'Content not found' });
     }
 
-    // Get user's taste genome
-    let genome = null;
-    if (profileId) {
-      const profile = await Profile.findOne({ _id: profileId, userId: req.userId });
-      genome = profile?.tasteGenome;
-    }
-
-    if (!genome) {
-      const user = await User.findById(req.userId);
-      genome = user?.tasteGenome;
-    }
-
     // Calculate conviction
-    const result = await convictionService.calculateConviction(content, genome);
+    const result = await convictionService.calculateConviction(content, null);
 
     // Update content with conviction scores
     Object.assign(content.aiScores, result.aiScores);
@@ -138,25 +124,16 @@ router.get('/report/:contentId', auth, async (req, res) => {
       return res.status(404).json({ error: 'Content not found' });
     }
 
-    // Get genome
-    let genome = null;
-    if (profileId) {
-      const profile = await Profile.findOne({ _id: profileId, userId: req.userId });
-      genome = profile?.tasteGenome;
-    }
-
-    if (!genome) {
-      const user = await User.findById(req.userId);
-      genome = user?.tasteGenome;
-    }
-
     // Generate full report
-    const report = await convictionService.generateConvictionReport(content, genome);
+    const report = await convictionService.generateConvictionReport(content, null);
 
     res.json({
       success: true,
       contentId: content._id,
-      report
+      report,
+      validationResult: content.convictionValidation || null,
+      contentStatus: content.status,
+      wasUserOverride: content.conviction?.userOverride || false
     });
   } catch (error) {
     console.error('[Conviction] Report error:', error);
@@ -176,18 +153,6 @@ router.post('/batch-calculate', auth, async (req, res) => {
       return res.status(400).json({ error: 'Content IDs array required' });
     }
 
-    // Get genome
-    let genome = null;
-    if (profileId) {
-      const profile = await Profile.findOne({ _id: profileId, userId: req.userId });
-      genome = profile?.tasteGenome;
-    }
-
-    if (!genome) {
-      const user = await User.findById(req.userId);
-      genome = user?.tasteGenome;
-    }
-
     // Get all content
     const contents = await Content.find({
       _id: { $in: contentIds },
@@ -197,7 +162,7 @@ router.post('/batch-calculate', auth, async (req, res) => {
     // Calculate conviction for each
     const results = await Promise.all(
       contents.map(async (content) => {
-        const result = await convictionService.calculateConviction(content, genome);
+        const result = await convictionService.calculateConviction(content, null);
 
         // Update content
         Object.assign(content.aiScores, result.aiScores);

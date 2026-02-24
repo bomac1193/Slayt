@@ -29,16 +29,15 @@ const rolloutRoutes = require('./routes/rollout');
 const reelCollectionRoutes = require('./routes/reelCollection');
 const profileRoutes = require('./routes/profile');
 const intelligenceRoutes = require('./routes/intelligence');
-const genomeRoutes = require('./routes/genome');
 const characterRoutes = require('./routes/character');
 const convictionRoutes = require('./routes/conviction');
 const performanceRoutes = require('./routes/performance');
 const templateRoutes = require('./routes/template');
-const tasteApiRoutes = require('./routes/tasteApi');
 const apiKeyManagementRoutes = require('./routes/apiKeyManagement');
 const bovedaRoutes = require('./routes/boveda');
 const twinOsRoutes = require('./routes/twinOs');
 const schedulingService = require('./services/schedulingService');
+const convictionLoopService = require('./services/convictionLoopService');
 
 // Connect to MongoDB
 connectDB();
@@ -47,6 +46,11 @@ connectDB();
 setTimeout(() => {
   schedulingService.start();
 }, 5000); // Start after 5 seconds to ensure DB is connected
+
+// Start conviction loop service (after scheduling service)
+setTimeout(() => {
+  convictionLoopService.start();
+}, 10000);
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -113,12 +117,10 @@ app.use('/api/rollout', rolloutRoutes);
 app.use('/api/reel-collections', reelCollectionRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/intelligence', intelligenceRoutes);
-app.use('/api/genome', genomeRoutes);
 app.use('/api/characters', characterRoutes);
 app.use('/api/conviction', convictionRoutes);
 app.use('/api/performance', performanceRoutes);
 app.use('/api/templates', templateRoutes);
-app.use('/api/taste', tasteApiRoutes); // External Taste API
 app.use('/api/admin/api-keys', apiKeyManagementRoutes); // API key management
 app.use('/api', bovedaRoutes); // Boveda integration
 app.use('/api/twin-os', twinOsRoutes); // Twin OS (Starforge + Clarosa)

@@ -6,13 +6,11 @@ import ConvictionBadge from './ConvictionBadge';
  *
  * @param {number} score - Conviction score (0-100)
  * @param {string} tier - Conviction tier
- * @param {object} archetypeMatch - Archetype match data
  * @param {string} size - Badge size
  */
 const GridConvictionOverlay = ({
   score,
   tier,
-  archetypeMatch,
   size = 'sm'
 }) => {
   // Tier-based glow effect
@@ -37,8 +35,6 @@ const GridConvictionOverlay = ({
           score={score}
           tier={tier}
           size={size}
-          showGlyph={false}
-          archetypeMatch={archetypeMatch}
         />
       </div>
     </div>

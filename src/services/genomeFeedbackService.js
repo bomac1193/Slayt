@@ -64,6 +64,23 @@ async function applyFeedbackToGenome(validation, profileId) {
       if (signal.type === 'performance_component') {
         await applyComponentWeightAdjustment(genome, signal);
       }
+
+      if (signal.type === 'successful_override') {
+        // Apply 2x learning rate for successful override
+        await applyArchetypeConfidenceAdjustment(genome, {
+          ...signal,
+          type: 'underestimated' // Treat as underestimated with boosted rate
+        }, 0.10); // 2x the normal 0.05 rate
+
+        // Track override accuracy
+        genome.learning.overrideStats = genome.learning.overrideStats || {
+          total: 0, successful: 0, accuracy: 0
+        };
+        genome.learning.overrideStats.total++;
+        genome.learning.overrideStats.successful++;
+        genome.learning.overrideStats.accuracy =
+          Math.round(genome.learning.overrideStats.successful / genome.learning.overrideStats.total * 100);
+      }
     }
 
     // Store accuracy in history
@@ -107,8 +124,11 @@ async function applyFeedbackToGenome(validation, profileId) {
 
 /**
  * Apply archetype confidence adjustment
+ * @param {Object} genome - Taste genome
+ * @param {Object} signal - Feedback signal
+ * @param {Number} customLearningRate - Optional override for learning rate (default 0.05)
  */
-async function applyArchetypeConfidenceAdjustment(genome, signal) {
+async function applyArchetypeConfidenceAdjustment(genome, signal, customLearningRate) {
   const archetype = signal.archetype;
   if (!archetype) return;
 
@@ -124,7 +144,7 @@ async function applyArchetypeConfidenceAdjustment(genome, signal) {
   const adjustment = genome.learning.archetypeAdjustments[archetype];
 
   // Calculate adjustment factor (small increments - learning rate ~0.05)
-  const learningRate = 0.05;
+  const learningRate = customLearningRate || 0.05;
   const adjustmentFactor = signal.magnitude > 0 ? learningRate : -learningRate;
 
   if (signal.type === 'underestimated') {

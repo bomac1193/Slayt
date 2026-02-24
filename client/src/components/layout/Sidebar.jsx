@@ -13,13 +13,11 @@ import {
   Youtube,
   Layers,
   Users,
-  Radio,
   UserCircle2,
   CalendarDays as CalendarIcon,
   TrendingUp,
   Ellipsis,
   PenLine,
-  Atom,
   LayoutTemplate,
   SlidersHorizontal,
 } from 'lucide-react';
@@ -54,8 +52,6 @@ const navSections = [
         label: 'More',
         children: [
           { path: '/editor/pro', icon: SlidersHorizontal, label: 'Editor Pro' },
-          { path: '/genome', icon: Atom, label: 'Genome' },
-          { path: '/training', icon: Radio, label: 'Training' },
           { path: '/templates', icon: LayoutTemplate, label: 'Templates' },
           { path: '/learning', icon: TrendingUp, label: 'Learning' },
           { path: '/studio', icon: FolderOpen, label: 'Folio' },

@@ -364,7 +364,6 @@ function DraggableGridItem({ post, postId, onDragStart, onDragEnd, onFileDrop, o
             <GridConvictionOverlay
               score={post.conviction.score}
               tier={post.conviction.tier}
-              archetypeMatch={post.conviction.archetypeMatch}
               size="sm"
             />
           )}

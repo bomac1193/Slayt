@@ -790,73 +790,7 @@ export const intelligenceApi = {
   }
 };
 
-// Genome API - Taste genome, archetypes, and gamification
-export const genomeApi = {
-  // Get user's taste genome
-  async get(profileId = null) {
-    const params = profileId ? `?profileId=${profileId}` : '';
-    const { data } = await api.get(`/api/genome${params}`);
-    return data;
-  },
-
-  // Record a behavioral signal
-  async signal(type, value = null, metadata = {}, profileId = null) {
-    const { data } = await api.post('/api/genome/signal', {
-      type, value, metadata, profileId
-    });
-    return data;
-  },
-
-  // Get quiz questions (filtered by answered, per-profile)
-  async getQuizQuestions(profileId = null) {
-    const params = profileId ? `?profileId=${profileId}` : '';
-    const { data } = await api.get(`/api/genome/quiz/questions${params}`);
-    return data;
-  },
-
-  // Submit quiz responses
-  async submitQuiz(responses, profileId = null) {
-    const { data } = await api.post('/api/genome/quiz', { responses, profileId });
-    return data;
-  },
-
-  // Get gamification state
-  async getGamification(profileId = null) {
-    const params = profileId ? `?profileId=${profileId}` : '';
-    const { data } = await api.get(`/api/genome/gamification${params}`);
-    return data;
-  },
-
-  // Admin/raw genome view
-  async getRaw(profileId = null) {
-    const params = profileId ? `?profileId=${profileId}` : '';
-    const { data } = await api.get(`/api/genome/raw${params}`);
-    return data;
-  },
-
-  // Recent signals for diagnostics
-  async getSignals(profileId = null, limit = 20) {
-    const params = new URLSearchParams();
-    if (profileId) params.append('profileId', profileId);
-    if (limit) params.append('limit', String(limit));
-    const { data } = await api.get(`/api/genome/signals?${params.toString()}`);
-    return data;
-  },
-
-  // Force recompute (admin/testing)
-  async recompute(profileId = null) {
-    const { data } = await api.post('/api/genome/recompute', { profileId });
-    return data;
-  },
-
-  // Get archetype definitions
-  async getArchetypes() {
-    const { data } = await api.get('/api/genome/archetypes');
-    return data;
-  }
-};
-
-// Conviction API - Taste-aware scoring and gating
+// Conviction API - Scoring and gating
 export const convictionApi = {
   async calculateSingle(contentId, profileId) {
     const { data } = await api.post('/api/conviction/calculate', {
@@ -960,7 +894,7 @@ export const performanceApi = {
   },
 
   async applyFeedback(validation, profileId) {
-    const { data } = await api.post('/api/performance/feedback', {
+    const { data } = await api.post('/api/performance/apply-feedback', {
       validation,
       profileId
     });
@@ -982,7 +916,7 @@ export const performanceApi = {
   },
 
   async getLearningProgress(profileId) {
-    const { data } = await api.get(`/api/performance/stats/${profileId}`);
+    const { data } = await api.get(`/api/performance/learning-progress?profileId=${profileId}`);
     return data;
   },
 

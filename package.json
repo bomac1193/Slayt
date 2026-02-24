@@ -25,9 +25,11 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.46",
     "@anthropic-ai/sdk": "^0.71.2",
     "@google-cloud/vision": "^4.1.0",
     "@tensorflow/tfjs-node": "^4.11.0",
+    "ai": "^6.0.97",
     "axios": "^1.6.2",
     "bcrypt": "^5.1.1",
     "cloudinary": "^1.41.3",

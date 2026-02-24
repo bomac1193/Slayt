@@ -69,7 +69,7 @@ export function generateCalendarRecommendations(scheduledPosts) {
       icon: 'trending-down',
       title: 'Conviction score declining',
       description: `Average conviction dropped ${Math.abs(trend.change)} points over the past week`,
-      suggestion: 'Review recent content strategy - taste alignment may have shifted',
+      suggestion: 'Review recent content strategy - brand alignment may have shifted',
       action: null
     });
   }
@@ -91,21 +91,6 @@ export function generateCalendarRecommendations(scheduledPosts) {
       }
     });
   });
-
-  // 5. Archetype consistency recommendations
-  const archetypeAnalysis = analyzeArchetypeConsistency(postsWithConviction);
-
-  if (archetypeAnalysis.consistency < 50 && archetypeAnalysis.count > 5) {
-    recommendations.push({
-      type: 'consistency',
-      priority: 'medium',
-      icon: 'layers',
-      title: 'Mixed archetype distribution',
-      description: `${archetypeAnalysis.count} different archetypes in your schedule`,
-      suggestion: `Focus on ${archetypeAnalysis.dominant} archetype (your strongest) for better cohesion`,
-      action: null
-    });
-  }
 
   return recommendations;
 }
@@ -148,25 +133,7 @@ export function generateGridRecommendations(gridItems, currentScore) {
     });
   }
 
-  // 2. Check archetype flow
-  const archetypeFlow = analyzeGridArchetypeFlow(itemsWithConviction);
-
-  if (archetypeFlow.jarringTransitions > 0) {
-    recommendations.push({
-      type: 'grid-flow',
-      priority: 'medium',
-      icon: 'shuffle',
-      title: 'Improve visual flow',
-      description: `${archetypeFlow.jarringTransitions} jarring archetype transitions detected`,
-      suggestion: 'Rearrange to group similar archetypes together',
-      action: {
-        type: 'rearrange',
-        suggestions: archetypeFlow.suggestedOrder
-      }
-    });
-  }
-
-  // 3. Score potential analysis
+  // 2. Score potential analysis
   const potential = calculateGridPotential(itemsWithConviction, currentScore);
 
   if (potential.maxScore - currentScore > 10) {
@@ -184,24 +151,6 @@ export function generateGridRecommendations(gridItems, currentScore) {
     });
   }
 
-  // 4. Consistency boost
-  const dominant = findDominantArchetype(itemsWithConviction);
-  const minority = itemsWithConviction.filter(item =>
-    item.conviction.archetypeMatch?.designation !== dominant.designation
-  );
-
-  if (minority.length > 0 && minority.length < itemsWithConviction.length * 0.3) {
-    recommendations.push({
-      type: 'grid-consistency',
-      priority: 'low',
-      icon: 'target',
-      title: 'Boost archetype consistency',
-      description: `${minority.length} items don't match your dominant ${dominant.designation} archetype`,
-      suggestion: `Replace with ${dominant.designation} content for +${Math.round(minority.length * 5)} consistency points`,
-      action: null
-    });
-  }
-
   return recommendations;
 }
 
@@ -211,7 +160,6 @@ function analyzeConvictionBreakdown(conviction) {
   const breakdown = conviction.breakdown || {};
   const scores = {
     performance: breakdown.performance || 0,
-    taste: breakdown.taste || 0,
     brand: breakdown.brand || 0
   };
 
@@ -219,7 +167,6 @@ function analyzeConvictionBreakdown(conviction) {
 
   const suggestions = {
     performance: 'Add trending hashtags or optimize caption for engagement',
-    taste: 'Content may not align with your taste profile - review aesthetic',
     brand: 'Brand voice inconsistent - review tone and messaging'
   };
 
@@ -298,59 +245,12 @@ function findSchedulingGaps(posts, dayPerformance) {
     }
   });
 
-  return gaps.slice(0, 2); // Return top 2 opportunities
-}
-
-function analyzeArchetypeConsistency(posts) {
-  const archetypes = posts
-    .map(p => p.conviction.archetypeMatch?.designation)
-    .filter(Boolean);
-
-  const counts = {};
-  archetypes.forEach(arch => {
-    counts[arch] = (counts[arch] || 0) + 1;
-  });
-
-  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  const dominant = entries[0];
-
-  const consistency = dominant ? (dominant[1] / archetypes.length) * 100 : 0;
-
-  return {
-    consistency: Math.round(consistency),
-    dominant: dominant ? dominant[0] : null,
-    count: Object.keys(counts).length
-  };
-}
-
-function analyzeGridArchetypeFlow(items) {
-  let jarringTransitions = 0;
-  const archetypes = items.map(item => item.conviction.archetypeMatch?.designation);
-
-  for (let i = 0; i < archetypes.length - 1; i++) {
-    if (archetypes[i] && archetypes[i + 1] && archetypes[i] !== archetypes[i + 1]) {
-      jarringTransitions++;
-    }
-  }
-
-  // Simple suggestion: group by archetype
-  const grouped = [...items].sort((a, b) => {
-    const aArch = a.conviction.archetypeMatch?.designation || 'zzz';
-    const bArch = b.conviction.archetypeMatch?.designation || 'zzz';
-    return aArch.localeCompare(bArch);
-  });
-
-  return {
-    jarringTransitions,
-    suggestedOrder: grouped.map((item, index) => ({ from: items.indexOf(item), to: index }))
-  };
+  return gaps.slice(0, 2);
 }
 
 function calculateGridPotential(items, currentScore) {
-  // Simulate best possible arrangement
   const sortedByScore = [...items].sort((a, b) => b.conviction.score - a.conviction.score);
 
-  // Rough estimate: avg conviction * 0.5 + max consistency (100) * 0.3 + max flow (100) * 0.2
   const avgConviction = sortedByScore.reduce((sum, item) => sum + item.conviction.score, 0) / items.length;
   const maxPossibleScore = Math.round(avgConviction * 0.5 + 100 * 0.3 + 100 * 0.2);
 
@@ -358,17 +258,4 @@ function calculateGridPotential(items, currentScore) {
     maxScore: Math.min(100, maxPossibleScore),
     optimalArrangement: sortedByScore.map(item => item.id || item._id)
   };
-}
-
-function findDominantArchetype(items) {
-  const counts = {};
-  items.forEach(item => {
-    const designation = item.conviction.archetypeMatch?.designation;
-    if (designation) {
-      counts[designation] = (counts[designation] || 0) + 1;
-    }
-  });
-
-  const dominant = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-  return dominant ? { designation: dominant[0], count: dominant[1] } : null;
 }

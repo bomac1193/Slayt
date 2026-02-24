@@ -546,25 +546,13 @@ exports.getScheduledRollouts = async (req, res) => {
  */
 exports.generateAutoPlaybook = async (req, res) => {
   try {
-    const { profileId, campaignName = 'Rollout', targetPlatforms = ['instagram', 'tiktok'] } = req.body || {};
+    const { campaignName = 'Rollout', targetPlatforms = ['instagram', 'tiktok'] } = req.body || {};
 
-    // Build taste context to influence template pick
-    const tasteContextService = require('../services/tasteContextService');
-    const taste = await tasteContextService.buildTasteContext({
-      userId: req.user._id,
-      profileId,
-    });
-
-    const glyph = taste.glyph || 'VOID';
-    const recommendedTemplate = ['R-10', 'SCHISM', 'STRATA'].some(g => glyph.includes(g))
-      ? 'Velocity: Contrarian Launch'
-      : 'Core Blueprint: Editorial + Launch';
+    const recommendedTemplate = 'Core Blueprint: Editorial + Launch';
 
     const playbook = {
       name: `${campaignName} · ${recommendedTemplate}`,
       template: recommendedTemplate,
-      glyph,
-      confidence: taste.confidence || 0,
       platforms: targetPlatforms,
       steps: [
         { label: 'Define hook and promise', dueInDays: 1, channel: 'ideation' },
@@ -573,10 +561,6 @@ exports.generateAutoPlaybook = async (req, res) => {
         { label: 'Schedule IG/TikTok staggered', dueInDays: 4, channel: 'publish' },
         { label: 'Measure skip/hold/ROAS', dueInDays: 7, channel: 'analyze' },
       ],
-      guardrails: {
-        prefer: taste.lexicon?.prefer || [],
-        avoid: taste.lexicon?.avoid || [],
-      },
     };
 
     res.json({ success: true, playbook });
@@ -664,11 +648,7 @@ exports.getPacingRecommendations = async (req, res) => {
       return res.status(404).json({ error: 'Rollout not found' });
     }
 
-    const User = require('../models/User');
-    const user = await User.findById(req.user._id);
-    const archetype = user.tasteGenome?.archetype?.primary;
-
-    const pacing = rolloutIntelligence.getPacingRecommendations(archetype, rollout);
+    const pacing = rolloutIntelligence.getPacingRecommendations(null, rollout);
 
     res.json({
       success: true,
@@ -680,38 +660,9 @@ exports.getPacingRecommendations = async (req, res) => {
   }
 };
 
-// Get stan velocity prediction
+// Stan velocity prediction — removed (was archetype-dependent)
 exports.getStanVelocityPrediction = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (!validateObjectId(id)) {
-      return res.status(400).json({ error: 'Invalid rollout ID' });
-    }
-
-    const rollout = await Rollout.findOne({
-      _id: id,
-      userId: req.user._id
-    });
-
-    if (!rollout) {
-      return res.status(404).json({ error: 'Rollout not found' });
-    }
-
-    const User = require('../models/User');
-    const user = await User.findById(req.user._id);
-    const archetype = user.tasteGenome?.archetype?.primary;
-
-    const velocity = rolloutIntelligence.predictStanVelocity(archetype, rollout);
-
-    res.json({
-      success: true,
-      velocity
-    });
-  } catch (error) {
-    console.error('Get velocity prediction error:', error);
-    res.status(500).json({ error: 'Failed to predict stan velocity' });
-  }
+  res.status(410).json({ error: 'Stan velocity prediction has been removed' });
 };
 
 module.exports = exports;

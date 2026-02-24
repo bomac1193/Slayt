@@ -26,7 +26,7 @@ async function ensureConviction(content, user) {
     return content.conviction.score;
   }
 
-  const convictionResult = await convictionService.calculateConviction(content, user?.tasteGenome);
+  const convictionResult = await convictionService.calculateConviction(content, null);
   content.aiScores = { ...content.aiScores, ...convictionResult.aiScores };
   content.conviction = convictionResult.conviction;
   await content.save();

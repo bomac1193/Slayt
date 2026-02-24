@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../../stores/useAppStore';
-import { intelligenceApi, youtubeApi, genomeApi } from '../../lib/api';
+import { intelligenceApi, youtubeApi } from '../../lib/api';
 import {
   Image,
   Type,
@@ -194,28 +194,8 @@ function YouTubeVideoDetails({ video, onThumbnailUpload }) {
     lastSavedRef.current = { ...lastSavedRef.current, description };
   };
 
-  // Taste feedback signals (dislike/skip)
-  const sendTasteSignal = async (type, reason) => {
-    if (!videoId) return;
-    setSendingFeedback(true);
-    try {
-      await genomeApi.signal(
-        type,
-        `youtube_${reason}`,
-        {
-          platform: 'youtube',
-          videoId,
-          title: title || video.title || '',
-          description: description || video.description || '',
-        },
-        currentProfileId || null
-      );
-    } catch (err) {
-      console.error('Failed to send taste signal:', err);
-    } finally {
-      setSendingFeedback(false);
-    }
-  };
+  // Taste feedback signals — removed (genome stripped)
+  const sendTasteSignal = async () => {};
 
   const handleStatusChange = (newStatus) => {
     setStatus(newStatus);

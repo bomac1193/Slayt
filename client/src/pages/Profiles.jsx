@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../stores/useAppStore';
-import { profileApi, genomeApi } from '../lib/api';
-import QuizModal from '../components/genome/QuizModal';
+import { profileApi } from '../lib/api';
 import {
   User,
   Plus,
@@ -16,8 +15,6 @@ import {
   Loader2,
   AlertCircle,
   Upload,
-  Dna,
-  Scan,
 } from 'lucide-react';
 
 // TikTok icon component
@@ -51,9 +48,6 @@ function Profiles() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [socialStatus, setSocialStatus] = useState({});
-  const [genomeStatus, setGenomeStatus] = useState({});
-  const [quizProfileId, setQuizProfileId] = useState(null);
-
   const profiles = useAppStore((state) => state.profiles);
   const currentProfileId = useAppStore((state) => state.currentProfileId);
   const setProfiles = useAppStore((state) => state.setProfiles);
@@ -81,22 +75,6 @@ function Profiles() {
           }
         }
         setSocialStatus(statusMap);
-
-        // Load genome status for each profile
-        const genomeMap = {};
-        await Promise.all(profileList.map(async (profile) => {
-          try {
-            const result = await genomeApi.get(profile._id);
-            genomeMap[profile._id] = {
-              hasGenome: result.hasGenome,
-              archetype: result.genome?.archetype?.primary || null,
-              confidence: result.genome?.archetype?.primary?.confidence || 0,
-            };
-          } catch (err) {
-            console.error('Failed to load genome for profile:', profile._id, err);
-          }
-        }));
-        setGenomeStatus(genomeMap);
       } catch (err) {
         setError(err.message || 'Failed to load profiles');
       } finally {
@@ -473,48 +451,6 @@ function Profiles() {
                     </div>
                   </div>
 
-                  {/* Subtaste */}
-                  <div className="mt-6 pt-4 border-t border-dark-700">
-                    <h4 className="text-sm font-medium text-dark-300 mb-3 flex items-center gap-2">
-                      <Dna className="w-4 h-4 text-dark-400" />
-                      Subtaste
-                    </h4>
-                    {genomeStatus[profile._id]?.hasGenome ? (
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="px-2 py-0.5 bg-dark-700/50 border border-dark-600 rounded text-xs font-mono uppercase tracking-wider text-dark-200">
-                            {genomeStatus[profile._id].archetype?.designation}
-                          </span>
-                          <span className="text-sm font-semibold text-dark-100 uppercase tracking-wide">
-                            {genomeStatus[profile._id].archetype?.glyph}
-                          </span>
-                          <span className="text-xs text-dark-400 font-mono">
-                            {Math.round((genomeStatus[profile._id].confidence || 0) * 100)}%
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => setQuizProfileId(profile._id)}
-                          className="flex items-center gap-1.5 text-xs text-accent-purple hover:text-accent-purple/80 transition-colors"
-                          disabled={saving}
-                        >
-                          <Scan className="w-3.5 h-3.5" />
-                          Retake Quiz
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-dark-500">No taste genome assigned</span>
-                        <button
-                          onClick={() => setQuizProfileId(profile._id)}
-                          className="flex items-center gap-1.5 text-xs text-accent-purple hover:text-accent-purple/80 transition-colors"
-                          disabled={saving}
-                        >
-                          <Scan className="w-3.5 h-3.5" />
-                          Take Quiz
-                        </button>
-                      </div>
-                    )}
-                  </div>
                 </>
               )}
 
@@ -580,29 +516,6 @@ function Profiles() {
         />
       )}
 
-      {/* Quiz Modal */}
-      {quizProfileId && (
-        <QuizModal
-          profileId={quizProfileId}
-          onComplete={async () => {
-            // Refresh genome status for the profile that just completed the quiz
-            try {
-              const result = await genomeApi.get(quizProfileId);
-              setGenomeStatus((prev) => ({
-                ...prev,
-                [quizProfileId]: {
-                  hasGenome: result.hasGenome,
-                  archetype: result.genome?.archetype?.primary || null,
-                  confidence: result.genome?.archetype?.primary?.confidence || 0,
-                },
-              }));
-            } catch (err) {
-              console.error('Failed to refresh genome after quiz:', err);
-            }
-          }}
-          onClose={() => setQuizProfileId(null)}
-        />
-      )}
     </div>
   );
 }

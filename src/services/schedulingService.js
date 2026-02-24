@@ -438,14 +438,11 @@ class SchedulingService {
    */
   async checkConvictionGating(content, user, collection = null) {
     try {
-      // Get user's taste genome
-      const genome = user.tasteGenome;
-
       // If content doesn't have conviction score, calculate it
       if (!content.conviction || !content.conviction.score) {
         console.log(`📊 Calculating conviction for: ${content.title}`);
 
-        const convictionResult = await convictionService.calculateConviction(content, genome);
+        const convictionResult = await convictionService.calculateConviction(content, null);
 
         // Update content with conviction
         Object.assign(content.aiScores, convictionResult.aiScores);

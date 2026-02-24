@@ -52,6 +52,7 @@ async function validateConviction(contentId) {
         metrics: performance.metrics,
         postedAt: performance.postedAt
       },
+      wasUserOverride: content.conviction?.userOverride || false,
       validation: {},
       calculatedAt: new Date()
     };
@@ -74,7 +75,7 @@ async function validateConviction(contentId) {
     );
 
     // Generate feedback for genome update
-    validation.feedback = generateFeedback(validation);
+    validation.feedback = generateFeedback(validation, content);
 
     // Store validation in content
     content.convictionValidation = validation;
@@ -172,8 +173,10 @@ function calculateTasteConfidence(predictedTaste, actualEngagement) {
 
 /**
  * Generate feedback for genome update
+ * @param {Object} validation - Validation result
+ * @param {Object} content - Content document (for override detection)
  */
-function generateFeedback(validation) {
+function generateFeedback(validation, content) {
   const feedback = {
     shouldUpdateGenome: false,
     weight: 0,
@@ -220,6 +223,18 @@ function generateFeedback(validation) {
         delta: perfAnalysis.delta,
         action: perfAnalysis.assessment === 'overestimated' ? 'reduce_performance_weight' : 'increase_performance_weight'
       });
+    }
+
+    // Override-aware: if user overrode a low score and actual outperformed by 15+
+    if (content?.conviction?.userOverride && delta >= 15) {
+      feedback.signals.push({
+        type: 'successful_override',
+        message: 'User override led to strong performance',
+        action: 'boost_override_confidence',
+        archetype: validation.predicted.archetypeMatch?.designation,
+        magnitude: delta
+      });
+      feedback.weight = Math.min(1.0, feedback.weight * 2); // Double weight for successful overrides
     }
   }
 

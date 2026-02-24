@@ -7,8 +7,6 @@ const ConvictionBadge = ({
   score,
   tier,
   size = 'sm',
-  showGlyph = false,
-  archetypeMatch
 }) => {
   // Tier-based styling with maximum contrast - darker backgrounds
   const getTierStyles = () => {
@@ -77,11 +75,6 @@ const ConvictionBadge = ({
         {score !== null && score !== undefined ? Math.round(score) : '?'}
       </div>
 
-      {showGlyph && archetypeMatch?.glyph && (
-        <span className={`${styles.text} drop-shadow-lg ${size === 'xs' ? 'text-xs' : 'text-sm'}`}>
-          {archetypeMatch.glyph}
-        </span>
-      )}
     </div>
   );
 };

@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../stores/useAppStore';
 import { postingApi, collectionApi, contentApi, rolloutApi, gridApi, reelCollectionApi, convictionApi } from '../lib/api';
-import { ConvictionBadge, ConvictionTrend, ArchetypeFlow, CalendarConvictionPanel } from '../components/conviction';
+import { ConvictionBadge, ConvictionTrend, CalendarConvictionPanel } from '../components/conviction';
 
 // TikTok icon component
 function TikTokIcon({ className }) {
@@ -655,9 +655,8 @@ function Calendar() {
 
       {/* Conviction Insights Panel */}
       {showConvictionInsights && scheduledPosts.length > 0 && (
-        <div className="mt-4 grid grid-cols-3 gap-4">
+        <div className="mt-4 grid grid-cols-2 gap-4">
           <ConvictionTrend posts={scheduledPosts} metric="conviction" />
-          <ArchetypeFlow posts={scheduledPosts} viewMode="pie" />
           <CalendarConvictionPanel
             dateRange={{ start: days[0]?.date, end: days[days.length - 1]?.date }}
             posts={scheduledPosts}

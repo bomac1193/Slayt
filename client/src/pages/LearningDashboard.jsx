@@ -16,14 +16,13 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../stores/useAppStore';
 import { performanceApi } from '../lib/api';
-import { LearningProgressChart, ValidationHistoryTable, GenomeEvolutionTimeline } from '../components/conviction';
+import { LearningProgressChart, ValidationHistoryTable } from '../components/conviction';
 
 function LearningDashboard() {
   const { user, activeProfile } = useAppStore();
   const [loading, setLoading] = useState(true);
   const [learningProgress, setLearningProgress] = useState(null);
   const [validations, setValidations] = useState([]);
-  const [genomeHistory, setGenomeHistory] = useState([]);
   const [timeRange, setTimeRange] = useState('30d'); // '7d', '30d', '90d', 'all'
   const [refreshing, setRefreshing] = useState(false);
 
@@ -48,12 +47,6 @@ function LearningDashboard() {
         limit: 50
       });
       setValidations(validationsData.validations || []);
-
-      // Fetch genome evolution timeline
-      const genomeData = await performanceApi.getGenomeHistory(activeProfile, {
-        timeRange
-      });
-      setGenomeHistory(genomeData.history || []);
     } catch (error) {
       console.error('Failed to fetch learning dashboard data:', error);
     } finally {
@@ -72,7 +65,6 @@ function LearningDashboard() {
     const exportData = {
       progress: learningProgress,
       validations,
-      genomeHistory,
       exportedAt: new Date().toISOString()
     };
 
@@ -125,8 +117,6 @@ function LearningDashboard() {
     accuracyTrend = 0,
     improvementRate = 0,
     recentAccuracy = 0,
-    bestArchetype = null,
-    worstArchetype = null,
     totalAdjustments = 0
   } = learningProgress;
 
@@ -141,7 +131,7 @@ function LearningDashboard() {
               Learning Dashboard
             </h1>
             <p className="text-gray-400">
-              Track how your taste genome is learning and improving over time
+              Track how conviction predictions improve over time
             </p>
           </div>
 
@@ -253,51 +243,6 @@ function LearningDashboard() {
           </div>
         )}
 
-        {/* Best/Worst Archetype Performance */}
-        {(bestArchetype || worstArchetype) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {bestArchetype && (
-              <div className="bg-dark-800 rounded-lg p-6 border border-green-500/30">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="text-3xl">{getArchetypeGlyph(bestArchetype.archetype)}</div>
-                  <div>
-                    <h3 className="font-semibold text-green-300">Best Performing Archetype</h3>
-                    <p className="text-sm text-gray-400">{bestArchetype.archetype}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-green-400">
-                  <ArrowUp className="w-5 h-5" />
-                  <span className="text-2xl font-bold">{Math.round(bestArchetype.accuracy)}%</span>
-                  <span className="text-sm text-gray-400">accuracy</span>
-                </div>
-                <p className="text-gray-400 text-sm mt-2">
-                  {bestArchetype.count} validations • Most reliable predictions
-                </p>
-              </div>
-            )}
-
-            {worstArchetype && (
-              <div className="bg-dark-800 rounded-lg p-6 border border-orange-500/30">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="text-3xl">{getArchetypeGlyph(worstArchetype.archetype)}</div>
-                  <div>
-                    <h3 className="font-semibold text-orange-300">Needs Improvement</h3>
-                    <p className="text-sm text-gray-400">{worstArchetype.archetype}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-orange-400">
-                  <ArrowDown className="w-5 h-5" />
-                  <span className="text-2xl font-bold">{Math.round(worstArchetype.accuracy)}%</span>
-                  <span className="text-sm text-gray-400">accuracy</span>
-                </div>
-                <p className="text-gray-400 text-sm mt-2">
-                  {worstArchetype.count} validations • Needs more training data
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Learning Progress Chart */}
         <div className="mb-8">
           <div className="bg-dark-800 rounded-lg p-6 border border-dark-700">
@@ -313,26 +258,6 @@ function LearningDashboard() {
             </div>
             <LearningProgressChart
               validations={validations}
-              timeRange={timeRange}
-            />
-          </div>
-        </div>
-
-        {/* Genome Evolution Timeline */}
-        <div className="mb-8">
-          <div className="bg-dark-800 rounded-lg p-6 border border-dark-700">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <Brain className="w-5 h-5 text-accent-purple" />
-                Genome Evolution Timeline
-              </h2>
-              <div className="flex items-center gap-2 text-sm text-gray-400">
-                <Info className="w-4 h-4" />
-                <span>How your taste genome has adapted over time</span>
-              </div>
-            </div>
-            <GenomeEvolutionTimeline
-              history={genomeHistory}
               timeRange={timeRange}
             />
           </div>
@@ -383,23 +308,6 @@ function StatCard({ icon: Icon, iconColor, label, value, trend, subtitle }) {
       {subtitle && <div className="text-sm text-gray-500">{subtitle}</div>}
     </div>
   );
-}
-
-// Helper function for archetype glyphs
-function getArchetypeGlyph(archetype) {
-  const glyphs = {
-    Architect: 'AR',
-    Maven: 'MV',
-    Maverick: 'MK',
-    Artisan: 'AT',
-    Sage: 'SG',
-    Alchemist: 'AL',
-    Titan: 'TN',
-    Muse: 'MS',
-    Oracle: 'OR',
-    Phoenix: 'PX'
-  };
-  return glyphs[archetype] || 'NA';
 }
 
 export default LearningDashboard;
