@@ -25,7 +25,18 @@ exports.createContent = async (req, res) => {
       const isImage = req.file.mimetype.startsWith('image/');
       const isVideo = req.file.mimetype.startsWith('video/');
 
-      const uploadResult = await cloudinaryService.uploadBuffer(req.file.buffer, {
+      // Compress large images before uploading (Cloudinary 10MB limit)
+      let uploadBuffer = req.file.buffer;
+      if (isImage && uploadBuffer.length > 9 * 1024 * 1024) {
+        console.log(`[createContent] Compressing image: ${(uploadBuffer.length / 1024 / 1024).toFixed(1)}MB`);
+        uploadBuffer = await sharp(uploadBuffer)
+          .resize({ width: 4096, height: 4096, fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 85, mozjpeg: true })
+          .toBuffer();
+        console.log(`[createContent] Compressed to: ${(uploadBuffer.length / 1024 / 1024).toFixed(1)}MB`);
+      }
+
+      const uploadResult = await cloudinaryService.uploadBuffer(uploadBuffer, {
         folder: isVideo ? 'slayt/videos' : 'slayt/images',
         resourceType: isVideo ? 'video' : 'image',
       });
@@ -110,7 +121,10 @@ exports.createContent = async (req, res) => {
     });
   } catch (error) {
     console.error('Create content error:', error);
-    res.status(500).json({ error: 'Failed to create content' });
+    const msg = error.http_code === 400 && error.message?.includes('File size')
+      ? `Image too large (${(req.file.size / 1024 / 1024).toFixed(1)}MB). Please use a smaller file.`
+      : 'Failed to create content';
+    res.status(error.http_code || 500).json({ error: msg });
   }
 };
 

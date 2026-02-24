@@ -612,6 +612,7 @@ function GridPlanner() {
     }
 
     let uploaded = 0;
+    let failed = 0;
     const startPosition = gridPosts.length;
 
     for (let i = 0; i < imageFiles.length; i++) {
@@ -661,12 +662,18 @@ function GridPlanner() {
         }
       } catch (err) {
         console.error('Upload failed for', file.name, err);
+        failed++;
         // If rate limited, wait longer and retry
         if (err.response?.status === 429) {
+          failed--; // Don't count retries as failures
           await delay(2000);
           i--; // Retry this file
         }
       }
+    }
+
+    if (failed > 0) {
+      alert(`${failed} file${failed > 1 ? 's' : ''} failed to upload. Check console for details.`);
     }
 
     // Final sync with server to get fully populated data (editSettings, etc.)
