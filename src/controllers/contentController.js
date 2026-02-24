@@ -30,6 +30,7 @@ exports.createContent = async (req, res) => {
       if (isImage && uploadBuffer.length > 9 * 1024 * 1024) {
         console.log(`[createContent] Compressing image: ${(uploadBuffer.length / 1024 / 1024).toFixed(1)}MB`);
         uploadBuffer = await sharp(uploadBuffer)
+          .rotate() // Auto-orient from EXIF before resizing
           .resize({ width: 4096, height: 4096, fit: 'inside', withoutEnlargement: true })
           .jpeg({ quality: 85, mozjpeg: true })
           .toBuffer();
