@@ -15,6 +15,7 @@ import UpscaleControls from './post-details/UpscaleControls';
 import PostMetadataEditor from './post-details/PostMetadataEditor';
 import QuickEditPanel from './post-details/QuickEditPanel';
 import CropEditor from './post-details/CropEditor';
+import ConvictionBreakdown from './post-details/ConvictionBreakdown';
 
 function PostDetails({ post }) {
   const navigate = useNavigate();
@@ -158,6 +159,7 @@ function PostDetails({ post }) {
               onNavigateEditor={navigateToEditor}
               getTransformedMediaStyle={qe.getTransformedMediaStyle}
             />
+            <ConvictionBreakdown postId={postId} profileId={currentProfileId} />
             <PostMetadataEditor
               postId={postId}
               caption={persistence.caption}

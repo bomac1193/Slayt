@@ -884,6 +884,13 @@ export const convictionApi = {
       contentId, threshold, strictMode
     });
     return data;
+  },
+
+  async getReport(contentId, profileId) {
+    const { data } = await api.get(`/api/conviction/report/${contentId}`, {
+      params: { profileId }
+    });
+    return data;
   }
 };
 
