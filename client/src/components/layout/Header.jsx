@@ -7,9 +7,6 @@ import {
   Plus,
 } from 'lucide-react';
 
-// Remap zoom: slider value to actual scale (quadratic for zoom > 1)
-const getActualZoom = (val) => val <= 1 ? val : val * val;
-
 const pageTitles = {
   '/grid': 'Grid Planner',
   '/youtube': 'YouTube Planner',
@@ -73,16 +70,7 @@ function Header() {
               <img
                 src={user.avatar}
                 alt={user.name || 'Profile'}
-                className="absolute pointer-events-none"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain',
-                  left: '50%',
-                  top: '50%',
-                  transformOrigin: 'center center',
-                  transform: `translate(-50%, -50%) translate(${(user.avatarPosition?.x || 0) * 0.12}px, ${(user.avatarPosition?.y || 0) * 0.12}px) scale(${getActualZoom(user.avatarZoom || 1)})`,
-                }}
+                className="w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">

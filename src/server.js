@@ -34,7 +34,7 @@ const convictionRoutes = require('./routes/conviction');
 const performanceRoutes = require('./routes/performance');
 const templateRoutes = require('./routes/template');
 const apiKeyManagementRoutes = require('./routes/apiKeyManagement');
-const bovedaRoutes = require('./routes/boveda');
+const bovedaRoutes = require('./routes/boveda');  // Boveda API proxy
 const twinOsRoutes = require('./routes/twinOs');
 const cruciblaRoutes = require('./routes/crucibla');
 const schedulingService = require('./services/schedulingService');
@@ -123,7 +123,7 @@ app.use('/api/conviction', convictionRoutes);
 app.use('/api/performance', performanceRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/admin/api-keys', apiKeyManagementRoutes); // API key management
-app.use('/api', bovedaRoutes); // Boveda integration
+app.use('/api/boveda', bovedaRoutes); // Boveda API proxy
 app.use('/api/twin-os', twinOsRoutes); // Twin OS (Starforge + Clarosa)
 app.use('/api/crucibla', cruciblaRoutes); // Crucibla ecosystem proxy
 

@@ -114,7 +114,7 @@ function PostAIGenerator({ post, onClose, onApplyCaption }) {
 
       if (selectedCharacter) {
         // Generate using character's voice
-        result = await characterApi.generate(selectedCharacter._id, {
+        result = await characterApi.generate(selectedCharacter, {
           topic,
           platform,
           count: 5,
@@ -322,7 +322,7 @@ function PostAIGenerator({ post, onClose, onApplyCaption }) {
 
                     {characters.length === 0 && (
                       <p className="px-3 py-2 text-sm text-dark-400">
-                        No characters yet. Create one in Characters page.
+                        No characters found. Add them in Boveda.
                       </p>
                     )}
                   </div>

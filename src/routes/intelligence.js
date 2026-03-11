@@ -539,25 +539,6 @@ router.post('/generate-youtube', auth, async (req, res) => {
       tasteProfile = user?.tasteProfile;
     }
 
-    // Add character context if provided
-    if (characterId) {
-      const Character = require('../models/Character');
-      const character = await Character.findOne({ _id: characterId, userId: req.userId });
-      if (character) {
-        tasteProfile = {
-          ...tasteProfile,
-          characterContext: `
-Name: ${character.name}
-Voice: ${character.voice}
-Tone: ${character.tone}
-Caption Style: ${character.captionStyle}
-Persona: ${character.personaTags?.join(', ') || 'authentic'}
-${character.samplePosts?.length > 0 ? `Sample style: "${character.samplePosts[0]}"` : ''}
-          `.trim()
-        };
-      }
-    }
-
     let result;
 
     if (avant && avantService.hasAvantModels()) {

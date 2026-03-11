@@ -1,54 +1,34 @@
 import { useState, useEffect } from 'react';
-import {
-  TrendingUp,
-  Brain,
-  Target,
-  Zap,
-  Calendar,
-  CheckCircle,
-  AlertCircle,
-  ArrowUp,
-  ArrowDown,
-  Loader2,
-  RefreshCw,
-  Download,
-  Info
-} from 'lucide-react';
+import { ArrowUp, ArrowDown, Loader2, RefreshCw, Download } from 'lucide-react';
 import { useAppStore } from '../stores/useAppStore';
 import { performanceApi } from '../lib/api';
 import { LearningProgressChart, ValidationHistoryTable } from '../components/conviction';
 
 function LearningDashboard() {
-  const { user, activeProfile } = useAppStore();
+  const currentProfileId = useAppStore((state) => state.currentProfileId);
   const [loading, setLoading] = useState(true);
   const [learningProgress, setLearningProgress] = useState(null);
   const [validations, setValidations] = useState([]);
-  const [timeRange, setTimeRange] = useState('30d'); // '7d', '30d', '90d', 'all'
+  const [timeRange, setTimeRange] = useState('30d');
   const [refreshing, setRefreshing] = useState(false);
 
-  // Fetch all dashboard data
   useEffect(() => {
     fetchDashboardData();
-  }, [activeProfile, timeRange]);
+  }, [currentProfileId, timeRange]);
 
   const fetchDashboardData = async () => {
-    if (!activeProfile) return;
-
+    if (!currentProfileId) return;
     try {
       setLoading(true);
-
-      // Fetch learning progress stats
-      const progressData = await performanceApi.getLearningProgress(activeProfile);
+      const progressData = await performanceApi.getLearningProgress(currentProfileId);
       setLearningProgress(progressData);
-
-      // Fetch validation history
-      const validationsData = await performanceApi.getValidationHistory(activeProfile, {
+      const validationsData = await performanceApi.getValidationHistory(currentProfileId, {
         timeRange,
         limit: 50
       });
       setValidations(validationsData.validations || []);
     } catch (error) {
-      console.error('Failed to fetch learning dashboard data:', error);
+      console.error('Failed to fetch learning data:', error);
     } finally {
       setLoading(false);
     }
@@ -60,19 +40,12 @@ function LearningDashboard() {
     setRefreshing(false);
   };
 
-  const handleExportData = () => {
-    // Export learning data as JSON
-    const exportData = {
-      progress: learningProgress,
-      validations,
-      exportedAt: new Date().toISOString()
-    };
-
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify({ progress: learningProgress, validations, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `learning-data-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `learning-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -80,10 +53,7 @@ function LearningDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-dark-900 text-white flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-dark-100 mx-auto mb-4" />
-          <p className="text-dark-400">Loading learning dashboard...</p>
-        </div>
+        <Loader2 className="w-5 h-5 animate-spin text-dark-400" />
       </div>
     );
   }
@@ -91,21 +61,8 @@ function LearningDashboard() {
   if (!learningProgress) {
     return (
       <div className="min-h-screen bg-dark-900 text-white p-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center py-20">
-            <Brain className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-dark-400 mb-2">No Learning Data Yet</h2>
-            <p className="text-dark-500 mb-6">
-              Start scheduling posts to build your conviction loop learning history
-            </p>
-            <a
-              href="/calendar"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-dark-100 text-dark-900 rounded-lg hover:bg-white transition-colors"
-            >
-              <Calendar className="w-5 h-5" />
-              Go to Calendar
-            </a>
-          </div>
+        <div className="max-w-4xl mx-auto pt-20 text-center">
+          <p className="text-dark-500 text-sm">No prediction data yet. Post and track performance to begin.</p>
         </div>
       </div>
     );
@@ -124,188 +81,85 @@ function LearningDashboard() {
     <div className="min-h-screen bg-dark-900 text-white p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-3 mb-2">
-              <Brain className="w-8 h-8 text-dark-100" />
-              Learning Dashboard
-            </h1>
-            <p className="text-dark-400">
-              Track how conviction predictions improve over time
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Time Range Selector */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-sm font-medium text-dark-400 uppercase tracking-widest">Prediction Learning</h1>
+          <div className="flex items-center gap-2">
             <select
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value)}
-              className="bg-dark-700 border border-dark-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-dark-100"
+              className="bg-dark-800 border border-dark-700 rounded px-3 py-1.5 text-sm text-dark-200 focus:outline-none focus:border-dark-500"
             >
-              <option value="7d">Last 7 Days</option>
-              <option value="30d">Last 30 Days</option>
-              <option value="90d">Last 90 Days</option>
-              <option value="all">All Time</option>
+              <option value="7d">7d</option>
+              <option value="30d">30d</option>
+              <option value="90d">90d</option>
+              <option value="all">All</option>
             </select>
-
-            {/* Refresh Button */}
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="px-4 py-2 bg-dark-700 text-gray-300 rounded-lg hover:bg-dark-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="p-1.5 text-dark-500 hover:text-dark-200 transition-colors disabled:opacity-50"
+              title="Refresh"
             >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
-
-            {/* Export Button */}
             <button
-              onClick={handleExportData}
-              className="px-4 py-2 bg-dark-700 text-gray-300 rounded-lg hover:bg-dark-600 transition-colors flex items-center gap-2"
+              onClick={handleExport}
+              className="p-1.5 text-dark-500 hover:text-dark-200 transition-colors"
+              title="Export JSON"
             >
-              <Download className="w-4 h-4" />
-              Export
+              <Download className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Total Validations */}
-          <StatCard
-            icon={Target}
-            iconColor="text-blue-400"
-            label="Total Validations"
-            value={totalValidations}
-            subtitle={`${validations.length} in ${timeRange}`}
-          />
-
-          {/* Average Accuracy */}
-          <StatCard
-            icon={Zap}
-            iconColor="text-dark-300"
-            label="Avg Accuracy"
-            value={`${Math.round(avgAccuracy)}%`}
-            trend={accuracyTrend}
-            subtitle={accuracyTrend > 0 ? 'Improving' : accuracyTrend < 0 ? 'Declining' : 'Stable'}
-          />
-
-          {/* Recent Accuracy */}
-          <StatCard
-            icon={TrendingUp}
-            iconColor="text-dark-100"
-            label="Recent Accuracy"
-            value={`${Math.round(recentAccuracy)}%`}
-            subtitle="Last 10 predictions"
-          />
-
-          {/* Genome Adjustments */}
-          <StatCard
-            icon={Brain}
-            iconColor="text-purple-400"
-            label="Genome Adjustments"
-            value={totalAdjustments}
-            subtitle={`${improvementRate > 0 ? '+' : ''}${improvementRate.toFixed(1)}% improvement`}
-          />
+        {/* Stats Row */}
+        <div className="grid grid-cols-4 gap-px bg-dark-700 rounded-lg overflow-hidden mb-6">
+          <Stat label="Validations" value={totalValidations} sub={`${validations.length} in period`} />
+          <Stat label="Avg Accuracy" value={`${Math.round(avgAccuracy)}%`} trend={accuracyTrend} />
+          <Stat label="Recent (10)" value={`${Math.round(recentAccuracy)}%`} />
+          <Stat label="Adjustments" value={totalAdjustments} sub={`${improvementRate > 0 ? '+' : ''}${improvementRate.toFixed(1)}%`} />
         </div>
 
-        {/* Learning Insight Banner */}
-        {accuracyTrend > 5 && (
-          <div className="bg-dark-700/50 border border-dark-600 rounded-lg p-4 mb-8">
-            <div className="flex items-center gap-3">
-              <CheckCircle className="w-6 h-6 text-dark-100 flex-shrink-0" />
-              <div>
-                <h3 className="font-semibold text-dark-100 mb-1">
-                  Your genome is learning.
-                </h3>
-                <p className="text-green-200 text-sm">
-                  Prediction accuracy has improved by {accuracyTrend.toFixed(1)}% over the selected period.
-                  Keep posting to continue training your taste intelligence.
-                </p>
-              </div>
-            </div>
+        {/* Trend note */}
+        {Math.abs(accuracyTrend) > 5 && (
+          <div className="text-xs text-dark-500 mb-6 px-1">
+            Accuracy {accuracyTrend > 0 ? 'up' : 'down'} {Math.abs(accuracyTrend).toFixed(1)}% this period.
           </div>
         )}
 
-        {accuracyTrend < -5 && (
-          <div className="bg-dark-700/50 border border-dark-600 rounded-lg p-4 mb-8">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="w-6 h-6 text-dark-300 flex-shrink-0" />
-              <div>
-                <h3 className="font-semibold text-dark-300 mb-1">
-                  Prediction accuracy is declining
-                </h3>
-                <p className="text-orange-200 text-sm">
-                  Your content style may be shifting. Review recent posts to ensure they align with your taste genome.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Learning Progress Chart */}
-        <div className="mb-8">
-          <div className="bg-dark-800 rounded-lg p-6 border border-dark-700">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-dark-100" />
-                Prediction Accuracy Over Time
-              </h2>
-              <div className="flex items-center gap-2 text-sm text-dark-400">
-                <Info className="w-4 h-4" />
-                <span>How well Atelio predicts your content performance</span>
-              </div>
-            </div>
-            <LearningProgressChart
-              validations={validations}
-              timeRange={timeRange}
-            />
-          </div>
+        {/* Chart */}
+        <div className="bg-dark-800 rounded-lg p-5 border border-dark-700 mb-6">
+          <div className="text-xs text-dark-500 uppercase tracking-wider mb-4">Accuracy over time</div>
+          <LearningProgressChart validations={validations} timeRange={timeRange} />
         </div>
 
-        {/* Validation History Table */}
-        <div>
-          <div className="bg-dark-800 rounded-lg p-6 border border-dark-700">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <Target className="w-5 h-5 text-dark-100" />
-                Validation History
-              </h2>
-              <div className="text-sm text-dark-400">
-                {validations.length} validations in {timeRange}
-              </div>
-            </div>
-            <ValidationHistoryTable
-              validations={validations}
-              onRefresh={handleRefresh}
-            />
+        {/* History */}
+        <div className="bg-dark-800 rounded-lg p-5 border border-dark-700">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs text-dark-500 uppercase tracking-wider">Validation history</span>
+            <span className="text-xs text-dark-600">{validations.length}</span>
           </div>
+          <ValidationHistoryTable validations={validations} onRefresh={handleRefresh} />
         </div>
       </div>
     </div>
   );
 }
 
-// Stat Card Component
-function StatCard({ icon: Icon, iconColor, label, value, trend, subtitle }) {
+function Stat({ label, value, trend, sub }) {
   return (
-    <div className="bg-dark-800 rounded-lg p-6 border border-dark-700">
-      <div className="flex items-center justify-between mb-4">
-        <Icon className={`w-6 h-6 ${iconColor}`} />
+    <div className="bg-dark-800 p-4">
+      <div className="text-xs text-dark-500 mb-1">{label}</div>
+      <div className="flex items-baseline gap-2">
+        <span className="text-xl font-semibold text-white">{value}</span>
         {trend !== undefined && trend !== 0 && (
-          <div className={`flex items-center gap-1 text-sm ${trend > 0 ? 'text-dark-100' : 'text-dark-300'}`}>
-            {trend > 0 ? (
-              <ArrowUp className="w-4 h-4" />
-            ) : (
-              <ArrowDown className="w-4 h-4" />
-            )}
-            <span>{Math.abs(trend).toFixed(1)}%</span>
-          </div>
+          <span className={`flex items-center gap-0.5 text-xs ${trend > 0 ? 'text-dark-100' : 'text-dark-400'}`}>
+            {trend > 0 ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+            {Math.abs(trend).toFixed(1)}%
+          </span>
         )}
+        {sub && !trend && <span className="text-xs text-dark-600">{sub}</span>}
       </div>
-      <div className="text-sm text-dark-400 mb-2">{label}</div>
-      <div className="text-3xl font-bold mb-1">{value}</div>
-      {subtitle && <div className="text-sm text-dark-500">{subtitle}</div>}
     </div>
   );
 }

@@ -84,9 +84,6 @@ export const useAppStore = create(
         threads: { connected: false, account: null },
       },
 
-      // Reliquary pack unlocks
-      reliquaryUnlocks: {}, // { [packId]: { unlockedAt: ISO string } }
-
       // Conviction cache (prevent redundant API calls)
       convictionCache: {}, // { [contentId]: { conviction, cachedAt } }
 
@@ -716,14 +713,6 @@ export const useAppStore = create(
         }
       })),
 
-      // Reliquary actions
-      unlockPack: (packId) => set((state) => ({
-        reliquaryUnlocks: {
-          ...state.reliquaryUnlocks,
-          [packId]: { unlockedAt: new Date().toISOString() },
-        },
-      })),
-
       // Conviction actions
       setCachedConviction: (contentId, conviction) =>
         set(state => ({
@@ -868,8 +857,6 @@ export const useAppStore = create(
         currentYoutubeCollectionId: state.currentYoutubeCollectionId,
         activeFolioId: state.activeFolioId,
         activeProjectId: state.activeProjectId,
-        // Reliquary unlocks
-        reliquaryUnlocks: state.reliquaryUnlocks,
         // Reel collections - just the current selection
         currentReelCollectionId: state.currentReelCollectionId,
         // Rollouts - persist selection (data should come from backend)
@@ -893,8 +880,6 @@ export const useAppStore = create(
           currentRolloutId: persistedState?.currentRolloutId || currentState.currentRolloutId,
           // Preserve profile selection (profiles list comes from backend)
           currentProfileId: persistedState?.currentProfileId || currentState.currentProfileId,
-          // Reliquary unlocks
-          reliquaryUnlocks: persistedState?.reliquaryUnlocks || currentState.reliquaryUnlocks,
         };
       },
     }

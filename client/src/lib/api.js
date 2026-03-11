@@ -696,36 +696,16 @@ export const reelCollectionApi = {
   },
 };
 
-// Character API - Boveda character management and AI generation
+// Character API - Boveda characters via proxy + generation
 export const characterApi = {
   async getAll() {
-    const { data } = await api.get('/api/characters');
+    const { data } = await api.get('/api/boveda/characters');
     return data.characters || [];
   },
 
-  async getById(id) {
-    const { data } = await api.get(`/api/characters/${id}`);
-    return data.character;
-  },
-
-  async create(characterData) {
-    const { data } = await api.post('/api/characters', characterData);
-    return data.character;
-  },
-
-  async update(id, updates) {
-    const { data } = await api.put(`/api/characters/${id}`, updates);
-    return data.character;
-  },
-
-  async delete(id) {
-    const { data } = await api.delete(`/api/characters/${id}`);
-    return data;
-  },
-
-  // Generate content in a character's voice
-  async generate(characterId, options = {}) {
-    const { data } = await api.post(`/api/characters/${characterId}/generate`, options);
+  // Generate content in a character's voice (character data passed inline)
+  async generate(character, options = {}) {
+    const { data } = await api.post('/api/characters/generate', { character, ...options });
     return data;
   },
 };

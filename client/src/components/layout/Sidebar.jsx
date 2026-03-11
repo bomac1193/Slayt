@@ -13,11 +13,9 @@ import {
   Youtube,
   Layers,
   Users,
-  UserCircle2,
   CalendarDays as CalendarIcon,
   TrendingUp,
   Ellipsis,
-  LayoutTemplate,
 } from 'lucide-react';
 
 const navSections = [
@@ -48,10 +46,8 @@ const navSections = [
         icon: Ellipsis,
         label: 'More',
         children: [
-          { path: '/templates', icon: LayoutTemplate, label: 'Templates' },
           { path: '/learning', icon: TrendingUp, label: 'Learning' },
           { path: '/studio', icon: FolderOpen, label: 'Folio' },
-          { path: '/characters', icon: UserCircle2, label: 'Boveda' },
           { path: '/profiles', icon: Users, label: 'Profiles' },
           { path: '/connections', icon: Link2, label: 'Connections' },
         ],
