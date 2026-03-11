@@ -4,7 +4,6 @@ import {
   Loader2,
   Crop,
   ZoomIn,
-  Edit3,
   SlidersHorizontal,
 } from 'lucide-react';
 import { aiApi } from '../../../lib/api';
@@ -19,7 +18,6 @@ const UpscaleControls = React.memo(function UpscaleControls({
   isQuickEditing,
   cropEditor,
   onStartQuickEdit,
-  onNavigateEditor,
   getTransformedMediaStyle,
 }) {
   const updatePost = useAppStore((state) => state.updatePost);
@@ -139,13 +137,6 @@ const UpscaleControls = React.memo(function UpscaleControls({
                 >
                   <Crop className="w-4 h-4 text-white" />
                   <span className="text-white font-medium">Quick Edit</span>
-                </button>
-                <button
-                  onClick={onNavigateEditor}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors"
-                >
-                  <Edit3 className="w-4 h-4 text-white" />
-                  <span className="text-white font-medium">Full Editor</span>
                 </button>
               </div>
             </div>

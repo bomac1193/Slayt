@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../stores/useAppStore';
 import { postingApi } from '../../lib/api';
 import { Image, Send, Calendar, Loader2 } from 'lucide-react';
@@ -18,7 +17,6 @@ import CropEditor from './post-details/CropEditor';
 import ConvictionBreakdown from './post-details/ConvictionBreakdown';
 
 function PostDetails({ post }) {
-  const navigate = useNavigate();
   const user = useAppStore((s) => s.user);
   const profiles = useAppStore((s) => s.profiles);
   const currentProfileId = useAppStore((s) => s.currentProfileId);
@@ -74,8 +72,6 @@ function PostDetails({ post }) {
       aspectRatio={qe.cropperAspect}
     />
   ) : null;
-
-  const navigateToEditor = () => navigate('/editor', { state: { postId: post.id } });
 
   const platformLabel = qe.platform === 'twitter'
     ? 'X/Twitter'
@@ -155,7 +151,6 @@ function PostDetails({ post }) {
               isQuickEditing={qe.editing}
               cropEditor={null}
               onStartQuickEdit={qe.open}
-              onNavigateEditor={navigateToEditor}
               getTransformedMediaStyle={qe.getTransformedMediaStyle}
             />
             <ConvictionBreakdown postId={postId} profileId={currentProfileId} />
@@ -167,7 +162,6 @@ function PostDetails({ post }) {
               onCaptionBlur={persistence.handleCaptionBlur}
               onHashtagsChange={persistence.setHashtags}
               onHashtagsBlur={persistence.handleHashtagsBlur}
-              onNavigateEditor={navigateToEditor}
               onOpenScheduleModal={() => setShowScheduleModal(true)}
               onOpenBestTimeModal={() => setShowBestTimeModal(true)}
               persistPost={persistence.persistPost}

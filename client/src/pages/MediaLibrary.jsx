@@ -245,9 +245,8 @@ function MediaLibrary() {
   };
 
   const handleEdit = (item) => {
-    const imageUrl = item.mediaUrl || null;
     selectPost(item._id);
-    navigate('/editor', { state: { contentId: item._id, imageUrl } });
+    navigate('/grid');
   };
 
   const handleFileUpload = useCallback(

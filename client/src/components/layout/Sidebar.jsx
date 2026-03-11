@@ -17,9 +17,7 @@ import {
   CalendarDays as CalendarIcon,
   TrendingUp,
   Ellipsis,
-  PenLine,
   LayoutTemplate,
-  SlidersHorizontal,
 } from 'lucide-react';
 
 const navSections = [
@@ -37,7 +35,6 @@ const navSections = [
     id: 'create',
     label: 'Create',
     items: [
-      { path: '/editor', icon: PenLine, label: 'Editor' },
       { path: '/library', icon: FolderOpen, label: 'Library' },
     ],
   },
@@ -51,7 +48,6 @@ const navSections = [
         icon: Ellipsis,
         label: 'More',
         children: [
-          { path: '/editor/pro', icon: SlidersHorizontal, label: 'Editor Pro' },
           { path: '/templates', icon: LayoutTemplate, label: 'Templates' },
           { path: '/learning', icon: TrendingUp, label: 'Learning' },
           { path: '/studio', icon: FolderOpen, label: 'Folio' },

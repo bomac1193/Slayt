@@ -6,7 +6,6 @@ import {
   Calendar,
   Clock,
   Loader2,
-  Wand2,
   Dice5,
 } from 'lucide-react';
 import { useAppStore } from '../../../stores/useAppStore';
@@ -20,7 +19,6 @@ const PostMetadataEditor = React.memo(function PostMetadataEditor({
   onCaptionBlur,
   onHashtagsChange,
   onHashtagsBlur,
-  onNavigateEditor,
   onOpenScheduleModal,
   onOpenBestTimeModal,
   persistPost,
@@ -250,14 +248,6 @@ const PostMetadataEditor = React.memo(function PostMetadataEditor({
 
       {/* Quick Actions */}
       <div className="pt-2 space-y-2">
-        <button
-          onClick={onNavigateEditor}
-          className="w-full btn-secondary justify-start"
-        >
-          <Wand2 className="w-4 h-4" />
-          Open in Editor
-        </button>
-
         <button onClick={onOpenScheduleModal} className="w-full btn-secondary justify-start">
           <Calendar className="w-4 h-4" />
           Schedule Post
