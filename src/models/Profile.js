@@ -93,6 +93,25 @@ const profileSchema = new mongoose.Schema({
     stories: [{ type: String }]
   }],
 
+  // Highlight sets - save/switch between highlight configurations
+  highlightSets: [{
+    setId: { type: String, required: true },
+    name: { type: String, required: true, default: 'Default' },
+    createdAt: { type: Date, default: Date.now },
+    highlights: [{
+      highlightId: { type: String, required: true },
+      name: { type: String, default: 'New' },
+      cover: { type: String, default: null },
+      coverPosition: {
+        x: { type: Number, default: 0 },
+        y: { type: Number, default: 0 }
+      },
+      coverZoom: { type: Number, default: 1 },
+      stories: [{ type: String }]
+    }]
+  }],
+  activeHighlightSetId: { type: String, default: null },
+
   // Profile status flags
   isDefault: {
     type: Boolean,

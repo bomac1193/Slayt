@@ -136,7 +136,8 @@ exports.updateProfile = async (req, res) => {
 
     const allowedUpdates = [
       'name', 'username', 'avatar', 'avatarPosition', 'avatarZoom',
-      'bio', 'brandName', 'pronouns', 'platform', 'color', 'isActive', 'instagramHighlights'
+      'bio', 'brandName', 'pronouns', 'platform', 'color', 'isActive', 'instagramHighlights',
+      'highlightSets', 'activeHighlightSetId'
     ];
 
     allowedUpdates.forEach(field => {
@@ -144,6 +145,14 @@ exports.updateProfile = async (req, res) => {
         profile[field] = req.body[field];
       }
     });
+
+    // Mongoose needs explicit markModified for complex nested arrays
+    if (req.body.highlightSets !== undefined) {
+      profile.markModified('highlightSets');
+    }
+    if (req.body.instagramHighlights !== undefined) {
+      profile.markModified('instagramHighlights');
+    }
 
     await profile.save();
 

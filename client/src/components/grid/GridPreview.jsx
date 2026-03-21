@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { User, Upload, ZoomIn, ZoomOut, X, Check, Camera, RotateCcw, Save, GripVertical, Replace, Layers, Trash2, Eye, EyeOff, Play, ChevronDown, ChevronUp, FolderPlus, Pencil, LayoutGrid, Loader2, CalendarPlus, ChevronRight, ChevronLeft, Heart, MessageCircle, Bookmark, Send, Share2, MoreHorizontal, Plus, Gauge, TrendingUp, Bug } from 'lucide-react';
+import { User, Upload, ZoomIn, ZoomOut, X, Check, Camera, RotateCcw, Save, GripVertical, Replace, Layers, Trash2, Eye, EyeOff, Play, ChevronDown, ChevronUp, FolderPlus, Pencil, LayoutGrid, Loader2, CalendarPlus, ChevronRight, ChevronLeft, Heart, MessageCircle, Bookmark, Send, Share2, MoreHorizontal, Plus, Gauge, TrendingUp, Bug, Library, Copy } from 'lucide-react';
 import PostAIGenerator from './PostAIGenerator';
 import { setInternalDragActive } from '../../utils/dragState';
 import { generateVideoThumbnail, formatDuration } from '../../utils/videoUtils';
@@ -2762,6 +2762,15 @@ function GridPreview({ posts, layout, showRowHandles = true, showConvictionScore
     { id: '3', name: 'Studio', cover: null, coverPosition: { x: 0, y: 0 }, coverZoom: 1, stories: [] },
   ]);
   const [highlightsLoaded, setHighlightsLoaded] = useState(false);
+
+  // Highlight sets
+  const [highlightSets, setHighlightSets] = useState([]);
+  const [activeSetId, setActiveSetId] = useState(null);
+  const [showSetDropdown, setShowSetDropdown] = useState(false);
+  const [isCreatingSet, setIsCreatingSet] = useState(false);
+  const [newSetName, setNewSetName] = useState('');
+  const [renamingSetId, setRenamingSetId] = useState(null);
+  const [renameSetName, setRenameSetName] = useState('');
   const [showHighlightModal, setShowHighlightModal] = useState(false);
   const [editingHighlight, setEditingHighlight] = useState(null);
   const [highlightName, setHighlightName] = useState('');
@@ -2781,54 +2790,79 @@ function GridPreview({ posts, layout, showRowHandles = true, showConvictionScore
   // Verified badge state
   const [isVerified, setIsVerified] = useState(false);
 
+  // Guard: only load highlights once per profile (prevent save→updateProfile→load loop)
+  const loadedHighlightsForProfileRef = useRef(null);
+
   // Load highlights and verified status from cloud on mount or when profile changes
   useEffect(() => {
+    // Wait for profile to be available before loading
+    if (!currentProfile) return;
+
+    const profileKey = currentProfileId || 'user';
+    if (loadedHighlightsForProfileRef.current === profileKey) return;
+
     const loadHighlightsFromCloud = async () => {
       try {
-        // First check if profile has highlights
-        if (currentProfile?.instagramHighlights && currentProfile.instagramHighlights.length > 0) {
-          // Map from database format to component format
-          const profileHighlights = currentProfile.instagramHighlights.map(h => ({
-            id: h.highlightId || h.id,
-            name: h.name,
-            cover: h.cover,
-            coverPosition: h.coverPosition || { x: 0, y: 0 },
-            coverZoom: h.coverZoom || 1,
-            stories: h.stories || []
-          }));
-          setHighlights(profileHighlights);
+        loadedHighlightsForProfileRef.current = profileKey;
+
+        const mapHighlights = (arr) => arr.map(h => ({
+          id: h.highlightId || h.id,
+          name: h.name,
+          cover: h.cover,
+          coverPosition: h.coverPosition || { x: 0, y: 0 },
+          coverZoom: h.coverZoom || 1,
+          stories: h.stories || []
+        }));
+
+        // Load highlight sets if available
+        if (currentProfile.highlightSets && currentProfile.highlightSets.length > 0) {
+          const sets = currentProfile.highlightSets;
+          // Loaded sets from profile
+          setHighlightSets(sets);
+          const activeId = currentProfile.activeHighlightSetId || sets[0].setId;
+          setActiveSetId(activeId);
+          const activeSet = sets.find(s => s.setId === activeId) || sets[0];
+          setHighlights(mapHighlights(activeSet.highlights || []));
           setHighlightsLoaded(true);
           return;
         }
 
-        // Fall back to user highlights from API
-        const response = await api.get('/api/auth/highlights');
-        if (response.data.highlights && response.data.highlights.length > 0) {
-          // Map from database format to component format
-          const cloudHighlights = response.data.highlights.map(h => ({
-            id: h.highlightId || h.id,
-            name: h.name,
-            cover: h.cover,
-            coverPosition: h.coverPosition || { x: 0, y: 0 },
-            coverZoom: h.coverZoom || 1,
-            stories: h.stories || []
-          }));
-          setHighlights(cloudHighlights);
+        // Auto-migrate: existing instagramHighlights → first highlight set
+        if (currentProfile.instagramHighlights && currentProfile.instagramHighlights.length > 0) {
+          // Migrating instagramHighlights to default set
+          const migratedHighlights = mapHighlights(currentProfile.instagramHighlights);
+          const defaultSetId = crypto.randomUUID();
+          const defaultSet = {
+            setId: defaultSetId,
+            name: 'Default',
+            createdAt: new Date().toISOString(),
+            highlights: currentProfile.instagramHighlights
+          };
+          setHighlightSets([defaultSet]);
+          setActiveSetId(defaultSetId);
+          setHighlights(migratedHighlights);
+          setHighlightsLoaded(true);
+
+          // Save migration to backend
+          if (currentProfileId) {
+            api.put(`/api/profile/${currentProfileId}`, {
+              highlightSets: [defaultSet],
+              activeHighlightSetId: defaultSetId
+            }).catch(err => console.error('Failed to migrate highlight sets:', err));
+          }
+          return;
         }
-        if (response.data.isVerified !== undefined) {
-          setIsVerified(response.data.isVerified);
-        }
+
+        // No highlight sets or instagramHighlights on profile — start fresh
+        // No sets found, starting fresh
         setHighlightsLoaded(true);
-        // Clear old localStorage data after successful cloud load
-        localStorage.removeItem('instagram-highlights');
-        localStorage.removeItem('instagram-verified');
       } catch (err) {
         console.error('Failed to load highlights from cloud:', err);
         setHighlightsLoaded(true);
       }
     };
     loadHighlightsFromCloud();
-  }, [currentProfile]);
+  }, [currentProfile, currentProfileId]);
 
   const fileInputRef = useRef(null);
 
@@ -3052,18 +3086,20 @@ function GridPreview({ posts, layout, showRowHandles = true, showConvictionScore
 
   // Save highlights to cloud (debounced to avoid too many API calls)
   const saveHighlightsTimeoutRef = useRef(null);
+  const highlightSetsRef = useRef(highlightSets);
+  const activeSetIdRef = useRef(activeSetId);
+  highlightSetsRef.current = highlightSets;
+  activeSetIdRef.current = activeSetId;
+
   useEffect(() => {
-    // Don't save until initial load is complete
     if (!highlightsLoaded) return;
 
-    // Debounce the save to avoid too many API calls
     if (saveHighlightsTimeoutRef.current) {
       clearTimeout(saveHighlightsTimeoutRef.current);
     }
 
     saveHighlightsTimeoutRef.current = setTimeout(async () => {
       try {
-        // Filter out any data URLs or blob URLs - only save Cloudinary URLs
         const highlightsToSave = highlights.map(h => ({
           highlightId: h.id,
           name: h.name,
@@ -3073,12 +3109,31 @@ function GridPreview({ posts, layout, showRowHandles = true, showConvictionScore
           stories: h.stories || []
         }));
 
-        // Save to profile if one is selected, otherwise save to user
         if (currentProfileId) {
-          await api.put(`/api/profile/${currentProfileId}`, {
-            instagramHighlights: highlightsToSave
-          });
-          updateProfile(currentProfileId, { instagramHighlights: highlightsToSave });
+          const sets = highlightSetsRef.current;
+          const setId = activeSetIdRef.current;
+
+          if (setId && sets.length > 0) {
+            const updatedSets = sets.map(s =>
+              s.setId === setId ? { ...s, highlights: highlightsToSave } : s
+            );
+            setHighlightSets(updatedSets);
+            await api.put(`/api/profile/${currentProfileId}`, {
+              instagramHighlights: highlightsToSave,
+              highlightSets: updatedSets,
+              activeHighlightSetId: setId
+            });
+            updateProfile(currentProfileId, {
+              instagramHighlights: highlightsToSave,
+              highlightSets: updatedSets,
+              activeHighlightSetId: setId
+            });
+          } else {
+            await api.put(`/api/profile/${currentProfileId}`, {
+              instagramHighlights: highlightsToSave
+            });
+            updateProfile(currentProfileId, { instagramHighlights: highlightsToSave });
+          }
           console.log('[Highlights] Saved to profile successfully');
         } else {
           await api.put('/api/auth/highlights', {
@@ -3090,7 +3145,7 @@ function GridPreview({ posts, layout, showRowHandles = true, showConvictionScore
       } catch (err) {
         console.error('Failed to save highlights to cloud:', err);
       }
-    }, 1000); // Wait 1 second before saving
+    }, 1000);
 
     return () => {
       if (saveHighlightsTimeoutRef.current) {
@@ -3247,6 +3302,156 @@ function GridPreview({ posts, layout, showRowHandles = true, showConvictionScore
     setHighlights(highlights.filter(h => h.id !== editingHighlight.id));
     setShowHighlightModal(false);
     setEditingHighlight(null);
+  };
+
+  // Highlight set handlers
+  const handleSwitchSet = async (setId) => {
+    const targetSet = highlightSets.find(s => s.setId === setId);
+    if (!targetSet) return;
+
+    setActiveSetId(setId);
+    const mapped = (targetSet.highlights || []).map(h => ({
+      id: h.highlightId || h.id,
+      name: h.name,
+      cover: h.cover,
+      coverPosition: h.coverPosition || { x: 0, y: 0 },
+      coverZoom: h.coverZoom || 1,
+      stories: h.stories || []
+    }));
+    setHighlights(mapped);
+    setShowSetDropdown(false);
+
+    if (currentProfileId) {
+      try {
+        await api.put(`/api/profile/${currentProfileId}`, { activeHighlightSetId: setId });
+        updateProfile(currentProfileId, { activeHighlightSetId: setId });
+      } catch (err) {
+        console.error('Failed to switch highlight set:', err);
+      }
+    }
+  };
+
+  const handleCreateHighlightSet = async () => {
+    const name = newSetName.trim();
+    if (!name) return;
+
+    const newSetId = crypto.randomUUID();
+    const defaultHighlights = [
+      { highlightId: crypto.randomUUID(), name: 'Highlights', cover: null, coverPosition: { x: 0, y: 0 }, coverZoom: 1, stories: [] },
+      { highlightId: crypto.randomUUID(), name: 'New', cover: null, coverPosition: { x: 0, y: 0 }, coverZoom: 1, stories: [] },
+    ];
+    const newSet = { setId: newSetId, name, createdAt: new Date().toISOString(), highlights: defaultHighlights };
+    const updatedSets = [...highlightSets, newSet];
+
+    setHighlightSets(updatedSets);
+    setActiveSetId(newSetId);
+    setHighlights(defaultHighlights.map(h => ({ ...h, id: h.highlightId })));
+    setNewSetName('');
+    setIsCreatingSet(false);
+    setShowSetDropdown(false);
+
+    if (currentProfileId) {
+      try {
+        await api.put(`/api/profile/${currentProfileId}`, {
+          highlightSets: updatedSets,
+          activeHighlightSetId: newSetId
+        });
+        updateProfile(currentProfileId, { highlightSets: updatedSets, activeHighlightSetId: newSetId });
+      } catch (err) {
+        console.error('Failed to create highlight set:', err);
+      }
+    }
+  };
+
+  const handleDeleteHighlightSet = async (setId) => {
+    if (highlightSets.length <= 1) return;
+
+    const updatedSets = highlightSets.filter(s => s.setId !== setId);
+    setHighlightSets(updatedSets);
+
+    if (activeSetId === setId) {
+      // Switch to first remaining set directly (don't use handleSwitchSet which reads stale state)
+      const target = updatedSets[0];
+      setActiveSetId(target.setId);
+      const mapped = (target.highlights || []).map(h => ({
+        id: h.highlightId || h.id, name: h.name, cover: h.cover,
+        coverPosition: h.coverPosition || { x: 0, y: 0 }, coverZoom: h.coverZoom || 1, stories: h.stories || []
+      }));
+      setHighlights(mapped);
+    }
+
+    if (currentProfileId) {
+      try {
+        const newActiveId = activeSetId === setId ? updatedSets[0].setId : activeSetId;
+        await api.put(`/api/profile/${currentProfileId}`, {
+          highlightSets: updatedSets,
+          activeHighlightSetId: newActiveId
+        });
+        updateProfile(currentProfileId, { highlightSets: updatedSets, activeHighlightSetId: newActiveId });
+      } catch (err) {
+        console.error('Failed to delete highlight set:', err);
+      }
+    }
+  };
+
+  const handleDuplicateHighlightSet = async (setId) => {
+    const sourceSet = highlightSets.find(s => s.setId === setId);
+    if (!sourceSet) return;
+
+    const newSetId = crypto.randomUUID();
+    const duplicatedHighlights = (sourceSet.highlights || []).map(h => ({
+      ...h,
+      highlightId: crypto.randomUUID()
+    }));
+    const newSet = {
+      setId: newSetId,
+      name: `${sourceSet.name} copy`,
+      createdAt: new Date().toISOString(),
+      highlights: duplicatedHighlights
+    };
+    const updatedSets = [...highlightSets, newSet];
+
+    setHighlightSets(updatedSets);
+    setActiveSetId(newSetId);
+    setHighlights(duplicatedHighlights.map(h => ({ ...h, id: h.highlightId })));
+    setShowSetDropdown(false);
+
+    // Open rename inline
+    setRenamingSetId(newSetId);
+    setRenameSetName(newSet.name);
+
+    if (currentProfileId) {
+      try {
+        await api.put(`/api/profile/${currentProfileId}`, {
+          highlightSets: updatedSets,
+          activeHighlightSetId: newSetId
+        });
+        updateProfile(currentProfileId, { highlightSets: updatedSets, activeHighlightSetId: newSetId });
+      } catch (err) {
+        console.error('Failed to duplicate highlight set:', err);
+      }
+    }
+  };
+
+  const handleRenameHighlightSet = async (setId, newName) => {
+    const name = newName.trim();
+    if (!name) { setRenamingSetId(null); return; }
+
+    const updatedSets = highlightSets.map(s =>
+      s.setId === setId ? { ...s, name } : s
+    );
+    setHighlightSets(updatedSets);
+    setRenamingSetId(null);
+    setRenameSetName('');
+
+    if (currentProfileId) {
+      try {
+        await api.put(`/api/profile/${currentProfileId}`, { highlightSets: updatedSets });
+        updateProfile(currentProfileId, { highlightSets: updatedSets });
+      } catch (err) {
+        console.error('Failed to rename highlight set:', err);
+      }
+    }
   };
 
   // Highlight drag-to-reorder handlers
@@ -3564,8 +3769,117 @@ function GridPreview({ posts, layout, showRowHandles = true, showConvictionScore
           </button>
         </div>
 
+        {/* Highlight set switcher */}
+        {highlightSets.length > 0 && (
+          <div className="mt-3 mb-1 relative">
+            <button
+              onClick={() => setShowSetDropdown(!showSetDropdown)}
+              className="flex items-center gap-1 text-[10px] tracking-wide font-sans text-dark-500 hover:text-dark-300 transition-colors"
+            >
+              <span>{highlightSets.find(s => s.setId === activeSetId)?.name || 'Highlights'}</span>
+              <ChevronDown className={`w-2.5 h-2.5 transition-transform ${showSetDropdown ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showSetDropdown && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => { setShowSetDropdown(false); setIsCreatingSet(false); }} />
+                <div className="absolute left-0 top-full mt-0.5 z-50 min-w-[160px] bg-dark-900 border border-dark-700 shadow-2xl">
+                  <div className="max-h-[180px] overflow-y-auto">
+                    {highlightSets.map(set => (
+                      <div
+                        key={set.setId}
+                        className={`flex items-center justify-between px-2.5 py-1.5 cursor-pointer transition-colors ${
+                          set.setId === activeSetId ? 'bg-dark-800 text-dark-100' : 'text-dark-400 hover:bg-dark-800/50 hover:text-dark-200'
+                        }`}
+                      >
+                        {renamingSetId === set.setId ? (
+                          <input
+                            type="text"
+                            value={renameSetName}
+                            onChange={(e) => setRenameSetName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleRenameHighlightSet(set.setId, renameSetName);
+                              if (e.key === 'Escape') setRenamingSetId(null);
+                            }}
+                            onBlur={() => handleRenameHighlightSet(set.setId, renameSetName)}
+                            className="flex-1 px-1.5 py-0.5 text-[10px] bg-dark-800 border border-dark-700 text-dark-100 font-sans outline-none focus:border-dark-500"
+                            autoFocus
+                          />
+                        ) : (
+                          <button
+                            onClick={() => handleSwitchSet(set.setId)}
+                            onDoubleClick={(e) => { e.stopPropagation(); setRenamingSetId(set.setId); setRenameSetName(set.name); }}
+                            className="flex-1 text-left text-[10px] tracking-wide font-sans flex items-center gap-1.5"
+                          >
+                            {set.setId === activeSetId && <Check className="w-2.5 h-2.5" />}
+                            <span>{set.name}</span>
+                          </button>
+                        )}
+                        <div className="flex items-center gap-0.5 ml-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDuplicateHighlightSet(set.setId); }}
+                            className="p-0.5 text-dark-600 hover:text-dark-300 transition-colors"
+                            title="Duplicate set"
+                          >
+                            <Copy className="w-2.5 h-2.5" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setRenamingSetId(set.setId); setRenameSetName(set.name); }}
+                            className="p-0.5 text-dark-600 hover:text-dark-300 transition-colors"
+                            title="Rename set"
+                          >
+                            <Pencil className="w-2.5 h-2.5" />
+                          </button>
+                          {highlightSets.length > 1 && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteHighlightSet(set.setId); }}
+                              className="p-0.5 text-dark-600 hover:text-dark-300 transition-colors"
+                              title="Delete set"
+                            >
+                              <Trash2 className="w-2.5 h-2.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-dark-800">
+                    {isCreatingSet ? (
+                      <div className="p-1.5 flex gap-1">
+                        <input
+                          type="text"
+                          value={newSetName}
+                          onChange={(e) => setNewSetName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleCreateHighlightSet();
+                            if (e.key === 'Escape') setIsCreatingSet(false);
+                          }}
+                          placeholder="Set name"
+                          className="flex-1 px-2 py-1 text-[10px] bg-dark-800 border border-dark-700 text-dark-100 placeholder-dark-600 font-sans outline-none focus:border-dark-500"
+                          autoFocus
+                        />
+                        <button onClick={handleCreateHighlightSet} className="px-1.5 py-1 bg-dark-100 text-dark-900">
+                          <Check className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setIsCreatingSet(true)}
+                        className="w-full px-2.5 py-1.5 text-[10px] tracking-wide font-sans text-dark-500 hover:text-dark-200 hover:bg-dark-800/50 transition-colors flex items-center gap-1.5"
+                      >
+                        <Plus className="w-2.5 h-2.5" />
+                        <span>New set</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Highlights (Instagram style - draggable, with gradient ring when has content) */}
-        <div className="mt-4 overflow-x-auto scrollbar-hide" style={{ overflow: 'auto' }}>
+        <div className="mt-1 overflow-x-auto scrollbar-hide" style={{ overflow: 'auto' }}>
           <div className="flex gap-2.5 pb-1 w-max">
             {highlights.map((highlight) => (
               <div
@@ -3600,7 +3914,7 @@ function GridPreview({ posts, layout, showRowHandles = true, showConvictionScore
                           left: '50%',
                           top: '50%',
                           transformOrigin: 'center center',
-                          transform: `translate(-50%, -50%) translate(${(highlight.coverPosition?.x || 0) * 0.5}px, ${(highlight.coverPosition?.y || 0) * 0.5}px) scale(${getActualZoom(highlight.coverZoom || 1)})`,
+                          transform: `translate(-50%, -50%) translate(${(highlight.coverPosition?.x || 0) * 0.5}px, ${(highlight.coverPosition?.y || 0) * 0.5}px) scale(${highlight.coverZoom || 1})`,
                         }}
                       />
                     ) : (
@@ -4474,7 +4788,7 @@ function GridPreview({ posts, layout, showRowHandles = true, showConvictionScore
                         left: '50%',
                         top: '50%',
                         transformOrigin: 'center center',
-                        transform: `translate(-50%, -50%) translate(${highlightPosition.x}px, ${highlightPosition.y}px) scale(${getActualZoom(highlightZoom)})`,
+                        transform: `translate(-50%, -50%) translate(${highlightPosition.x}px, ${highlightPosition.y}px) scale(${highlightZoom})`,
                       }}
                       draggable={false}
                     />
@@ -4498,13 +4812,13 @@ function GridPreview({ posts, layout, showRowHandles = true, showConvictionScore
               <div className="mb-5">
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-[10px] text-dark-500 tracking-wide font-sans">Zoom</label>
-                  <span className="text-[10px] text-dark-600 tabular-nums font-sans">{Math.round(getActualZoom(highlightZoom) * 100)}%</span>
+                  <span className="text-[10px] text-dark-600 tabular-nums font-sans">{Math.round(highlightZoom * 100)}%</span>
                 </div>
                 <input
                   type="range"
                   min="0.8"
                   max="2"
-                  step="0.05"
+                  step="0.01"
                   value={highlightZoom}
                   onChange={(e) => setHighlightZoom(parseFloat(e.target.value))}
                   className="w-full"
