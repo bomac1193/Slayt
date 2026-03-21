@@ -2,11 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authApi } from '../lib/api';
 import { useAppStore } from '../stores/useAppStore';
-import { Loader2, Mail, Lock, LogIn, UserPlus } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
-// Google icon SVG component
 const GoogleIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 24 24">
+  <svg className="w-4 h-4" viewBox="0 0 24 24">
     <path
       fill="#4285F4"
       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -42,32 +41,27 @@ function Login() {
     name: '',
   });
 
-  // Handle OAuth callbacks
   useEffect(() => {
     const googleStatus = searchParams.get('google');
     const token = searchParams.get('token');
     const message = searchParams.get('message');
 
     if (googleStatus === 'success' && token) {
-      // Store token and fetch user data
       localStorage.setItem('token', token);
-      setSuccess('Google login successful! Redirecting...');
-
-      // Fetch user profile and update store
+      setSuccess('Signed in. Redirecting...');
       authApi.getMe()
         .then((userData) => {
           setUser(userData.user || userData);
           navigate('/grid');
         })
-        .catch((err) => {
-          console.error('Failed to fetch user data:', err);
-          navigate('/grid'); // Navigate anyway, user can be fetched later
+        .catch(() => {
+          navigate('/grid');
         });
     } else if (googleStatus === 'error') {
       if (message === 'credentials_missing') {
-        setError('Google OAuth is not configured. Please set up Google credentials.');
+        setError('Google sign-in is not configured yet.');
       } else {
-        setError('Google login failed. Please try again.');
+        setError('Google sign-in failed. Please try again.');
       }
     }
   }, [searchParams, navigate, setUser]);
@@ -82,23 +76,18 @@ function Login() {
         await authApi.login(formData.email, formData.password);
       } else {
         await authApi.register(formData.email, formData.password, formData.name);
-        // After registration, log in
         await authApi.login(formData.email, formData.password);
       }
 
-      // Fetch user profile and update store
       try {
         const userData = await authApi.getMe();
         setUser(userData.user || userData);
-      } catch (profileErr) {
-        console.error('Failed to fetch user profile:', profileErr);
-        // Set basic user info from form data
+      } catch {
         setUser({ email: formData.email, name: formData.name || formData.email.split('@')[0] });
       }
 
       navigate('/grid');
     } catch (err) {
-      console.error('Auth error:', err);
       setError(err.response?.data?.message || err.response?.data?.error || err.message || 'Authentication failed');
     } finally {
       setLoading(false);
@@ -108,7 +97,6 @@ function Login() {
   const handleGoogleLogin = () => {
     setGoogleLoading(true);
     setError(null);
-    // Redirect to backend Google OAuth endpoint
     window.location.href = '/api/auth/google';
   };
 
@@ -120,47 +108,39 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-dark-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-sm border border-dark-600 bg-dark-900 flex items-center justify-center mx-auto mb-4">
-            <svg viewBox="0 0 24 24" fill="none" className="w-8 h-8 text-dark-100" xmlns="http://www.w3.org/2000/svg">
-              <path d="M4 22L10.5 3L20 22" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-display font-bold text-dark-100 mb-2 uppercase tracking-widest">
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+
+        {/* Brand */}
+        <div className="text-center mb-12">
+          <h1 className="font-display text-[42px] text-white tracking-[-0.02em] leading-none mb-3">
             Slayt
           </h1>
-          <p className="text-dark-400 text-sm font-mono uppercase tracking-widest">Taste-Driven Content OS</p>
         </div>
 
-        {/* Card */}
-        <div className="bg-dark-800 rounded-2xl border border-dark-700 p-8">
-          <h2 className="text-xl font-semibold text-dark-100 mb-6">
-            {isLogin ? 'Welcome back' : 'Create account'}
-          </h2>
+        {/* Form area */}
+        <div className="space-y-5">
 
           {error && (
-            <div className="mb-4 p-3 bg-dark-700/50 border border-dark-600 rounded-lg text-dark-300 text-sm">
+            <div className="px-4 py-3 border border-neutral-800 rounded-none text-neutral-400 text-[13px]">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="mb-4 p-3 bg-dark-700/50 border border-dark-600 rounded-lg text-dark-100 text-sm">
+            <div className="px-4 py-3 border border-neutral-800 rounded-none text-white text-[13px]">
               {success}
             </div>
           )}
 
-          {/* Google Sign In Button */}
+          {/* Google */}
           <button
             onClick={handleGoogleLogin}
             disabled={googleLoading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-2.5 bg-white hover:bg-gray-100 text-gray-800 font-medium rounded-lg transition-colors mb-6"
+            className="w-full flex items-center justify-center gap-2.5 px-4 py-3 bg-black hover:bg-neutral-900 text-white text-[14px] font-medium rounded-none border border-neutral-800 hover:border-neutral-700 transition-colors"
           >
             {googleLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <>
                 <GoogleIcon />
@@ -170,105 +150,93 @@ function Login() {
           </button>
 
           {/* Divider */}
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-dark-600"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-dark-800 text-dark-400">or</span>
-            </div>
+          <div className="flex items-center gap-4">
+            <div className="flex-1 h-px bg-neutral-800" />
+            <span className="text-neutral-600 text-[12px]">or</span>
+            <div className="flex-1 h-px bg-neutral-800" />
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Email form */}
+          <form onSubmit={handleSubmit} className="space-y-3">
             {!isLogin && (
-              <div>
-                <label className="block text-sm text-dark-300 mb-1.5">Name</label>
-                <div className="relative">
-                  <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    placeholder="Your name"
-                    className="w-full pl-10 pr-4 py-2.5 input"
-                    required={!isLogin}
-                  />
-                </div>
-              </div>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Name"
+                required={!isLogin}
+                className="w-full px-4 py-3 bg-transparent border border-neutral-800 rounded-none text-[14px] text-white placeholder:text-neutral-600 outline-none focus:border-neutral-600 transition-colors"
+              />
             )}
 
-            <div>
-              <label className="block text-sm text-dark-300 mb-1.5">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="you@example.com"
-                  className="w-full pl-10 pr-4 py-2.5 input"
-                  required
-                />
-              </div>
-            </div>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="Email"
+              required
+              className="w-full px-4 py-3 bg-transparent border border-neutral-800 rounded-none text-[14px] text-white placeholder:text-neutral-600 outline-none focus:border-neutral-600 transition-colors"
+            />
 
-            <div>
-              <label className="block text-sm text-dark-300 mb-1.5">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-2.5 input"
-                  required
-                  minLength={6}
-                />
-              </div>
-            </div>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Password"
+              required
+              minLength={6}
+              className="w-full px-4 py-3 bg-transparent border border-neutral-800 rounded-none text-[14px] text-white placeholder:text-neutral-600 outline-none focus:border-neutral-600 transition-colors"
+            />
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary py-2.5 justify-center"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-black hover:bg-neutral-900 text-white text-[14px] font-medium rounded-none border border-neutral-800 hover:border-neutral-700 transition-colors disabled:opacity-50"
             >
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <>
-                  <LogIn className="w-4 h-4" />
-                  {isLogin ? 'Sign In' : 'Create Account'}
-                </>
+                isLogin ? 'Sign in' : 'Create account'
               )}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setError(null);
-              }}
-              className="text-sm text-dark-400 hover:text-dark-100 transition-colors"
-            >
-              {isLogin
-                ? "Don't have an account? Sign up"
-                : 'Already have an account? Sign in'}
-            </button>
-          </div>
+          {/* Toggle */}
+          <p className="text-center text-[13px] text-neutral-600">
+            {isLogin ? (
+              <>
+                No account?{' '}
+                <button
+                  onClick={() => { setIsLogin(false); setError(null); }}
+                  className="text-neutral-400 hover:text-white transition-colors"
+                >
+                  Create one
+                </button>
+              </>
+            ) : (
+              <>
+                Have an account?{' '}
+                <button
+                  onClick={() => { setIsLogin(true); setError(null); }}
+                  className="text-neutral-400 hover:text-white transition-colors"
+                >
+                  Sign in
+                </button>
+              </>
+            )}
+          </p>
         </div>
 
-        {/* Skip login for demo */}
-        <div className="mt-4 text-center">
+        {/* Demo */}
+        <div className="mt-10 text-center">
           <button
             onClick={() => navigate('/grid')}
-            className="text-sm text-dark-500 hover:text-dark-300 transition-colors"
+            className="text-[12px] text-neutral-700 hover:text-neutral-500 transition-colors"
           >
-            Continue without login (demo mode)
+            Continue without account
           </button>
         </div>
       </div>

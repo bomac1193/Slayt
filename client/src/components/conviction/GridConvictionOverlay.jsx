@@ -30,7 +30,7 @@ const GridConvictionOverlay = ({
 
   return (
     <div className="absolute top-2 right-2 z-10">
-      <div className={`backdrop-blur-md rounded-full p-1 ${getGlowClass()}`}>
+      <div className={`backdrop-blur-md p-1 ${getGlowClass()}`}>
         <ConvictionBadge
           score={score}
           tier={tier}

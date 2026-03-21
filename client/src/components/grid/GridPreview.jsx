@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { User, Upload, ZoomIn, ZoomOut, X, Check, Camera, RotateCcw, Save, GripVertical, Replace, Layers, Trash2, Eye, EyeOff, Play, ChevronDown, FolderPlus, Pencil, LayoutGrid, Loader2, CalendarPlus, ChevronRight, ChevronLeft, Heart, MessageCircle, Bookmark, Send, Share2, MoreHorizontal, Plus, Gauge, TrendingUp, Bug } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { User, Upload, ZoomIn, ZoomOut, X, Check, Camera, RotateCcw, Save, GripVertical, Replace, Layers, Trash2, Eye, EyeOff, Play, ChevronDown, ChevronUp, FolderPlus, Pencil, LayoutGrid, Loader2, CalendarPlus, ChevronRight, ChevronLeft, Heart, MessageCircle, Bookmark, Send, Share2, MoreHorizontal, Plus, Gauge, TrendingUp, Bug } from 'lucide-react';
 import PostAIGenerator from './PostAIGenerator';
 import { setInternalDragActive } from '../../utils/dragState';
 import { generateVideoThumbnail, formatDuration } from '../../utils/videoUtils';
@@ -1391,7 +1392,7 @@ function PostPreviewModal({ post, onClose, onSave }) {
   );
 }
 
-function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridId, onGridChange }) {
+function GridPreview({ posts, layout, showRowHandles = true, showConvictionScores = false, onDeletePost, gridId, onGridChange }) {
   const cols = layout?.cols || 3;
   const user = useAppStore((state) => state.user);
   const setUser = useAppStore((state) => state.setUser);
@@ -1557,8 +1558,8 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
     getCurrentProfile
   } = useAppStore();
 
-  // Conviction features - initialize from store
-  const [showConvictionOverlays, setShowConvictionOverlays] = useState(gridConvictionView?.showOverlays ?? true);
+  // Conviction features
+  const showConvictionOverlays = showConvictionScores;
   const [showAestheticScore, setShowAestheticScore] = useState(gridConvictionView?.showAestheticScore ?? true);
   const [whatIfMode, setWhatIfMode] = useState(gridConvictionView?.whatIfMode ?? false);
   const [originalScore, setOriginalScore] = useState(null);
@@ -2805,7 +2806,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
         if (response.data.highlights && response.data.highlights.length > 0) {
           // Map from database format to component format
           const cloudHighlights = response.data.highlights.map(h => ({
-            id: h.highlightId,
+            id: h.highlightId || h.id,
             name: h.name,
             cover: h.cover,
             coverPosition: h.coverPosition || { x: 0, y: 0 },
@@ -3064,7 +3065,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
       try {
         // Filter out any data URLs or blob URLs - only save Cloudinary URLs
         const highlightsToSave = highlights.map(h => ({
-          id: h.id,
+          highlightId: h.id,
           name: h.name,
           cover: h.cover && !h.cover.startsWith('data:') && !h.cover.startsWith('blob:') ? h.cover : null,
           coverPosition: h.coverPosition || { x: 0, y: 0 },
@@ -3322,88 +3323,58 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
 
   return (
     <div className="relative min-h-screen">
-      {/* Floating Aesthetic Score Panel */}
-      {activeTab === 'posts' && showAestheticScore && postsWithConviction.some(p => p.conviction) && (
-        <div
-          className={`absolute left-4 bottom-24 z-10 transition-all duration-300 ease-in-out ${
-            aestheticPanelExpanded ? 'w-72' : 'w-14'
-          }`}
-        >
-          <div className="bg-dark-800/95 backdrop-blur-md rounded-xl border border-dark-700/50 shadow-2xl overflow-hidden">
-            {/* Collapse/Expand Button */}
+      {/* Grid Score — portaled to body so zoom transform doesn't affect it */}
+      {activeTab === 'posts' && showAestheticScore && !showHighlightModal && postsWithConviction.some(p => p.conviction) && createPortal(
+        <div className="fixed left-[280px] top-[120px] z-[9999]">
+          <div className="bg-dark-900/92 backdrop-blur-md border border-dark-700 shadow-2xl overflow-hidden w-[136px]">
             <button
               onClick={() => setAestheticPanelExpanded(!aestheticPanelExpanded)}
-              className="absolute right-2 top-2 w-7 h-7 bg-dark-700 hover:bg-dark-600 border border-dark-600 rounded-md flex items-center justify-center transition-colors z-20"
-              title={aestheticPanelExpanded ? 'Collapse Panel' : 'Expand Panel'}
+              className="w-full flex items-center justify-between px-3 py-2 hover:bg-dark-800/50 transition-colors"
             >
+              <span className="text-[9px] text-dark-500 font-sans tracking-[0.15em]">Grid Score</span>
               {aestheticPanelExpanded ? (
-                <ChevronLeft className="w-4 h-4 text-dark-300" />
+                <ChevronUp className="w-2.5 h-2.5 text-dark-500" />
               ) : (
-                <ChevronRight className="w-4 h-4 text-dark-300" />
+                <ChevronDown className="w-2.5 h-2.5 text-dark-500" />
               )}
             </button>
-
-            {/* Panel Content */}
-            <div className={`transition-opacity duration-300 ${aestheticPanelExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-              {aestheticPanelExpanded && (
-                <div className="p-3">
-                  <GridAestheticScore gridItems={postsWithConviction} columns={cols} />
-                </div>
-              )}
-            </div>
-
-            {/* Collapsed State */}
-            {!aestheticPanelExpanded && (
-              <div className="h-36 flex items-center justify-center py-4">
-                <div className="text-[10px] text-dark-300 font-medium tracking-widest transform -rotate-90 whitespace-nowrap uppercase">
-                  Grid Score
-                </div>
+            {aestheticPanelExpanded && (
+              <div className="px-3 pb-3">
+                <GridAestheticScore gridItems={postsWithConviction} columns={cols} />
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Detached Controls Panel */}
-      {activeTab === 'posts' && (
+      {/* Controls Panel — portaled to body so zoom transform doesn't affect it */}
+      {activeTab === 'posts' && !showHighlightModal && createPortal(
         <div
-          className={`absolute right-4 top-24 z-20 transition-all duration-300 ease-in-out ${
+          className={`fixed right-4 top-[120px] z-[9999] transition-all duration-300 ease-in-out ${
             controlPanelExpanded ? 'w-48' : 'w-11'
           }`}
         >
-          <div className="bg-dark-800/95 backdrop-blur-md rounded-xl border border-dark-700/50 shadow-2xl overflow-hidden">
+          <div className="bg-dark-800/95 backdrop-blur-md border border-dark-700 shadow-2xl overflow-hidden">
             <button
               onClick={() => setControlPanelExpanded(!controlPanelExpanded)}
-              className="w-full h-11 flex items-center justify-center border-b border-dark-700/60 hover:bg-dark-700/40 transition-colors"
+              className="w-full h-10 flex items-center justify-center border-b border-dark-700 hover:bg-dark-700/40 transition-colors"
               title={controlPanelExpanded ? 'Collapse Controls' : 'Expand Controls'}
             >
               {controlPanelExpanded ? (
-                <ChevronRight className="w-4 h-4 text-dark-300" />
+                <ChevronRight className="w-3.5 h-3.5 text-dark-300" />
               ) : (
-                <Layers className="w-4 h-4 text-dark-300" />
+                <Layers className="w-3.5 h-3.5 text-dark-300" />
               )}
             </button>
 
             {controlPanelExpanded && (
-              <div className="p-2 space-y-2">
-                <button
-                  onClick={() => setShowConvictionOverlays(!showConvictionOverlays)}
-                  className={`w-full h-8 px-2 text-xs rounded-lg transition-colors flex items-center gap-1.5 ${
-                    showConvictionOverlays
-                      ? 'bg-dark-600/30 text-dark-100 border border-dark-500/30'
-                      : 'bg-dark-700 text-dark-400 border border-dark-600 hover:border-dark-500'
-                  }`}
-                  title={showConvictionOverlays ? 'Hide Conviction Scores' : 'Show Conviction Scores'}
-                >
-                  {showConvictionOverlays ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                  <span>Scores</span>
-                </button>
-
+              <div className="p-2 space-y-1.5">
                 <button
                   onClick={() => setShowAestheticScore(!showAestheticScore)}
-                  className={`w-full h-8 px-2 text-xs rounded-lg transition-colors flex items-center gap-1.5 ${
+                  className={`w-full h-7 px-2 text-[10px] tracking-wide transition-colors flex items-center gap-1.5 font-sans ${
                     showAestheticScore
-                      ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                      ? 'bg-dark-600/30 text-dark-100 border border-dark-500/30'
                       : 'bg-dark-700 text-dark-400 border border-dark-600 hover:border-dark-500'
                   }`}
                   title={showAestheticScore ? 'Hide Grid Score' : 'Show Grid Score'}
@@ -3424,9 +3395,9 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
                       setWhatIfScore(null);
                     }
                   }}
-                  className={`w-full h-8 px-2 text-xs rounded-lg transition-colors flex items-center gap-1.5 ${
+                  className={`w-full h-7 px-2 text-[10px] tracking-wide transition-colors flex items-center gap-1.5 font-sans ${
                     whatIfMode
-                      ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                      ? 'bg-dark-600/30 text-dark-100 border border-dark-500/30'
                       : 'bg-dark-700 text-dark-400 border border-dark-600 hover:border-dark-500'
                   }`}
                   title={whatIfMode ? 'Exit What-If Mode' : 'Enable What-If Mode'}
@@ -3438,7 +3409,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
 
                 <button
                   onClick={() => setShowTemplateModal(true)}
-                  className="w-full h-8 px-2 text-xs rounded-lg transition-colors flex items-center gap-1.5 bg-dark-100 text-dark-900 border border-dark-300/30 hover:bg-white disabled:opacity-50"
+                  className="w-full h-7 px-2 text-[10px] tracking-wide transition-colors flex items-center gap-1.5 bg-dark-100 text-dark-900 border border-dark-300/30 hover:bg-white disabled:opacity-50 font-sans"
                   title="Save current grid as a reusable template"
                   disabled={!gridId || postsWithConviction.length === 0}
                 >
@@ -3448,7 +3419,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
 
                 <button
                   onClick={() => setShowDebugInfo(!showDebugInfo)}
-                  className={`w-full h-8 px-2 text-xs rounded-lg transition-colors flex items-center gap-1.5 ${
+                  className={`w-full h-7 px-2 text-[10px] tracking-wide transition-colors flex items-center gap-1.5 font-sans ${
                     showDebugInfo
                       ? 'bg-dark-600/30 text-dark-300 border border-dark-500/30'
                       : 'bg-dark-700 text-dark-400 border border-dark-600 hover:border-dark-500'
@@ -3460,7 +3431,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
                 </button>
 
                 {loadingConviction && (
-                  <div className="w-full h-8 px-2 text-xs rounded-lg border border-dark-600 bg-dark-700 text-dark-300 flex items-center gap-2">
+                  <div className="w-full h-7 px-2 text-[10px] border border-dark-600 bg-dark-700 text-dark-300 flex items-center gap-2 font-sans">
                     <Loader2 className="w-3 h-3 animate-spin" />
                     <span>Calculating...</span>
                   </div>
@@ -3470,11 +3441,12 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <div
-        className="max-w-md mx-auto bg-dark-800 rounded-2xl overflow-hidden border border-dark-700"
+        className="max-w-sm mx-auto bg-dark-800 rounded-2xl border border-dark-700"
         onDragEnter={handleVideoDragEnter}
         onDragOver={handleVideoDragOver}
         onDragLeave={handleVideoDragLeave}
@@ -3593,8 +3565,8 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
         </div>
 
         {/* Highlights (Instagram style - draggable, with gradient ring when has content) */}
-        <div className="mt-4 -mx-4 px-4 overflow-x-auto scrollbar-hide">
-          <div className="flex gap-3 pb-1">
+        <div className="mt-4 overflow-x-auto scrollbar-hide" style={{ overflow: 'auto' }}>
+          <div className="flex gap-2.5 pb-1 w-max">
             {highlights.map((highlight) => (
               <div
                 key={highlight.id}
@@ -3609,7 +3581,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
                   draggingHighlightId === highlight.id ? 'opacity-50 scale-95' : ''
                 } ${highlightDragOverId === highlight.id ? 'scale-110' : ''}`}
               >
-                <div className={`w-[66px] h-[66px] rounded-full p-[3px] transition-all ${
+                <div className={`w-[58px] h-[58px] rounded-full p-[2px] transition-all ${
                   highlight.cover
                     ? 'bg-dark-600'
                     : 'border-[2px] border-dark-600'
@@ -3640,7 +3612,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
                     )}
                   </div>
                 </div>
-                <span className="text-[11px] text-dark-300 max-w-[62px] truncate">{highlight.name}</span>
+                <span className="text-[11px] text-dark-300 max-w-[56px] truncate">{highlight.name}</span>
               </div>
             ))}
             {/* Add New Highlight */}
@@ -3648,7 +3620,7 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
               onClick={handleAddHighlight}
               className="flex flex-col items-center gap-1 flex-shrink-0"
             >
-              <div className="w-[66px] h-[66px] rounded-full border-[2px] border-dashed border-dark-600 flex items-center justify-center hover:border-dark-400 transition-colors">
+              <div className="w-[58px] h-[58px] rounded-full border-[2px] border-dashed border-dark-600 flex items-center justify-center hover:border-dark-400 transition-colors">
                 <svg className="w-5 h-5 text-dark-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
@@ -4470,26 +4442,26 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
           onMouseLeave={handleHighlightMouseUp}
         >
           <div
-            className="bg-dark-800 rounded-2xl p-6 w-full max-w-sm border border-dark-700"
+            className="bg-dark-900 p-6 w-full max-w-sm border border-dark-700"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-dark-100">Edit Highlight</h3>
-              <button onClick={() => setShowHighlightModal(false)} className="text-dark-400 hover:text-dark-200">
-                <X className="w-5 h-5" />
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-sm font-medium text-dark-100 tracking-wide font-sans">Edit Highlight</h3>
+              <button onClick={() => setShowHighlightModal(false)} className="text-dark-500 hover:text-dark-200 transition-colors">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Cover Preview - Draggable, shows exactly what will be saved */}
+            {/* Cover Preview */}
             <div className="flex justify-center mb-4">
               <div
                 ref={highlightPreviewRef}
-                className={`w-32 h-32 rounded-full bg-dark-600 p-[3px] ${
+                className={`w-28 h-28 rounded-full bg-dark-800 p-[2px] ${
                   highlightCover ? 'cursor-grab active:cursor-grabbing' : ''
                 }`}
                 onMouseDown={handleHighlightMouseDown}
               >
-                <div className="w-full h-full rounded-full bg-dark-800 overflow-hidden border-[3px] border-dark-800 relative">
+                <div className="w-full h-full rounded-full bg-dark-900 overflow-hidden border-[2px] border-dark-800 relative">
                   {highlightCover ? (
                     <img
                       src={highlightCover}
@@ -4508,8 +4480,8 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <svg className="w-10 h-10 text-dark-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      <svg className="w-8 h-8 text-dark-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                     </div>
                   )}
@@ -4518,43 +4490,39 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
             </div>
 
             {highlightCover && (
-              <p className="text-xs text-dark-500 text-center mb-3">Drag to reposition</p>
+              <p className="text-[10px] text-dark-600 text-center mb-3 tracking-wide font-sans">Drag to reposition</p>
             )}
 
-            {/* Zoom Slider - only show when there's a cover */}
+            {/* Zoom Slider */}
             {highlightCover && (
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs text-dark-400">Zoom</label>
-                  <span className="text-xs text-dark-500">{Math.round(getActualZoom(highlightZoom) * 100)}%</span>
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[10px] text-dark-500 tracking-wide font-sans">Zoom</label>
+                  <span className="text-[10px] text-dark-600 tabular-nums font-sans">{Math.round(getActualZoom(highlightZoom) * 100)}%</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <ZoomOut className="w-4 h-4 text-dark-500" />
-                  <input
-                    type="range"
-                    min="0.8"
-                    max="2"
-                    step="0.05"
-                    value={highlightZoom}
-                    onChange={(e) => setHighlightZoom(parseFloat(e.target.value))}
-                    className="flex-1 h-1 bg-dark-600 rounded-lg appearance-none cursor-pointer slider-accent"
-                  />
-                  <ZoomIn className="w-4 h-4 text-dark-500" />
-                </div>
+                <input
+                  type="range"
+                  min="0.8"
+                  max="2"
+                  step="0.05"
+                  value={highlightZoom}
+                  onChange={(e) => setHighlightZoom(parseFloat(e.target.value))}
+                  className="w-full"
+                />
                 <button
                   onClick={() => {
                     setHighlightPosition({ x: 0, y: 0 });
                     setHighlightZoom(1);
                   }}
-                  className="w-full mt-2 py-1 text-xs text-dark-400 hover:text-dark-200 transition-colors"
+                  className="w-full mt-1.5 py-1 text-[10px] text-dark-600 hover:text-dark-300 transition-colors tracking-wide font-sans"
                 >
-                  Reset Position & Zoom
+                  Reset
                 </button>
               </div>
             )}
 
-            {/* Upload Cover Button */}
-            <div className="mb-4">
+            {/* Upload Cover */}
+            <div className="mb-5">
               <input
                 ref={highlightInputRef}
                 type="file"
@@ -4566,60 +4534,61 @@ function GridPreview({ posts, layout, showRowHandles = true, onDeletePost, gridI
               <button
                 onClick={() => highlightInputRef.current?.click()}
                 disabled={isHighlightUploading}
-                className="w-full py-2 bg-dark-700 hover:bg-dark-600 text-dark-200 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-2 bg-dark-800 hover:bg-dark-700 text-dark-300 text-xs tracking-wide font-sans border border-dark-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isHighlightUploading ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Uploading...
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Uploading...</span>
                   </>
                 ) : (
-                  highlightCover ? 'Change Cover' : 'Upload Cover (Image or Video)'
+                  highlightCover ? 'Change cover' : 'Upload cover'
                 )}
               </button>
             </div>
 
             {/* Highlight Name */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-dark-300 mb-1">
-                Highlight Name
+            <div className="mb-5">
+              <label className="block text-[10px] text-dark-500 mb-1.5 tracking-wide font-sans">
+                Name
               </label>
               <input
                 type="text"
                 value={highlightName}
                 onChange={(e) => setHighlightName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSaveHighlight(); } }}
                 placeholder="Highlight name"
                 maxLength={15}
-                className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-dark-100 placeholder-dark-500 focus:border-dark-300 focus:ring-1 focus:ring-dark-300 outline-none transition-colors"
+                className="w-full px-3 py-2 bg-dark-900 border border-dark-700 text-dark-100 text-sm placeholder-dark-600 focus:border-dark-500 focus:ring-0 outline-none transition-colors font-sans"
               />
-              <p className="text-xs text-dark-500 mt-1">{highlightName.length}/15 characters</p>
+              <p className="text-[10px] text-dark-600 mt-1 font-sans">{highlightName.length}/15</p>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2 pt-2 border-t border-dark-800">
               <button
                 onClick={handleDeleteHighlight}
                 disabled={isHighlightUploading}
-                className="px-4 py-2 text-dark-300 hover:bg-dark-600/30 rounded-lg transition-colors text-sm disabled:opacity-50"
+                className="px-3 py-2 text-dark-500 hover:text-dark-300 text-xs tracking-wide font-sans transition-colors disabled:opacity-50"
               >
                 Delete
               </button>
               <div className="flex-1" />
               <button
                 onClick={() => setShowHighlightModal(false)}
-                className="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-dark-200 rounded-lg transition-colors text-sm"
+                className="px-4 py-2 text-dark-400 hover:text-dark-200 text-xs tracking-wide font-sans transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveHighlight}
                 disabled={isHighlightUploading}
-                className="px-4 py-2 bg-dark-100 hover:bg-white text-dark-900 text-white rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-5 py-2 bg-dark-100 hover:bg-white text-dark-900 text-xs tracking-wide font-sans transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isHighlightUploading ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Uploading...
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Uploading...</span>
                   </>
                 ) : (
                   'Save'

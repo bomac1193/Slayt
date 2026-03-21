@@ -88,31 +88,26 @@ const GridAestheticScore = ({ gridItems = [], columns = 3 }) => {
   const getScoreColor = () => 'text-dark-100';
 
   return (
-    <div className="bg-dark-900/50 border border-dark-700 rounded-lg p-4">
+    <div>
       {/* Overall Score */}
-      <div className="flex items-baseline justify-between mb-6 pb-4 border-b border-dark-700">
-        <div className="text-xs uppercase tracking-wider text-dark-400 font-medium">
-          Grid Score
-        </div>
-        <div className={`text-3xl font-light tabular-nums ${getScoreColor(scoreData.overallScore)}`}>
+      <div className="flex items-baseline justify-between mb-3 pb-2 border-b border-dark-700/50">
+        <span className={`text-lg font-light tabular-nums font-sans ${getScoreColor(scoreData.overallScore)}`}>
           {scoreData.overallScore}
-        </div>
+        </span>
+        <span className="text-[8px] text-dark-600 font-sans tracking-[0.1em]">/ 100</span>
       </div>
 
       {/* Breakdown */}
-      <div className="space-y-4">
+      <div className="space-y-2.5">
         {scoreData.breakdown.map((item, index) => (
-          <div key={index} className="space-y-2">
-            <div className="flex items-baseline justify-between">
-              <div className="flex items-baseline gap-2">
-                <span className="text-xs text-dark-300 font-medium">{item.label}</span>
-                <span className="text-[10px] text-dark-500 tabular-nums">{item.weight}%</span>
-              </div>
-              <span className="text-sm text-dark-200 tabular-nums font-mono">{item.score}</span>
+          <div key={index}>
+            <div className="flex items-baseline justify-between mb-1">
+              <span className="text-[9px] text-dark-400 font-sans tracking-wide">{item.label}</span>
+              <span className="text-[10px] text-dark-300 tabular-nums font-sans">{item.score}</span>
             </div>
-            <div className="w-full h-1 bg-dark-800 rounded-full overflow-hidden">
+            <div className="w-full h-px bg-dark-800 overflow-hidden">
               <div
-                className="h-full bg-dark-400 transition-all duration-300"
+                className="h-full bg-dark-400 transition-all duration-500"
                 style={{ width: `${item.score}%` }}
               />
             </div>

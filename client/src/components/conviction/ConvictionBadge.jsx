@@ -59,9 +59,8 @@ const ConvictionBadge = ({
           ${sizeClasses[size]}
           ${styles.bg}
           ${styles.text}
-          rounded-full
           flex items-center justify-center
-          ring-2 ${styles.ring}
+          ring-1 ${styles.ring}
           font-sans
           font-semibold
           tracking-tight

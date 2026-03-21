@@ -96,7 +96,7 @@ export const useAppStore = create(
 
       // Grid conviction view settings
       gridConvictionView: {
-        showOverlays: true,
+        showOverlays: false,
         showAestheticScore: true,
         whatIfMode: false
       },

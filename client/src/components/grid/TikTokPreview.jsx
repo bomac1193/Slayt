@@ -54,7 +54,7 @@ function RolloutPickerModal({ collectionId, collectionName, platform, rollouts, 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
       <div
-        className="bg-dark-800 rounded-xl w-full max-w-md border border-dark-700 overflow-hidden"
+        className="bg-dark-800 rounded-xl w-full max-w-sm border border-dark-700 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -1028,7 +1028,7 @@ function TikTokPreview({ showRowHandles = true }) {
 
   return (
     <div
-      className="max-w-md mx-auto bg-dark-800 rounded-2xl overflow-hidden border border-dark-700"
+      className="max-w-sm mx-auto bg-dark-800 rounded-2xl overflow-hidden border border-dark-700"
       onDragEnter={handleVideoDragEnter}
       onDragOver={handleVideoDragOver}
       onDragLeave={handleVideoDragLeave}
@@ -1466,7 +1466,7 @@ function TikTokPreview({ showRowHandles = true }) {
       {/* Edit Profile Modal */}
       {showEditProfile && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-dark-800 rounded-2xl w-full max-w-md overflow-hidden">
+          <div className="bg-dark-800 rounded-2xl w-full max-w-sm overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-dark-700">
               <button

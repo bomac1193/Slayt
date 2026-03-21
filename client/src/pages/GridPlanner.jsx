@@ -26,7 +26,6 @@ import TikTokPreview from '../components/grid/TikTokPreview';
 import PostDetails from '../components/grid/PostDetails';
 import {
   Grid3X3,
-  Grid2X2,
   LayoutGrid,
   Lock,
   Unlock,
@@ -47,8 +46,6 @@ import {
   GripVertical,
   ChevronUp,
   ChevronDown as ChevronDownIcon,
-  ZoomIn,
-  ZoomOut,
   Minus,
   Pencil,
   Check,
@@ -84,11 +81,7 @@ function TikTokIcon({ className }) {
   );
 }
 
-const GRID_LAYOUTS = [
-  { id: '3x3', label: '3x3', cols: 3, icon: Grid3X3 },
-  { id: '4x4', label: '4x4', cols: 4, icon: Grid2X2 },
-  { id: '6x3', label: '6x3', cols: 3, icon: LayoutGrid },
-];
+const GRID_LAYOUT = { id: '3x3', label: '3x3', cols: 3 };
 
 function GridPlanner() {
   const navigate = useNavigate();
@@ -149,13 +142,13 @@ function GridPlanner() {
     checkAuth();
   }, []);
 
-  const [activeLayout, setActiveLayout] = useState('3x3');
+  const activeLayout = '3x3';
   const [isLocked, setIsLocked] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [activeId, setActiveId] = useState(null);
-  const [gridZoom, setGridZoom] = useState(100); // Zoom percentage (50-150)
-  const [showRowHandles, setShowRowHandles] = useState(false); // Toggle for row drag handles in preview (default off for post preview mode)
-  const [selectedPlatform, setSelectedPlatform] = useState('instagram'); // 'instagram' | 'tiktok'
+  const [showRowHandles, setShowRowHandles] = useState(false);
+  const [showConvictionScores, setShowConvictionScores] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState('instagram');
   const [showPlatformSelector, setShowPlatformSelector] = useState(false);
 
   // Drag-drop upload state
@@ -177,9 +170,7 @@ function GridPlanner() {
       return;
     }
 
-    // Set layout based on columns
-    const layoutId = grid.columns === 4 ? '4x4' : grid.columns === 3 ? '3x3' : '3x3';
-    setActiveLayout(layoutId);
+    // Layout is always 3x3 (Instagram standard)
 
     // Transform cells to posts format
     const posts = [];
@@ -489,7 +480,7 @@ function GridPlanner() {
 
   const activePost = activeId ? gridPosts.find((p) => p.id === activeId || p._id === activeId) : null;
   const selectedPost = selectedPostId ? gridPosts.find((p) => p.id === selectedPostId || p._id === selectedPostId) : null;
-  const currentLayout = GRID_LAYOUTS.find((l) => l.id === activeLayout);
+  const currentLayout = GRID_LAYOUT;
   const currentGrid = grids.find(g => g._id === currentGridId);
 
   const handleAddDemoPost = () => {
@@ -861,23 +852,23 @@ function GridPlanner() {
       {/* Main Grid Area */}
       <div className="flex-1 flex flex-col">
         {/* Toolbar */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between mb-3 border-b border-dark-800 pb-3">
+          <div className="flex items-center gap-1">
             {/* Grid Selector */}
             <div className="relative">
               <button
                 onClick={() => setShowGridSelector(!showGridSelector)}
-                className="flex items-center gap-2 px-3 py-2 bg-dark-800 rounded-lg text-dark-200 hover:bg-dark-700 transition-colors"
+                className="flex items-center gap-2 px-2.5 py-1.5 bg-dark-800 text-dark-200 hover:bg-dark-700 transition-colors"
               >
-                <LayoutGrid className="w-4 h-4 text-dark-100" />
-                <span className="text-sm max-w-32 truncate">
+                <LayoutGrid className="w-3.5 h-3.5 text-dark-100" />
+                <span className="text-xs max-w-32 truncate tracking-wide">
                   {currentGrid?.name || 'Select Grid'}
                 </span>
-                <ChevronDown className={`w-4 h-4 transition-transform ${showGridSelector ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-3 h-3 transition-transform ${showGridSelector ? 'rotate-180' : ''}`} />
               </button>
 
               {showGridSelector && (
-                <div className="absolute top-full left-0 mt-2 w-72 bg-dark-700 rounded-lg shadow-xl border border-dark-600 z-20">
+                <div className="absolute top-full left-0 mt-1 w-72 bg-dark-700 shadow-xl border border-dark-600 z-20">
                   <div className="p-2 border-b border-dark-600">
                     <p className="text-xs text-dark-400 uppercase tracking-wide">Your Collections ({grids.length}) {loading ? '(loading...)' : ''}</p>
                     {console.log('[Dropdown] Rendering with grids:', grids.length, 'loading:', loading, grids)}
@@ -981,7 +972,7 @@ function GridPlanner() {
 
                             {/* Grid context menu */}
                             {showGridMenuFor === grid._id && (
-                              <div className="absolute right-0 top-full mt-1 w-44 bg-dark-800 border border-dark-600 rounded-lg shadow-xl z-50 py-1" onClick={(e) => e.stopPropagation()}>
+                              <div className="absolute right-0 top-full mt-1 w-44 bg-dark-800 border border-dark-600 shadow-xl z-50 py-1" onClick={(e) => e.stopPropagation()}>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -1069,7 +1060,7 @@ function GridPlanner() {
 
                             {/* Color Picker Dropdown */}
                             {showColorPickerFor === grid._id && (
-                              <div className="absolute left-full top-0 ml-1 w-36 bg-dark-900 border border-dark-600 rounded-lg shadow-xl z-50 p-2" onClick={(e) => e.stopPropagation()}>
+                              <div className="absolute left-full top-0 ml-1 w-36 bg-dark-900 border border-dark-600 shadow-xl z-50 p-2" onClick={(e) => e.stopPropagation()}>
                                 <p className="text-xs text-dark-400 mb-2 px-1">Select Color</p>
                                 <div className="grid grid-cols-5 gap-1">
                                   {GRID_COLORS.map((color) => (
@@ -1095,7 +1086,7 @@ function GridPlanner() {
 
                             {/* Rollout Picker Dropdown */}
                             {showRolloutPickerFor === grid._id && (
-                              <div className="absolute left-full top-0 ml-1 w-56 bg-dark-900 border border-dark-600 rounded-lg shadow-xl z-50 p-2 max-h-64 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                              <div className="absolute left-full top-0 ml-1 w-56 bg-dark-900 border border-dark-600 shadow-xl z-50 p-2 max-h-64 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                                 <p className="text-xs text-dark-400 mb-2 px-1">Assign to Phase</p>
                                 {rollouts.length === 0 ? (
                                   <p className="text-xs text-dark-500 px-1">No rollouts created yet</p>
@@ -1176,26 +1167,26 @@ function GridPlanner() {
             </div>
 
             {/* Collection Actions */}
-            <div className="flex items-center gap-1">
-              <button onClick={fetchGrids} className="btn-icon" title="Refresh">
-                <RefreshCw className="w-4 h-4" />
+            <div className="flex items-center">
+              <button onClick={fetchGrids} className="p-1.5 hover:bg-dark-700 text-dark-400 hover:text-dark-100 transition-colors" title="Refresh">
+                <RefreshCw className="w-3.5 h-3.5" />
               </button>
 
               {currentGrid && (
                 <>
                   <button
                     onClick={(e) => handleStartRename(e, currentGrid)}
-                    className="btn-icon"
+                    className="p-1.5 hover:bg-dark-700 text-dark-400 hover:text-dark-100 transition-colors"
                     title="Rename Collection"
                   >
-                    <Pencil className="w-4 h-4" />
+                    <Pencil className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(currentGrid._id); }}
-                    className="btn-icon hover:text-dark-200"
+                    className="p-1.5 hover:bg-dark-700 text-dark-400 hover:text-dark-100 transition-colors"
                     title="Delete Collection"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </>
               )}
@@ -1262,109 +1253,99 @@ function GridPlanner() {
               </div>
             )}
 
-            {/* Layout Selector */}
-            <div className="flex items-center gap-1 p-1 bg-dark-800 rounded-lg">
-              {GRID_LAYOUTS.map((layout) => (
-                <button
-                  key={layout.id}
-                  onClick={() => setActiveLayout(layout.id)}
-                  className={`p-2 rounded-md transition-colors ${
-                    activeLayout === layout.id
-                      ? 'bg-dark-100 text-dark-900'
-                      : 'text-dark-400 hover:text-dark-200'
-                  }`}
-                  title={layout.label}
-                >
-                  <layout.icon className="w-4 h-4" />
-                </button>
-              ))}
-            </div>
-
             {/* Lock Toggle */}
             <button
               onClick={() => setIsLocked(!isLocked)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 transition-colors border border-dark-700 ${
                 isLocked
-                  ? 'bg-dark-700 text-dark-100'
-                  : 'bg-dark-700 text-dark-300 hover:text-dark-100'
+                  ? 'bg-dark-800 text-dark-100'
+                  : 'text-dark-400 hover:text-dark-100'
               }`}
             >
               {isLocked ? (
-                <>
-                  <Lock className="w-4 h-4" />
-                  <span className="text-sm">Locked</span>
-                </>
+                <Lock className="w-3.5 h-3.5" />
               ) : (
-                <>
-                  <Unlock className="w-4 h-4" />
-                  <span className="text-sm">Unlocked</span>
-                </>
+                <Unlock className="w-3.5 h-3.5" />
               )}
+              <span className="text-xs tracking-wide">{isLocked ? 'Locked' : 'Unlocked'}</span>
+            </button>
+
+            {/* Conviction Scores Toggle */}
+            <button
+              onClick={() => setShowConvictionScores(!showConvictionScores)}
+              className={`p-1.5 transition-colors border border-dark-700 ${
+                showConvictionScores
+                  ? 'bg-dark-800 text-dark-100'
+                  : 'text-dark-400 hover:text-dark-100'
+              }`}
+              title={showConvictionScores ? 'Hide conviction scores' : 'Show conviction scores'}
+            >
+              {showConvictionScores ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
             </button>
 
             {/* Row Handles Toggle (for Preview mode) */}
             <button
               onClick={() => setShowRowHandles(!showRowHandles)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+              className={`flex items-center gap-1 px-2 py-1.5 transition-colors ${
                 showRowHandles
-                  ? 'bg-dark-700 text-dark-100'
-                  : 'bg-dark-700 text-dark-300 hover:text-dark-100'
+                  ? 'bg-dark-800 text-dark-100'
+                  : 'text-dark-400 hover:text-dark-100'
               }`}
               title={showRowHandles ? 'Hide row handles' : 'Show row handles'}
             >
-              <GripVertical className="w-4 h-4" />
+              <GripVertical className="w-3.5 h-3.5" />
               {showRowHandles ? (
-                <Eye className="w-4 h-4" />
+                <Eye className="w-3.5 h-3.5" />
               ) : (
-                <EyeOff className="w-4 h-4" />
+                <EyeOff className="w-3.5 h-3.5" />
               )}
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {/* Platform Selector */}
             <div className="relative">
               <button
                 onClick={() => setShowPlatformSelector(!showPlatformSelector)}
-                className="flex items-center gap-2 px-3 py-2 bg-dark-800 rounded-lg text-dark-200 hover:bg-dark-700 transition-colors border border-dark-600"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-dark-800 text-dark-200 hover:bg-dark-700 transition-colors border border-dark-700"
               >
                 {selectedPlatform === 'instagram' ? (
-                  <Instagram className="w-4 h-4 text-pink-500" />
+                  <Instagram className="w-3.5 h-3.5 text-pink-500" />
                 ) : (
-                  <TikTokIcon className="w-4 h-4" />
+                  <TikTokIcon className="w-3.5 h-3.5" />
                 )}
-                <span className="text-sm capitalize">{selectedPlatform}</span>
-                <ChevronDown className={`w-4 h-4 transition-transform ${showPlatformSelector ? 'rotate-180' : ''}`} />
+                <span className="text-xs capitalize tracking-wide">{selectedPlatform}</span>
+                <ChevronDown className={`w-3 h-3 transition-transform ${showPlatformSelector ? 'rotate-180' : ''}`} />
               </button>
 
               {showPlatformSelector && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-dark-700 rounded-lg shadow-xl border border-dark-600 z-20 overflow-hidden">
+                <div className="absolute right-0 top-full mt-1 w-44 bg-dark-800 shadow-xl border border-dark-600 z-20 overflow-hidden">
                   <button
                     onClick={() => { setSelectedPlatform('instagram'); setShowPlatformSelector(false); }}
-                    className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${
+                    className={`w-full px-3 py-2 text-left text-xs flex items-center gap-2.5 transition-colors ${
                       selectedPlatform === 'instagram'
                         ? 'bg-dark-700 text-dark-100'
-                        : 'text-dark-200 hover:bg-dark-600'
+                        : 'text-dark-300 hover:bg-dark-700'
                     }`}
                   >
-                    <Instagram className="w-5 h-5 text-pink-500" />
+                    <Instagram className="w-4 h-4 text-pink-500" />
                     <div>
-                      <span className="font-medium">Instagram</span>
-                      <p className="text-xs text-dark-400">Posts, Reels, Stories</p>
+                      <span className="tracking-wide">Instagram</span>
+                      <p className="text-[10px] text-dark-500">Posts, Reels, Stories</p>
                     </div>
                   </button>
                   <button
                     onClick={() => { setSelectedPlatform('tiktok'); setShowPlatformSelector(false); }}
-                    className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${
+                    className={`w-full px-3 py-2 text-left text-xs flex items-center gap-2.5 transition-colors ${
                       selectedPlatform === 'tiktok'
                         ? 'bg-dark-700 text-dark-100'
-                        : 'text-dark-200 hover:bg-dark-600'
+                        : 'text-dark-300 hover:bg-dark-700'
                     }`}
                   >
-                    <TikTokIcon className="w-5 h-5" />
+                    <TikTokIcon className="w-4 h-4" />
                     <div>
-                      <span className="font-medium">TikTok</span>
-                      <p className="text-xs text-dark-400">Videos, Sounds</p>
+                      <span className="tracking-wide">TikTok</span>
+                      <p className="text-[10px] text-dark-500">Videos, Sounds</p>
                     </div>
                   </button>
                 </div>
@@ -1374,32 +1355,32 @@ function GridPlanner() {
             {/* Preview Toggle */}
             <button
               onClick={() => setShowPreview(!showPreview)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 transition-colors border border-dark-700 ${
                 showPreview
-                  ? 'bg-dark-700 text-dark-100'
-                  : 'bg-dark-700 text-dark-300 hover:text-dark-100'
+                  ? 'bg-dark-800 text-dark-100'
+                  : 'text-dark-400 hover:text-dark-100'
               }`}
             >
-              <Eye className="w-4 h-4" />
-              <span className="text-sm">Preview</span>
+              <Eye className="w-3.5 h-3.5" />
+              <span className="text-xs tracking-wide">Preview</span>
             </button>
 
             {/* Export */}
             <div className="relative group">
-              <button className="flex items-center gap-2 px-3 py-2 bg-dark-700 text-dark-300 hover:text-dark-100 rounded-lg transition-colors">
-                <Download className="w-4 h-4" />
-                <span className="text-sm">Export</span>
+              <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-dark-400 hover:text-dark-100 transition-colors border border-dark-700">
+                <Download className="w-3.5 h-3.5" />
+                <span className="text-xs tracking-wide">Export</span>
               </button>
-              <div className="absolute right-0 top-full mt-2 w-40 bg-dark-700 rounded-lg shadow-xl border border-dark-600 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+              <div className="absolute right-0 top-full mt-1 w-36 bg-dark-700 shadow-xl border border-dark-600 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
                 <button
                   onClick={() => handleExport('png')}
-                  className="w-full px-4 py-2 text-left text-sm text-dark-200 hover:bg-dark-600 rounded-t-lg"
+                  className="w-full px-3 py-1.5 text-left text-xs text-dark-200 hover:bg-dark-600"
                 >
                   Export as PNG
                 </button>
                 <button
                   onClick={() => handleExport('jpg')}
-                  className="w-full px-4 py-2 text-left text-sm text-dark-200 hover:bg-dark-600 rounded-b-lg"
+                  className="w-full px-3 py-1.5 text-left text-xs text-dark-200 hover:bg-dark-600"
                 >
                   Export as JPG
                 </button>
@@ -1407,8 +1388,8 @@ function GridPlanner() {
             </div>
 
             {/* Upload Images */}
-            <label className="btn-primary cursor-pointer">
-              <Upload className="w-4 h-4" />
+            <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-dark-100 text-dark-900 hover:bg-white transition-colors cursor-pointer text-xs tracking-wide">
+              <Upload className="w-3.5 h-3.5" />
               <span>Upload</span>
               <input
                 type="file"
@@ -1450,12 +1431,13 @@ function GridPlanner() {
         )}
 
         {/* Grid */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto mt-4">
           {showPreview ? (
             selectedPlatform === 'tiktok' ? (
               <TikTokPreview showRowHandles={showRowHandles} />
             ) : (
-              <GridPreview posts={gridPosts} layout={currentLayout} showRowHandles={showRowHandles} onDeletePost={handleDeletePost} gridId={currentGridId} onGridChange={refreshCurrentGrid} />
+              <GridPreview posts={gridPosts} layout={currentLayout} showRowHandles={showRowHandles} showConvictionScores={showConvictionScores} onDeletePost={handleDeletePost} gridId={currentGridId} onGridChange={refreshCurrentGrid} />
+
             )
           ) : (
             <div className="bg-dark-800 rounded-2xl p-6 border border-dark-700">
@@ -1605,62 +1587,13 @@ function GridPlanner() {
           )}
         </div>
 
-        {/* Stats & Zoom Slider */}
-        <div className="mt-4 flex items-center gap-6 text-sm text-dark-400">
+        {/* Stats */}
+        <div className="mt-3 flex items-center gap-6 text-xs text-dark-500 tracking-wide font-sans">
           <span>{gridPosts.length} posts</span>
           <span>{Math.ceil(gridPosts.length / (currentLayout?.cols || 3))} rows</span>
-          <span className="text-dark-100">
+          <span className="text-dark-300">
             {isLocked ? 'Grid locked' : 'Drag to reorder'}
           </span>
-
-          {/* Zoom Slider */}
-          <div className="ml-auto flex items-center gap-3">
-            <button
-              onClick={() => setGridZoom(Math.max(50, gridZoom - 10))}
-              className="p-1 text-dark-400 hover:text-dark-200 transition-colors"
-              title="Zoom out"
-            >
-              <ZoomOut className="w-4 h-4" />
-            </button>
-            <div className="flex items-center gap-2">
-              <input
-                type="range"
-                min="50"
-                max="150"
-                value={gridZoom}
-                onChange={(e) => setGridZoom(Number(e.target.value))}
-                className="w-24 h-1.5 bg-dark-600 rounded-full appearance-none cursor-pointer
-                  [&::-webkit-slider-thumb]:appearance-none
-                  [&::-webkit-slider-thumb]:w-3
-                  [&::-webkit-slider-thumb]:h-3
-                  [&::-webkit-slider-thumb]:rounded-full
-                  [&::-webkit-slider-thumb]:bg-dark-100
-                  [&::-webkit-slider-thumb]:cursor-pointer
-                  [&::-webkit-slider-thumb]:hover:bg-white
-                  [&::-moz-range-thumb]:w-3
-                  [&::-moz-range-thumb]:h-3
-                  [&::-moz-range-thumb]:rounded-full
-                  [&::-moz-range-thumb]:bg-dark-100
-                  [&::-moz-range-thumb]:border-0
-                  [&::-moz-range-thumb]:cursor-pointer"
-              />
-              <span className="text-xs text-dark-500 w-8">{gridZoom}%</span>
-            </div>
-            <button
-              onClick={() => setGridZoom(Math.min(150, gridZoom + 10))}
-              className="p-1 text-dark-400 hover:text-dark-200 transition-colors"
-              title="Zoom in"
-            >
-              <ZoomIn className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setGridZoom(100)}
-              className="px-2 py-0.5 text-xs text-dark-500 hover:text-dark-300 bg-dark-700 rounded transition-colors"
-              title="Reset zoom"
-            >
-              Reset
-            </button>
-          </div>
         </div>
       </div>
 
