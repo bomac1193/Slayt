@@ -36,7 +36,6 @@ const navSections = [
         label: 'More',
         children: [
           { path: '/learning', label: 'Learning' },
-          { path: '/studio', label: 'Folio' },
           { path: '/profiles', label: 'Profiles' },
           { path: '/connections', label: 'Connections' },
         ],

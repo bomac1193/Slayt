@@ -84,8 +84,9 @@ function App() {
           <Route path="library" element={<MediaLibrary />} />
           <Route path="connections" element={<Connections />} />
           <Route path="profiles" element={<Profiles />} />
-          <Route path="studio" element={<ContentStudio />} />
-          <Route path="collections" element={<FolioCollections />} />
+          {/* Folio UI hidden — API integration in PostAIGenerator/RolloutPlanner remains active */}
+          {/* <Route path="studio" element={<ContentStudio />} /> */}
+          {/* <Route path="collections" element={<FolioCollections />} /> */}
           <Route path="templates" element={<TemplateLibrary />} />
           <Route path="learning" element={<LearningDashboard />} />
           <Route path="settings" element={<Settings />} />

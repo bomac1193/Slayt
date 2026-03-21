@@ -51,8 +51,8 @@ function LearningProgressChart({ validations, timeRange }) {
     const data = payload[0].payload;
 
     return (
-      <div className="bg-dark-800 border border-dark-700 rounded-lg p-3">
-        <p className="text-dark-100 font-semibold mb-2">{data.date}</p>
+      <div className="bg-dark-800 border border-dark-700 p-3">
+        <p className="text-dark-100 font-medium mb-2">{data.date}</p>
         <div className="space-y-1 text-sm">
           <div className="flex items-center justify-between gap-4">
             <span className="text-dark-400">Accuracy:</span>
@@ -126,11 +126,11 @@ function LearningProgressChart({ validations, timeRange }) {
       {/* Chart Legend */}
       <div className="flex items-center justify-center gap-6 mt-4 text-sm">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-0.5 bg-dark-100 rounded"></div>
+          <div className="w-8 h-0.5 bg-dark-100"></div>
           <span className="text-dark-400">Daily Accuracy</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-0.5 bg-dark-400 rounded" style={{ borderTop: '1px dashed #52525b' }}></div>
+          <div className="w-8 h-0.5 bg-dark-400" style={{ borderTop: '1px dashed #52525b' }}></div>
           <span className="text-dark-400">Trend Line</span>
         </div>
       </div>
