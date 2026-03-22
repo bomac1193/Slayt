@@ -6,6 +6,7 @@ const cloudinaryService = require('../services/cloudinaryService');
 const { useCloudStorage, uploadDir, thumbnailDir } = require('../middleware/upload');
 const approvalGateService = require('../services/approvalGateService');
 const { computeContentHashFromUpload } = require('../utils/contentHash');
+const { extractDominantColor } = require('../utils/colorExtract');
 const {
   resolveClarosaConnection,
   lookupSingleContentHash,
@@ -163,6 +164,7 @@ exports.createContent = async (req, res) => {
           crop: 'fill',
         });
 
+        const dominantColor = await extractDominantColor(uploadBuffer);
         metadata = {
           width: uploadResult.width,
           height: uploadResult.height,
@@ -170,6 +172,7 @@ exports.createContent = async (req, res) => {
           fileSize: uploadResult.bytes,
           format: normalizedImageFormat || uploadResult.format,
           cloudinaryPublicId: uploadResult.public_id,
+          dominantColors: dominantColor ? [dominantColor] : [],
         };
       } else if (isVideo) {
         // For videos, Cloudinary can auto-generate thumbnail
@@ -206,12 +209,14 @@ exports.createContent = async (req, res) => {
       // Get image metadata
       if (isImage) {
         const imageMetadata = await sharp(req.file.path).metadata();
+        const dominantColor = await extractDominantColor(req.file.path);
         metadata = {
           width: imageMetadata.width,
           height: imageMetadata.height,
           aspectRatio: `${imageMetadata.width}:${imageMetadata.height}`,
           fileSize: req.file.size,
-          format: imageMetadata.format
+          format: imageMetadata.format,
+          dominantColors: dominantColor ? [dominantColor] : [],
         };
       }
     }
@@ -779,6 +784,74 @@ exports.rateContent = async (req, res) => {
   } catch (error) {
     console.error('Rate content error:', error);
     res.status(500).json({ error: 'Failed to rate content' });
+  }
+};
+
+// Backfill dominant colors for existing images
+exports.backfillColors = async (req, res) => {
+  try {
+    const items = await Content.find({
+      userId: req.userId,
+      mediaType: 'image',
+      $or: [
+        { 'metadata.dominantColors': { $exists: false } },
+        { 'metadata.dominantColors': { $size: 0 } },
+      ],
+    }).select('_id mediaUrl metadata');
+
+    if (items.length === 0) {
+      return res.json({ processed: 0, skipped: 0, failed: 0 });
+    }
+
+    let processed = 0;
+    let failed = 0;
+    const BATCH = 10;
+
+    for (let i = 0; i < items.length; i += BATCH) {
+      const batch = items.slice(i, i + BATCH);
+
+      await Promise.all(batch.map(async (item) => {
+        try {
+          let input;
+          if (item.mediaUrl?.startsWith('/uploads/')) {
+            input = path.join(__dirname, '../../public', item.mediaUrl);
+          } else if (item.mediaUrl?.startsWith('http')) {
+            const axios = require('axios');
+            const response = await axios.get(item.mediaUrl, {
+              responseType: 'arraybuffer',
+              timeout: 15000,
+            });
+            input = Buffer.from(response.data);
+          } else {
+            failed++;
+            return;
+          }
+
+          const color = await extractDominantColor(input);
+          if (color) {
+            await Content.updateOne(
+              { _id: item._id },
+              { $set: { 'metadata.dominantColors': [color] } },
+            );
+            processed++;
+          } else {
+            failed++;
+          }
+        } catch {
+          failed++;
+        }
+      }));
+    }
+
+    res.json({
+      processed,
+      skipped: 0,
+      failed,
+      total: items.length,
+    });
+  } catch (error) {
+    console.error('Backfill colors error:', error);
+    res.status(500).json({ error: 'Failed to backfill colors' });
   }
 };
 

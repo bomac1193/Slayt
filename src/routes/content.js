@@ -14,6 +14,7 @@ router.post('/reel', authenticate, upload.fields([
 router.post('/', authenticate, upload.single('media'), contentController.createContent);
 router.get('/', authenticate, contentController.getAllContent);
 router.post('/sync-clarosa', authenticate, contentController.syncClarosaInsights);
+router.post('/backfill-colors', authenticate, contentController.backfillColors);
 router.get('/:id', authenticate, contentController.getContentById);
 router.put('/:id', authenticate, contentController.updateContent);
 router.put('/:id/rate', authenticate, contentController.rateContent);

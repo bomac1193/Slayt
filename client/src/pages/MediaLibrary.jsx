@@ -657,6 +657,8 @@ function MediaLibrary() {
             onToggleSelect={toggleSelection}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onRate={handleRate}
+            onRefresh={fetchAll}
           />
         ) : (
           <>

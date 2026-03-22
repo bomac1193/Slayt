@@ -540,6 +540,11 @@ export const contentApi = {
     return data;
   },
 
+  async backfillColors() {
+    const { data } = await api.post('/api/content/backfill-colors', {}, { timeout: 120000 });
+    return data;
+  },
+
   async syncClarosa() {
     const { data } = await api.post('/api/content/sync-clarosa');
     return data;
