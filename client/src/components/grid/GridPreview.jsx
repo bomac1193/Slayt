@@ -38,7 +38,7 @@ const getActualZoom = (sliderValue) => {
 };
 
 // Helper function to calculate grid aesthetic score
-function calculateAestheticScore(gridItems, columns = 3) {
+export function calculateAestheticScore(gridItems, columns = 3) {
   if (!gridItems || gridItems.length === 0) return null;
 
   const itemsWithConviction = gridItems.filter(
@@ -108,6 +108,9 @@ function calculateAestheticScore(gridItems, columns = 3) {
   };
 }
 
+// Disable all layout animations to prevent doubling
+const noLayoutAnimation = () => false;
+
 // Sortable row component with drag handle
 function SortableRow({ rowId, rowIndex, children, showHandle = true }) {
   const {
@@ -119,30 +122,27 @@ function SortableRow({ rowId, rowIndex, children, showHandle = true }) {
     isDragging,
   } = useSortable({
     id: rowId,
-    disabled: !showHandle, // Disable sorting when handle is hidden
+    disabled: !showHandle,
+    animateLayoutChanges: noLayoutAnimation,
   });
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 10 : 1,
+    transition: isDragging ? 'none' : (transition || 'transform 100ms ease'),
+    opacity: isDragging ? 0 : 1,
   };
 
   return (
     <div ref={setNodeRef} style={style} className="flex items-center">
-      {/* Drag Handle - conditionally visible */}
       {showHandle && (
         <div
           {...attributes}
           {...listeners}
-          className="flex items-center justify-center px-2 py-4 cursor-grab active:cursor-grabbing hover:bg-dark-700/50 rounded-l transition-colors"
-          title="Drag to reorder row"
+          className="flex items-center justify-center w-5 self-stretch cursor-grab active:cursor-grabbing group"
         >
-          <GripVertical className="w-5 h-5 text-dark-500 hover:text-dark-300" />
+          <div className="w-[2px] h-5 bg-dark-600 group-hover:bg-dark-400 transition-colors" />
         </div>
       )}
-      {/* Row Content */}
       <div className="flex-1">
         {children}
       </div>
@@ -312,39 +312,36 @@ function DraggableGridItem({ post, postId, onDragStart, onDragEnd, onFileDrop, o
       {images.length > 0 ? (
         <>
           {(() => {
-            // Apply non-destructive CSS crop from saved Instagram platform draft
+            // Apply non-destructive crop from saved Instagram platform draft
             const igDraft = post?.editSettings?.platformDrafts?.instagram;
             const cb = igDraft?.cropBox;
-            const hasCrop = cb && (cb.x !== 0 || cb.y !== 0 || cb.width < 100 || cb.height < 100);
-            const brightness = igDraft?.brightness ?? 100;
-            const contrast = igDraft?.contrast ?? 100;
+            const hasCrop = cb && cb.width > 0 && cb.height > 0;
             const rotation = igDraft?.rotation || 0;
             const flipH = igDraft?.flipH;
             const flipV = igDraft?.flipV;
-            const hasAdjustments = rotation || flipH || flipV || brightness !== 100 || contrast !== 100;
 
-            // Use object-position to center on crop region (no distortion)
+            // Use the same source image the cropper used (originalImage first)
+            // so crop coordinates match the image dimensions
+            const cropSource = post.originalImage || images[0];
+            const displayUrl = hasCrop ? cropSource : images[0];
+            const isCloudinary = displayUrl?.includes('cloudinary.com');
+            const croppedUrl = (hasCrop && isCloudinary)
+              ? cropSource.replace('/upload/', `/upload/c_crop,x_${Math.round(cb.left)},y_${Math.round(cb.top)},w_${Math.round(cb.width)},h_${Math.round(cb.height)}/`)
+              : displayUrl;
+
             const style = {};
-            if (hasCrop) {
-              style.objectPosition = `${cb.x + cb.width / 2}% ${cb.y + cb.height / 2}%`;
-            }
-            if (hasAdjustments) {
-              const transforms = [];
-              if (rotation) transforms.push(`rotate(${rotation}deg)`);
-              if (flipH) transforms.push('scaleX(-1)');
-              if (flipV) transforms.push('scaleY(-1)');
-              if (brightness !== 100 || contrast !== 100) {
-                style.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
-              }
-              if (transforms.length) {
-                style.transform = transforms.join(' ');
-                style.transformOrigin = 'center center';
-              }
+            const transforms = [];
+            if (rotation) transforms.push(`rotate(${rotation}deg)`);
+            if (flipH) transforms.push('scaleX(-1)');
+            if (flipV) transforms.push('scaleY(-1)');
+            if (transforms.length) {
+              style.transform = transforms.join(' ');
+              style.transformOrigin = 'center center';
             }
 
             return (
               <img
-                src={images[0]}
+                src={croppedUrl}
                 alt=""
                 className="w-full h-full object-cover pointer-events-none"
                 style={Object.keys(style).length ? style : undefined}
@@ -378,17 +375,15 @@ function DraggableGridItem({ post, postId, onDragStart, onDragEnd, onFileDrop, o
         <div className="w-full h-full bg-dark-600 pointer-events-none" />
       )}
 
-      {/* Selected state - show trash icon */}
+      {/* Selected state — compact X at bottom-right */}
       {isSelected && (
-        <div className="absolute inset-0 bg-black/40 flex items-center justify-center pointer-events-none">
-          <button
-            onClick={handleDeleteClick}
-            className="p-3 bg-dark-600 hover:bg-dark-500 rounded-full transition-colors pointer-events-auto shadow-lg shadow-dark-900/40"
-            title="Delete image"
-          >
-            <Trash2 className="w-5 h-5 text-white" />
-          </button>
-        </div>
+        <button
+          onClick={handleDeleteClick}
+          className="absolute bottom-1 right-1 w-5 h-5 flex items-center justify-center bg-dark-900/80 hover:bg-red-600 text-dark-300 hover:text-white transition-colors z-10"
+          title="Remove from grid"
+        >
+          <X className="w-3 h-3" />
+        </button>
       )}
 
       {/* File drop indicator overlay */}
@@ -423,13 +418,13 @@ function SortableReelRow({ rowId, rowIndex, children, showHandle = true }) {
     isDragging,
   } = useSortable({
     id: rowId,
-    disabled: !showHandle, // Disable sorting when handle is hidden
+    disabled: !showHandle,
   });
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
+    transition: isDragging ? 'none' : 'transform 150ms ease',
+    opacity: isDragging ? 0 : 1,
     zIndex: isDragging ? 10 : 1,
   };
 
@@ -1511,18 +1506,12 @@ function GridPreview({ posts, layout, showRowHandles = true, showConvictionScore
           }
         }
 
-        // Persist to backend
+        // Persist to backend (no refetch — local state is already correct)
         if (gridId) {
-          try {
-            await gridApi.reorder(gridId, newPosts.map((p, i) => ({
-              contentId: p.id || p._id,
-              position: i,
-            })));
-            // Notify parent to refresh grid data
-            onGridChange?.();
-          } catch (err) {
-            console.error('Failed to save row reorder:', err);
-          }
+          gridApi.reorder(gridId, newPosts.map((p, i) => ({
+            contentId: p.id || p._id,
+            position: i,
+          }))).catch(err => console.error('Failed to save row reorder:', err));
         }
       }
     }
@@ -1536,6 +1525,41 @@ function GridPreview({ posts, layout, showRowHandles = true, showConvictionScore
   const [showDropModal, setShowDropModal] = useState(false);
   const [dropSource, setDropSource] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
+
+  // Add-to-grid file input
+  const addFileInputRef = useRef(null);
+  const [addingToGrid, setAddingToGrid] = useState(false);
+
+  const handleAddToGrid = async (e) => {
+    const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+    e.target.value = '';
+    setAddingToGrid(true);
+    try {
+      let currentPosts = [...posts];
+      for (let i = 0; i < files.length; i++) {
+        const result = await contentApi.upload(files[i]);
+        const content = result.content || result;
+        const contentId = content._id || content.id;
+        const newPost = {
+          ...content,
+          id: contentId,
+          images: content.mediaUrl ? [content.mediaUrl] : [],
+          image: content.mediaUrl,
+          gridPosition: currentPosts.length,
+        };
+        currentPosts = [...currentPosts, newPost];
+        setGridPosts(currentPosts);
+        if (gridId && contentId) {
+          await gridApi.addContent(gridId, contentId, currentPosts.length - 1, cols);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to add images to grid:', err);
+    } finally {
+      setAddingToGrid(false);
+    }
+  };
 
   // Selection and delete state
   const [selectedItemId, setSelectedItemId] = useState(null);
@@ -3528,30 +3552,7 @@ function GridPreview({ posts, layout, showRowHandles = true, showConvictionScore
 
   return (
     <div className="relative min-h-screen">
-      {/* Grid Score — portaled to body so zoom transform doesn't affect it */}
-      {activeTab === 'posts' && showAestheticScore && !showHighlightModal && postsWithConviction.some(p => p.conviction) && createPortal(
-        <div className="fixed left-[280px] top-[120px] z-[9999]">
-          <div className="bg-dark-900/92 backdrop-blur-md border border-dark-700 shadow-2xl overflow-hidden w-[136px]">
-            <button
-              onClick={() => setAestheticPanelExpanded(!aestheticPanelExpanded)}
-              className="w-full flex items-center justify-between px-3 py-2 hover:bg-dark-800/50 transition-colors"
-            >
-              <span className="text-[9px] text-dark-500 font-sans tracking-[0.15em]">Grid Score</span>
-              {aestheticPanelExpanded ? (
-                <ChevronUp className="w-2.5 h-2.5 text-dark-500" />
-              ) : (
-                <ChevronDown className="w-2.5 h-2.5 text-dark-500" />
-              )}
-            </button>
-            {aestheticPanelExpanded && (
-              <div className="px-3 pb-3">
-                <GridAestheticScore gridItems={postsWithConviction} columns={cols} />
-              </div>
-            )}
-          </div>
-        </div>,
-        document.body
-      )}
+      {/* Grid Score removed — now shown inline in GridPlanner stats bar */}
 
       {/* Controls Panel — portaled to body so zoom transform doesn't affect it */}
       {activeTab === 'posts' && !showHighlightModal && createPortal(
@@ -4154,76 +4155,76 @@ function GridPreview({ posts, layout, showRowHandles = true, showConvictionScore
                         onFileDrop={handleFileDrop}
                         isSelected={selectedItemId === (post.id || post._id)}
                         onSelect={handleSelectItem}
-                        onDelete={handleDeleteRequest}
+                        onDelete={onDeletePost}
                         showConvictionOverlays={showConvictionOverlays}
                       />
                     ))}
+                    {rowIndex === rows.length - 1 && row.length < cols && (
+                      <button
+                        onClick={() => addFileInputRef.current?.click()}
+                        disabled={addingToGrid}
+                        className="aspect-square bg-dark-800 border border-dashed border-dark-600 hover:border-dark-400 flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        {addingToGrid
+                          ? <Loader2 className="w-6 h-6 text-dark-500 animate-spin" />
+                          : <Plus className="w-6 h-6 text-dark-500" />
+                        }
+                      </button>
+                    )}
                   </div>
                 </SortableRow>
               ))}
+              {(rows.length === 0 || rows[rows.length - 1]?.length === cols) && (
+                <div
+                  className="grid gap-0.5"
+                  style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+                >
+                  <button
+                    onClick={() => addFileInputRef.current?.click()}
+                    disabled={addingToGrid}
+                    className="aspect-square bg-dark-800 border border-dashed border-dark-600 hover:border-dark-400 flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {addingToGrid
+                      ? <Loader2 className="w-6 h-6 text-dark-500 animate-spin" />
+                      : <Plus className="w-6 h-6 text-dark-500" />
+                    }
+                  </button>
+                </div>
+              )}
             </div>
           </SortableContext>
 
-          {/* Row Drag Overlay */}
-          <DragOverlay>
+          {/* Row Drag Overlay — minimal ghost */}
+          <DragOverlay dropAnimation={null}>
             {activeRow ? (
-              <div className="flex items-center bg-dark-800/90 shadow-2xl rounded-lg border border-dark-600">
-                <div className="flex items-center justify-center px-2 py-4">
-                  <GripVertical className="w-5 h-5 text-dark-400" />
-                </div>
-                <div
-                  className="grid gap-0.5 flex-1"
-                  style={{
-                    gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-                  }}
-                >
-                  {activeRow.map((post) => {
-                    const images = post.images || (post.image ? [post.image] : []);
-                    return (
-                      <div
-                        key={post.id || post._id}
-                        className="aspect-square bg-dark-700 overflow-hidden relative"
-                      >
-                        {images.length > 0 ? (
-                          <>
-                            {(() => {
-                              const igDraft = post?.editSettings?.platformDrafts?.instagram;
-                              const cb = igDraft?.cropBox;
-                              const hasCrop = cb && (cb.x !== 0 || cb.y !== 0 || cb.width < 100 || cb.height < 100);
-                              const style = {};
-                              if (hasCrop) {
-                                style.objectPosition = `${cb.x + cb.width / 2}% ${cb.y + cb.height / 2}%`;
-                              }
-                              return (
-                                <img
-                                  src={images[0]}
-                                  alt=""
-                                  className="w-full h-full object-cover"
-                                  style={Object.keys(style).length ? style : undefined}
-                                />
-                              );
-                            })()}
-                            {images.length > 1 && (
-                              <div className="absolute top-1 right-1 bg-dark-900/70 rounded px-1 py-0.5 flex items-center gap-0.5">
-                                <Layers className="w-2.5 h-2.5 text-white" />
-                                <span className="text-[10px] text-white font-medium">{images.length}</span>
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <div
-                            className="w-full h-full"
-                            style={{ backgroundColor: post.color || '#3f3f46' }}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+              <div
+                className="grid gap-0.5 opacity-80"
+                style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+              >
+                {activeRow.map((post) => {
+                  const images = post.images || (post.image ? [post.image] : []);
+                  return (
+                    <div key={post.id || post._id} className="aspect-square bg-dark-700 overflow-hidden">
+                      {images.length > 0 ? (
+                        <img src={images[0]} alt="" className="w-full h-full object-cover" draggable={false} />
+                      ) : (
+                        <div className="w-full h-full" style={{ backgroundColor: post.color || '#3f3f46' }} />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : null}
           </DragOverlay>
         </DndContext>
+        <input
+          ref={addFileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={handleAddToGrid}
+        />
       </div>
 
           {/* Empty State for Posts */}

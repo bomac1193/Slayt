@@ -7,12 +7,17 @@ import {
   Play,
   Music,
 } from 'lucide-react';
+import PlatformCaptionEditor from './PlatformCaptionEditor';
 
 const TikTokPreviewCard = React.memo(function TikTokPreviewCard({
   croppedSrc,
   cropStyles,
   caption,
   hashtags,
+  isCustomCaption,
+  onUpdateCaption,
+  onPersistCaption,
+  onClearCustomCaption,
   displayName,
   userAvatar,
   postColor,
@@ -73,12 +78,17 @@ const TikTokPreviewCard = React.memo(function TikTokPreviewCard({
       </div>
 
       {/* Bottom Info */}
-      <div className="absolute bottom-4 left-3 right-16">
+      <div className="absolute bottom-4 left-3 right-16 z-10">
         <p className="text-white font-semibold text-sm mb-1">{displayName}</p>
-        <p className="text-white text-sm mb-2 line-clamp-2">
-          {caption || 'Your caption will appear here...'}{hashtags ? ` ${hashtags}` : ''}
-        </p>
-        <div className="flex items-center gap-2">
+        <PlatformCaptionEditor
+          platform="tiktok"
+          caption={caption}
+          isCustom={isCustomCaption}
+          onUpdate={onUpdateCaption}
+          onPersist={onPersistCaption}
+          onClearCustom={onClearCustomCaption}
+        />
+        <div className="flex items-center gap-2 mt-2">
           <Music className="w-4 h-4 text-white" />
           <p className="text-white text-xs">Original Sound - {displayName}</p>
         </div>

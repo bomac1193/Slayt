@@ -21,7 +21,7 @@ import { useAppStore } from '../stores/useAppStore';
 import { gridApi, contentApi, authApi } from '../lib/api';
 import CruciblaProjectPicker from '../components/CruciblaProjectPicker';
 import GridItem from '../components/grid/GridItem';
-import GridPreview from '../components/grid/GridPreview';
+import GridPreview, { calculateAestheticScore } from '../components/grid/GridPreview';
 import TikTokPreview from '../components/grid/TikTokPreview';
 import PostDetails from '../components/grid/PostDetails';
 import {
@@ -879,8 +879,8 @@ function GridPlanner() {
                         key={grid._id}
                         className={`group relative ${
                           currentGridId === grid._id
-                            ? 'bg-dark-700'
-                            : 'hover:bg-dark-600'
+                            ? 'bg-dark-600 border-l-2 border-l-white'
+                            : 'hover:bg-dark-600/50 border-l-2 border-l-transparent'
                         }`}
                       >
                         {/* Editing Mode */}
@@ -1591,6 +1591,10 @@ function GridPlanner() {
         <div className="mt-3 flex items-center gap-6 text-xs text-dark-500 tracking-wide font-sans">
           <span>{gridPosts.length} posts</span>
           <span>{Math.ceil(gridPosts.length / (currentLayout?.cols || 3))} rows</span>
+          {(() => {
+            const score = calculateAestheticScore(gridPosts, currentLayout?.cols || 3);
+            return score ? <span>Score {score.overallScore}</span> : null;
+          })()}
           <span className="text-dark-300">
             {isLocked ? 'Grid locked' : 'Drag to reorder'}
           </span>
@@ -1599,7 +1603,7 @@ function GridPlanner() {
 
       {/* Right Sidebar - Post Details */}
       <div className="w-80 flex-shrink-0 relative z-10">
-        <PostDetails post={selectedPost} />
+        <PostDetails post={selectedPost} onReplace={refreshCurrentGrid} />
       </div>
     </div>
   );

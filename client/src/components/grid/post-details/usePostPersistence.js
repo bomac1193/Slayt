@@ -7,9 +7,11 @@ export function usePostPersistence(post) {
   const postId = post?.id || post?._id || null;
   const initialCaption = post?.caption || '';
   const initialHashtags = Array.isArray(post?.hashtags) ? post.hashtags.join(' ') : '';
+  const initialPlatformCaptions = post?.editSettings?.platformCaptions || {};
 
   const [caption, setCaption] = useState(initialCaption);
   const [hashtags, setHashtags] = useState(initialHashtags);
+  const [platformCaptions, setPlatformCaptions] = useState(initialPlatformCaptions);
 
   const captionDraftRef = useRef(caption);
   const hashtagsDraftRef = useRef(hashtags);
@@ -40,11 +42,55 @@ export function usePostPersistence(post) {
     hashtagsDraftRef.current = hashtags;
   }, [hashtags]);
 
-  // Persist drafts when switching posts
+  // Get caption for a specific platform (falls back to general)
+  const getCaptionForPlatform = useCallback((platform) => {
+    return platformCaptions[platform] ?? caption;
+  }, [platformCaptions, caption]);
+
+  // Update caption — either general or platform-specific
+  const updatePlatformCaption = useCallback(async (platform, value, isCustom) => {
+    if (isCustom) {
+      // Platform-specific override
+      const next = { ...platformCaptions, [platform]: value };
+      setPlatformCaptions(next);
+    } else {
+      // Update general caption (applies to all without overrides)
+      setCaption(value);
+      captionDraftRef.current = value;
+    }
+  }, [platformCaptions]);
+
+  // Persist platform caption on blur
+  const persistPlatformCaption = useCallback(async (platform, value, isCustom) => {
+    if (!postId) return;
+    if (isCustom) {
+      const next = { ...platformCaptions, [platform]: value };
+      setPlatformCaptions(next);
+      const payload = { editSettings: { ...(post?.editSettings || {}), platformCaptions: next } };
+      updatePost(postId, payload);
+      try { await contentApi.update(postId, payload); } catch (err) { console.error('Failed to persist platform caption:', err); }
+    } else {
+      setCaption(value);
+      captionDraftRef.current = value;
+      persistPost({ caption: value });
+    }
+  }, [postId, platformCaptions, post?.editSettings, updatePost, persistPost]);
+
+  // Clear platform override (revert to general)
+  const clearPlatformCaption = useCallback(async (platform) => {
+    const next = { ...platformCaptions };
+    delete next[platform];
+    setPlatformCaptions(next);
+    if (!postId) return;
+    const payload = { editSettings: { ...(post?.editSettings || {}), platformCaptions: next } };
+    updatePost(postId, payload);
+    try { await contentApi.update(postId, payload); } catch (err) { console.error('Failed to clear platform caption:', err); }
+  }, [postId, platformCaptions, post?.editSettings, updatePost]);
+
+  // Persist drafts when switching posts (only trigger on postId change)
   useEffect(() => {
     const prevId = lastPostIdRef.current;
     if (prevId && prevId !== postId) {
-      // Fire-and-forget: persist the old post's drafts
       const prevCaption = captionDraftRef.current;
       const prevHashtags = hashtagsDraftRef.current;
       updatePost(prevId, {
@@ -58,9 +104,14 @@ export function usePostPersistence(post) {
     }
 
     lastPostIdRef.current = postId;
-    setCaption(initialCaption);
-    setHashtags(initialHashtags);
-  }, [initialCaption, initialHashtags, parseHashtagsText, postId, updatePost]);
+    const cap = post?.caption || '';
+    const tags = Array.isArray(post?.hashtags) ? post.hashtags.join(' ') : '';
+    const platCaps = post?.editSettings?.platformCaptions || {};
+    setCaption(cap);
+    setHashtags(tags);
+    setPlatformCaptions(platCaps);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postId]);
 
   const handleCaptionBlur = useCallback(() => {
     persistPost({ caption });
@@ -79,5 +130,10 @@ export function usePostPersistence(post) {
     handleHashtagsBlur,
     persistPost,
     parseHashtagsText,
+    platformCaptions,
+    getCaptionForPlatform,
+    updatePlatformCaption,
+    persistPlatformCaption,
+    clearPlatformCaption,
   };
 }

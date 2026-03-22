@@ -174,7 +174,7 @@ export const useAppStore = create(
         gridPosts: [...state.gridPosts, { ...post, gridPosition: state.gridPosts.length }]
       })),
       removeFromGrid: (id) => set((state) => ({
-        gridPosts: state.gridPosts.filter((p) => p.id !== id)
+        gridPosts: state.gridPosts.filter((p) => (p.id || p._id) !== id)
       })),
       reorderGrid: (fromIndex, toIndex) => set((state) => {
         const newGridPosts = [...state.gridPosts];

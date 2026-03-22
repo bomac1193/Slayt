@@ -75,6 +75,7 @@ export function useQuickEdit(post) {
   const save = async () => {
     if (!postId || saving) return;
     setSaving(true);
+    const minDelay = new Promise(r => setTimeout(r, 600));
     try {
       const payload = {
         editSettings: {
@@ -85,9 +86,10 @@ export function useQuickEdit(post) {
         },
       };
       updatePost(postId, payload);
-      await contentApi.update(postId, payload);
+      await Promise.all([contentApi.update(postId, payload), minDelay]);
     } catch (err) {
       console.error('Quick edit save failed:', err?.response?.data || err.message);
+      await minDelay;
     } finally {
       setSaving(false);
     }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAppStore } from '../../stores/useAppStore';
 import { postingApi } from '../../lib/api';
-import { Image, Send, Calendar, Loader2 } from 'lucide-react';
+import { Image } from 'lucide-react';
 import { PLATFORMS, resolvePrimaryImageSource } from './post-details/constants';
 import { usePostPersistence } from './post-details/usePostPersistence';
 import { useQuickEdit } from './post-details/useQuickEdit';
@@ -16,7 +16,7 @@ import QuickEditPanel from './post-details/QuickEditPanel';
 import CropEditor from './post-details/CropEditor';
 import ConvictionBreakdown from './post-details/ConvictionBreakdown';
 
-function PostDetails({ post }) {
+function PostDetails({ post, onReplace }) {
   const user = useAppStore((s) => s.user);
   const profiles = useAppStore((s) => s.profiles);
   const currentProfileId = useAppStore((s) => s.currentProfileId);
@@ -124,14 +124,14 @@ function PostDetails({ post }) {
       {/* Quick Edit Bar */}
       {qe.editing && (
         <div className="flex items-center justify-between px-3 py-2 border-b border-dark-700 bg-dark-900/80 flex-shrink-0">
-          <span className="text-[11px] text-dark-400 uppercase tracking-wide">
+          <span className="text-[11px] text-dark-400 tracking-wide">
             Editing: {platformLabel}
           </span>
           <div className="flex items-center gap-2">
             <button
               onClick={qe.save}
               disabled={qe.saving}
-              className="h-7 px-3 text-[11px] bg-dark-100 text-white hover:bg-white disabled:opacity-50 transition-colors"
+              className="h-7 px-3 text-[11px] bg-white text-dark-900 hover:bg-dark-100 hover:text-white disabled:opacity-50 transition-colors"
             >
               {qe.saving ? 'Saving...' : 'Save'}
             </button>
@@ -157,6 +157,7 @@ function PostDetails({ post }) {
               cropEditor={null}
               onStartQuickEdit={qe.open}
               getTransformedMediaStyle={qe.getTransformedMediaStyle}
+              onReplace={onReplace}
             />
             <ConvictionBreakdown postId={postId} profileId={currentProfileId} />
             <PostMetadataEditor
@@ -179,7 +180,11 @@ function PostDetails({ post }) {
             <InstagramPreview
               croppedSrc={qe.getCroppedSrc('instagram')}
               cropStyles={qe.getCroppedPreviewStyles('instagram')}
-              caption={persistence.caption}
+              caption={persistence.getCaptionForPlatform('instagram')}
+              isCustomCaption={'instagram' in persistence.platformCaptions}
+              onUpdateCaption={persistence.updatePlatformCaption}
+              onPersistCaption={persistence.persistPlatformCaption}
+              onClearCustomCaption={persistence.clearPlatformCaption}
               displayName={displayName}
               userAvatar={userAvatar}
               postColor={post.color}
@@ -196,8 +201,12 @@ function PostDetails({ post }) {
               <TikTokPreviewCard
                 croppedSrc={qe.getCroppedSrc('tiktok')}
                 cropStyles={qe.getCroppedPreviewStyles('tiktok')}
-                caption={persistence.caption}
+                caption={persistence.getCaptionForPlatform('tiktok')}
                 hashtags={persistence.hashtags}
+                isCustomCaption={'tiktok' in persistence.platformCaptions}
+                onUpdateCaption={persistence.updatePlatformCaption}
+                onPersistCaption={persistence.persistPlatformCaption}
+                onClearCustomCaption={persistence.clearPlatformCaption}
                 displayName={displayName}
                 userAvatar={userAvatar}
                 postColor={post.color}
@@ -211,7 +220,11 @@ function PostDetails({ post }) {
             <TwitterPreviewCard
               croppedSrc={qe.getCroppedSrc('twitter')}
               cropStyles={qe.getCroppedPreviewStyles('twitter')}
-              caption={persistence.caption}
+              caption={persistence.getCaptionForPlatform('twitter')}
+              isCustomCaption={'twitter' in persistence.platformCaptions}
+              onUpdateCaption={persistence.updatePlatformCaption}
+              onPersistCaption={persistence.persistPlatformCaption}
+              onClearCustomCaption={persistence.clearPlatformCaption}
               displayName={displayName}
               username={username}
               userAvatar={userAvatar}
@@ -223,13 +236,10 @@ function PostDetails({ post }) {
       {/* Footer */}
       <div className="p-4 border-t border-dark-700 flex gap-2 flex-shrink-0">
         <button onClick={() => setShowScheduleModal(true)} className="flex-1 btn-secondary">
-          <Calendar className="w-4 h-4" /> Schedule
+          Schedule
         </button>
         <button onClick={handlePostNow} disabled={posting} className="flex-1 btn-primary disabled:opacity-50">
-          {posting
-            ? <><Loader2 className="w-4 h-4 animate-spin" /> Posting...</>
-            : <><Send className="w-4 h-4" /> Post Now</>
-          }
+          {posting ? 'Posting...' : 'Post Now'}
         </button>
       </div>
 

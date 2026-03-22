@@ -5,11 +5,16 @@ import {
   Bookmark,
   Share2,
 } from 'lucide-react';
+import PlatformCaptionEditor from './PlatformCaptionEditor';
 
 const TwitterPreviewCard = React.memo(function TwitterPreviewCard({
   croppedSrc,
   cropStyles,
   caption,
+  isCustomCaption,
+  onUpdateCaption,
+  onPersistCaption,
+  onClearCustomCaption,
   displayName,
   username,
   userAvatar,
@@ -32,9 +37,14 @@ const TwitterPreviewCard = React.memo(function TwitterPreviewCard({
             </div>
 
             {/* Tweet Text */}
-            <p className="text-white text-sm mt-1">
-              {caption || 'Your tweet will appear here...'}
-            </p>
+            <PlatformCaptionEditor
+              platform="twitter"
+              caption={caption}
+              isCustom={isCustomCaption}
+              onUpdate={onUpdateCaption}
+              onPersist={onPersistCaption}
+              onClearCustom={onClearCustomCaption}
+            />
 
             {/* Image */}
             {croppedSrc && (

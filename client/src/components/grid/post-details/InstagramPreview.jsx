@@ -4,14 +4,19 @@ import {
   Heart,
   MessageCircle,
   Bookmark,
-  Share2,
+  Send,
   MoreHorizontal,
 } from 'lucide-react';
+import PlatformCaptionEditor from './PlatformCaptionEditor';
 
 const InstagramPreview = React.memo(function InstagramPreview({
   croppedSrc,
   cropStyles,
   caption,
+  isCustomCaption,
+  onUpdateCaption,
+  onPersistCaption,
+  onClearCustomCaption,
   displayName,
   userAvatar,
   postColor,
@@ -73,20 +78,25 @@ const InstagramPreview = React.memo(function InstagramPreview({
       <div className="p-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-4">
-            <Heart className="w-6 h-6 text-white cursor-pointer hover:text-dark-100 transition-colors" fill="none" />
-            <MessageCircle className="w-6 h-6 text-white cursor-pointer" />
-            <Share2 className="w-6 h-6 text-white cursor-pointer" />
+            <Heart className="w-5 h-5 text-white" fill="none" />
+            <MessageCircle className="w-5 h-5 text-white" />
+            <Send className="w-5 h-5 text-white" />
           </div>
-          <Bookmark className="w-6 h-6 text-white cursor-pointer" />
+          <Bookmark className="w-5 h-5 text-white" />
         </div>
 
         {/* Caption */}
-        <p className="text-white text-sm">
-          <span className="font-semibold">{displayName}</span>{' '}
-          <span className="text-gray-300">{caption || 'Your caption will appear here...'}</span>
-        </p>
+        <p className="text-white text-sm font-semibold">{displayName}</p>
+        <PlatformCaptionEditor
+          platform="instagram"
+          caption={caption}
+          isCustom={isCustomCaption}
+          onUpdate={onUpdateCaption}
+          onPersist={onPersistCaption}
+          onClearCustom={onClearCustomCaption}
+        />
 
-        <p className="text-gray-500 text-xs mt-2 uppercase">Preview</p>
+        <p className="text-gray-500 text-xs mt-2">Preview</p>
       </div>
     </div>
   );

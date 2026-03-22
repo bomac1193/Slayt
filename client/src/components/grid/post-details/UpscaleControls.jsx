@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Image,
   Loader2,
   Crop,
   ZoomIn,
   SlidersHorizontal,
+  RefreshCw,
 } from 'lucide-react';
-import { aiApi } from '../../../lib/api';
+import { aiApi, contentApi } from '../../../lib/api';
 import { useAppStore } from '../../../stores/useAppStore';
 import { resolvePrimaryImageSource } from './constants';
 import CompareSlider from './CompareSlider';
@@ -19,9 +20,12 @@ const UpscaleControls = React.memo(function UpscaleControls({
   cropEditor,
   onStartQuickEdit,
   getTransformedMediaStyle,
+  onReplace,
 }) {
   const updatePost = useAppStore((state) => state.updatePost);
+  const replaceInputRef = useRef(null);
 
+  const [replacing, setReplacing] = useState(false);
   const [upscaling, setUpscaling] = useState(false);
   const [upscaledImage, setUpscaledImage] = useState(() =>
     post?.originalImage && primaryImageSrc ? primaryImageSrc : null
@@ -60,6 +64,38 @@ const UpscaleControls = React.memo(function UpscaleControls({
     }
   };
 
+  const handleReplace = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    const postId = post.id || post._id;
+    setReplacing(true);
+    try {
+      const result = await contentApi.updateMedia(postId, file);
+      const updated = result.content || result;
+      const newUrl = updated.mediaUrl;
+      // Update local post immediately so both the preview and grid cell refresh
+      updatePost(postId, {
+        image: newUrl,
+        images: [newUrl],
+        mediaUrl: newUrl,
+        thumbnailUrl: updated.thumbnailUrl,
+        originalImage: updated.originalMediaUrl || newUrl,
+        originalMediaUrl: updated.originalMediaUrl || newUrl,
+        metadata: updated.metadata,
+        editSettings: null,
+      });
+      // Also refresh the grid to update the grid cells
+      if (onReplace) await onReplace();
+    } catch (err) {
+      console.error('Replace failed:', err);
+      setUpscaleError('Replace failed');
+    } finally {
+      setReplacing(false);
+    }
+  };
+
   const mediaStyle = getTransformedMediaStyle();
 
   return (
@@ -94,28 +130,35 @@ const UpscaleControls = React.memo(function UpscaleControls({
             )}
 
             {/* Edit Overlay */}
+            <input
+              ref={replaceInputRef}
+              type="file"
+              accept="image/*,video/*"
+              onChange={handleReplace}
+              className="hidden"
+            />
             <div className="absolute inset-0 bg-black/0 hover:bg-black/50 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
               <div className="flex flex-col gap-2">
-                {upscaling ? (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                {(upscaling || replacing) ? (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm">
                     <Loader2 className="w-4 h-4 text-white animate-spin" />
-                    <span className="text-white font-medium">Upscaling...</span>
+                    <span className="text-white font-medium">{replacing ? 'Replacing...' : 'Upscaling...'}</span>
                   </div>
                 ) : (
                   <>
                     {upscaleError && (
-                      <div className="px-3 py-1.5 bg-dark-700 rounded-lg backdrop-blur-sm">
+                      <div className="px-3 py-1.5 bg-dark-700 backdrop-blur-sm">
                         <span className="text-white text-xs">{upscaleError}</span>
                       </div>
                     )}
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 px-2 py-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                      <div className="flex items-center gap-1 px-2 py-2 bg-white/20 backdrop-blur-sm">
                         <ZoomIn className="w-4 h-4 text-white" />
                       </div>
                       <button
                         onClick={() => handleUpscale('replicate')}
                         title="Upscale with Replicate (Best quality)"
-                        className="flex items-center gap-1.5 px-3 py-2 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-colors"
                       >
                         <span className="text-white font-bold text-sm">R</span>
                         <span className="text-white/70 text-xs">Best</span>
@@ -123,7 +166,7 @@ const UpscaleControls = React.memo(function UpscaleControls({
                       <button
                         onClick={() => handleUpscale('cloudinary')}
                         title="Upscale with Cloudinary (Fast)"
-                        className="flex items-center gap-1.5 px-3 py-2 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-colors"
                       >
                         <span className="text-white font-bold text-sm">C</span>
                         <span className="text-white/70 text-xs">Fast</span>
@@ -133,10 +176,17 @@ const UpscaleControls = React.memo(function UpscaleControls({
                 )}
                 <button
                   onClick={onStartQuickEdit}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-colors"
                 >
                   <Crop className="w-4 h-4 text-white" />
                   <span className="text-white font-medium">Quick Edit</span>
+                </button>
+                <button
+                  onClick={() => replaceInputRef.current?.click()}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4 text-white" />
+                  <span className="text-white font-medium">Replace</span>
                 </button>
               </div>
             </div>
